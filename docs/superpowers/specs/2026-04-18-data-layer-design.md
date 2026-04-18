@@ -10,7 +10,7 @@ This spec covers the data layer for the ONI Planner: a production chain calculat
 
 ## Tech Stack
 
-- **Backend:** Laravel 13, PHP 8.5, SQLite (dev) / MySQL (prod)
+- **Backend:** Laravel 13, PHP 8.5, SQLite (dev + prod) or PostgreSQL (prod)
 - **Frontend:** Inertia.js + Vue
 - **Localisation:** `spatie/laravel-translatable` — JSON columns `{"en": "Water", "fr": "Eau"}`
 - **Game data source:** Game files directly (`game-data/OxygenNotIncluded_Data/`)
@@ -48,9 +48,17 @@ dotnet-extractor/          ← C# project, compiled as .NET 8 AOT single binary
       geyser_types.json
       rocket_components.json
       duplicant_traits.json
+  → public/assets/game/
+      elements/{element_id}.png
+      buildings/{building_id}.png
+      critters/{morph_id}.png
+      plants/{variant_id}.png
+      geysers/{geyser_id}.png
 ```
 
-The extractor outputs structured JSON that maps cleanly onto the DB schema after transformer processing.
+Asset extraction reads Unity asset bundles (`.assets`, `*_bundle` files in `OxygenNotIncluded_Data/`) using `AssetTools.NET`. Sprites are exported as PNG and placed in `public/assets/game/` so they can be served directly by Laravel. The directory structure mirrors the entity type + ID naming used in the DB.
+
+The extractor outputs structured JSON that maps cleanly onto the DB schema after transformer processing, and also extracts game assets (sprites/icons) from Unity asset bundles.
 
 ### Full pipeline
 
@@ -432,7 +440,7 @@ dlc_id (string, nullable)
 - **Species + variant pattern** — `critters`/`plants` are grouping-only. `critter_morphs`/`plant_variants` hold all real data, each with `is_base` flag.
 - **Geysers use min/max ranges** — every in-game geyser instance has randomised values within fixed bounds. The planner lets users input their actual observed values.
 - **`spatie/laravel-translatable`** — `name`/`description` columns stored as JSON for EN/FR support. EN from `.pot` file; FR from Steam Workshop (source TBD).
-- **`dotnet-extractor` is a separate C# AOT binary** — single self-contained executable, no .NET runtime required on the host. Outputs to `json-cache/` which `game:import` then reads.
+- **`dotnet-extractor` handles both data and assets** — single C# AOT binary (no .NET runtime required). Outputs structured JSON to `json-cache/` and extracts sprites to `public/assets/game/` using `AssetTools.NET` to read Unity bundle files. Asset filenames follow `{type}/{id}.png` so the frontend can resolve them deterministically without a DB lookup.
 
 ---
 
