@@ -17,11 +17,11 @@ it('imports gas elements from yaml with thermal and gas properties', function ()
 
     $importer->importYaml(base_path('tests/Fixtures/GameImport/elements_gas.yaml'), 'gas');
 
-    expect(Element::count())->toBe(2)
-        ->and(ElementThermalProperty::count())->toBe(2)
-        ->and(ElementGasProperty::count())->toBe(2);
+    expect(Element::query()->count())->toBe(2)
+        ->and(ElementThermalProperty::query()->count())->toBe(2)
+        ->and(ElementGasProperty::query()->count())->toBe(2);
 
-    $co2 = Element::where('element_id', 'CarbonDioxide')->first();
+    $co2 = Element::query()->where('element_id', 'CarbonDioxide')->first();
     expect($co2)->not->toBeNull()
         ->and($co2->state)->toBe('gas')
         ->and($co2->getTranslation('name', 'en'))->toBe('Carbon Dioxide')
@@ -39,6 +39,6 @@ it('sets is_breathable true when element has Breathable tag', function (): void 
 
     $importer->importYaml(base_path('tests/Fixtures/GameImport/elements_gas.yaml'), 'gas');
 
-    $oxygen = Element::where('element_id', 'Oxygen')->first();
+    $oxygen = Element::query()->where('element_id', 'Oxygen')->first();
     expect($oxygen->gasProperties->is_breathable)->toBeTrue();
 });

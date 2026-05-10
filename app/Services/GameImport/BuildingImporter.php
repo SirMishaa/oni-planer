@@ -6,21 +6,21 @@ namespace App\Services\GameImport;
 
 use App\Models\Building;
 
-final class BuildingImporter
+final readonly class BuildingImporter
 {
-    public function __construct(private readonly StringResolver $stringResolver) {}
+    public function __construct(private StringResolver $stringResolver) {}
 
     public function import(string $jsonPath): void
     {
         /** @var array<int, array<string, mixed>> $buildings */
-        $buildings = json_decode(file_get_contents($jsonPath), true);
+        $buildings = json_decode((string) file_get_contents($jsonPath), true);
 
         foreach ($buildings as $raw) {
-            $nameJson = isset($raw['name_localization_id'])
+            $nameJson = is_string($raw['name_localization_id'] ?? null)
                 ? ($this->stringResolver->resolveToJson($raw['name_localization_id']) ?? ['en' => $raw['building_id']])
                 : ['en' => $raw['building_id']];
 
-            Building::create([
+            Building::query()->create([
                 'building_id' => $raw['building_id'],
                 'category' => $raw['category'],
                 'power_consumption' => $raw['power_consumption'] ?? null,

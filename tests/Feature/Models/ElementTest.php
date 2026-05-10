@@ -10,7 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 it('creates a gas element with thermal and gas properties', function (): void {
-    $element = Element::create([
+    $element = Element::query()->create([
         'element_id' => 'CarbonDioxide',
         'state' => 'gas',
         'molar_mass' => 44.01,
@@ -21,7 +21,7 @@ it('creates a gas element with thermal and gas properties', function (): void {
         'is_disabled' => false,
     ]);
 
-    ElementThermalProperty::create([
+    ElementThermalProperty::query()->create([
         'element_id' => 'CarbonDioxide',
         'specific_heat_capacity' => 0.846,
         'thermal_conductivity' => 0.0146,
@@ -31,7 +31,7 @@ it('creates a gas element with thermal and gas properties', function (): void {
         'radiation_per_1000_mass' => 0.0,
     ]);
 
-    ElementGasProperty::create([
+    ElementGasProperty::query()->create([
         'element_id' => 'CarbonDioxide',
         'flow' => 0.1,
         'default_pressure' => 139.0,
@@ -47,7 +47,7 @@ it('creates a gas element with thermal and gas properties', function (): void {
 });
 
 it('resolves temperature transitions between elements', function (): void {
-    Element::create([
+    Element::query()->create([
         'element_id' => 'Ice',
         'state' => 'solid',
         'molar_mass' => 18.0,
@@ -59,7 +59,7 @@ it('resolves temperature transitions between elements', function (): void {
         'is_disabled' => false,
     ]);
 
-    Element::create([
+    Element::query()->create([
         'element_id' => 'Water',
         'state' => 'liquid',
         'molar_mass' => 18.0,
@@ -70,6 +70,6 @@ it('resolves temperature transitions between elements', function (): void {
         'is_disabled' => false,
     ]);
 
-    $ice = Element::where('element_id', 'Ice')->first();
+    $ice = Element::query()->where('element_id', 'Ice')->first();
     expect($ice->high_temp_transition_target)->toBe('Water');
 });

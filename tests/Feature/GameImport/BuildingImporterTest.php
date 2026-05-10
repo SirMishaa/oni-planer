@@ -14,12 +14,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    Element::create([
+    Element::query()->create([
         'element_id' => 'Carbon', 'state' => 'solid', 'molar_mass' => 12.0,
         'toxicity' => 0, 'material_category' => 'Mineral', 'tags' => [],
         'name' => ['en' => 'Carbon'], 'is_disabled' => false,
     ]);
-    Element::create([
+    Element::query()->create([
         'element_id' => 'CarbonDioxide', 'state' => 'gas', 'molar_mass' => 44.01,
         'toxicity' => 0, 'material_category' => 'Unbreathable', 'tags' => [],
         'name' => ['en' => 'Carbon Dioxide'], 'is_disabled' => false,
@@ -32,8 +32,8 @@ it('imports buildings from json', function (): void {
 
     $importer->import(base_path('tests/Fixtures/GameImport/buildings.json'));
 
-    expect(Building::count())->toBe(1);
-    $building = Building::first();
+    expect(Building::query()->count())->toBe(1);
+    $building = Building::query()->first();
     expect($building->building_id)->toBe('CoalGenerator')
         ->and($building->category)->toBe('Power')
         ->and($building->power_generation)->toBe(600.0)
@@ -42,13 +42,13 @@ it('imports buildings from json', function (): void {
 
 it('imports recipes with items from json', function (): void {
     $resolver = new StringResolver(base_path('tests/Fixtures/GameImport/strings.pot'));
-    (new BuildingImporter($resolver))->import(base_path('tests/Fixtures/GameImport/buildings.json'));
-    (new RecipeImporter())->import(base_path('tests/Fixtures/GameImport/recipes.json'));
+    new BuildingImporter($resolver)->import(base_path('tests/Fixtures/GameImport/buildings.json'));
+    new RecipeImporter()->import(base_path('tests/Fixtures/GameImport/recipes.json'));
 
-    expect(Recipe::count())->toBe(1)
-        ->and(RecipeItem::count())->toBe(2);
+    expect(Recipe::query()->count())->toBe(1)
+        ->and(RecipeItem::query()->count())->toBe(2);
 
-    $recipe = Recipe::first();
+    $recipe = Recipe::query()->first();
     expect($recipe->inputs)->toHaveCount(1)
         ->and($recipe->outputs)->toHaveCount(1)
         ->and($recipe->inputs->first()->element_id)->toBe('Carbon');

@@ -15,11 +15,11 @@ it('imports elements from game data yaml files', function (): void {
     ])
         ->assertSuccessful();
 
-    expect(Element::count())->toBeGreaterThan(0);
+    expect(Element::query()->count())->toBeGreaterThan(0);
 });
 
 it('truncates existing data before reimport', function (): void {
-    Element::create([
+    Element::query()->create([
         'element_id' => 'OldElement', 'state' => 'gas', 'molar_mass' => 1.0,
         'toxicity' => 0, 'material_category' => 'Test', 'tags' => [],
         'name' => ['en' => 'Old'], 'is_disabled' => false,
@@ -32,5 +32,5 @@ it('truncates existing data before reimport', function (): void {
     ])
         ->assertSuccessful();
 
-    expect(Element::where('element_id', 'OldElement')->exists())->toBeFalse();
+    expect(Element::query()->where('element_id', 'OldElement')->exists())->toBeFalse();
 });

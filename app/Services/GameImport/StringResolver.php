@@ -9,7 +9,7 @@ final class StringResolver
     /** @var array<string, string> */
     private array $strings = [];
 
-    public function __construct(private readonly string $potFilePath)
+    public function __construct(string $potFilePath)
     {
         $this->strings = $this->parsePot($potFilePath);
     }
@@ -30,7 +30,7 @@ final class StringResolver
     /** @return array<string, string> */
     private function parsePot(string $path): array
     {
-        $content = file_get_contents($path);
+        $content = (string) file_get_contents($path);
         $strings = [];
         $currentCtxt = null;
 
@@ -42,6 +42,7 @@ final class StringResolver
                 if ($value !== '') {
                     $strings[$currentCtxt] = $value;
                 }
+
                 $currentCtxt = null;
             }
         }

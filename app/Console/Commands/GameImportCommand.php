@@ -42,7 +42,7 @@ final class GameImportCommand extends Command
         if (! $this->option('skip-extractor')) {
             $this->info('Running dotnet-extractor...');
             $result = Process::run(
-                base_path('dotnet-extractor/bin/dotnet-extractor')." \"{$gamePath}\" \"{$cachePath}\"",
+                base_path('dotnet-extractor/bin/dotnet-extractor').sprintf(' "%s" "%s"', $gamePath, $cachePath),
             );
             $this->output->write($result->output());
             if ($result->failed()) {
@@ -62,7 +62,7 @@ final class GameImportCommand extends Command
         $elementImporter = new ElementImporter($resolver);
         $streamingAssets = $gamePath.'/StreamingAssets/elements';
         foreach (['gas', 'liquid', 'solid', 'special'] as $state) {
-            $yamlPath = $streamingAssets."/{$state}.yaml";
+            $yamlPath = $streamingAssets.sprintf('/%s.yaml', $state);
             if (file_exists($yamlPath)) {
                 $elementImporter->importYaml($yamlPath, $state);
             }
@@ -71,53 +71,53 @@ final class GameImportCommand extends Command
         $this->info('Importing buildings...');
         $buildingsJson = $cachePath.'/buildings.json';
         if (file_exists($buildingsJson)) {
-            (new BuildingImporter($resolver))->import($buildingsJson);
+            new BuildingImporter($resolver)->import($buildingsJson);
         }
 
         $this->info('Importing recipes...');
         $recipesJson = $cachePath.'/recipes.json';
         if (file_exists($recipesJson)) {
-            (new RecipeImporter())->import($recipesJson);
+            new RecipeImporter()->import($recipesJson);
         }
 
         $this->info('Importing critters...');
         $crittersJson = $cachePath.'/critters.json';
         if (file_exists($crittersJson)) {
-            (new CritterImporter($resolver))->import($crittersJson);
+            new CritterImporter($resolver)->import($crittersJson);
         }
 
         $this->info('Importing plants...');
         $plantsJson = $cachePath.'/plants.json';
         if (file_exists($plantsJson)) {
-            (new PlantImporter($resolver))->import($plantsJson);
+            new PlantImporter($resolver)->import($plantsJson);
         }
 
         $this->info('Importing geysers...');
         $geysersJson = $cachePath.'/geyser_types.json';
         if (file_exists($geysersJson)) {
-            (new GeyserImporter($resolver))->import($geysersJson);
+            new GeyserImporter($resolver)->import($geysersJson);
         }
 
         $this->info('Importing duplicant data...');
         $dupeJson = $cachePath.'/duplicant_traits.json';
         if (file_exists($dupeJson)) {
-            (new DuplicantImporter($resolver))->import($dupeJson);
+            new DuplicantImporter($resolver)->import($dupeJson);
         }
 
         $this->info('Importing rocket components...');
         $rocketJson = $cachePath.'/rocket_components.json';
         if (file_exists($rocketJson)) {
-            (new RocketImporter($resolver))->import($rocketJson);
+            new RocketImporter($resolver)->import($rocketJson);
         }
 
         $this->info('');
         $this->info('Import complete:');
-        $this->line('  Elements: '.Element::count());
-        $this->line('  Buildings: '.Building::count());
-        $this->line('  Recipes: '.Recipe::count());
-        $this->line('  Critters: '.Critter::count().' species / '.CritterMorph::count().' morphs');
-        $this->line('  Plants: '.Plant::count().' species / '.PlantVariant::count().' variants');
-        $this->line('  Geysers: '.GeyserType::count());
+        $this->line('  Elements: '.Element::query()->count());
+        $this->line('  Buildings: '.Building::query()->count());
+        $this->line('  Recipes: '.Recipe::query()->count());
+        $this->line('  Critters: '.Critter::query()->count().' species / '.CritterMorph::query()->count().' morphs');
+        $this->line('  Plants: '.Plant::query()->count().' species / '.PlantVariant::query()->count().' variants');
+        $this->line('  Geysers: '.GeyserType::query()->count());
 
         return self::SUCCESS;
     }

@@ -7,21 +7,21 @@ namespace App\Services\GameImport;
 use App\Models\RocketEngine;
 use App\Models\RocketModule;
 
-final class RocketImporter
+final readonly class RocketImporter
 {
-    public function __construct(private readonly StringResolver $stringResolver) {}
+    public function __construct(private StringResolver $stringResolver) {}
 
     public function import(string $jsonPath): void
     {
-        /** @var array<string, mixed> $data */
-        $data = json_decode(file_get_contents($jsonPath), true);
+        /** @var array{engines: list<array<string, mixed>>, modules: list<array<string, mixed>>} $data */
+        $data = json_decode((string) file_get_contents($jsonPath), true);
 
-        foreach ($data['engines'] ?? [] as $raw) {
-            $nameJson = isset($raw['name_localization_id'])
+        foreach ($data['engines'] as $raw) {
+            $nameJson = is_string($raw['name_localization_id'] ?? null)
                 ? ($this->stringResolver->resolveToJson($raw['name_localization_id']) ?? ['en' => $raw['engine_id']])
                 : ['en' => $raw['engine_id']];
 
-            RocketEngine::create([
+            RocketEngine::query()->create([
                 'engine_id' => $raw['engine_id'],
                 'fuel_element_id' => $raw['fuel_element_id'] ?? null,
                 'oxidizer_element_id' => $raw['oxidizer_element_id'] ?? null,
@@ -34,12 +34,12 @@ final class RocketImporter
             ]);
         }
 
-        foreach ($data['modules'] ?? [] as $raw) {
-            $nameJson = isset($raw['name_localization_id'])
+        foreach ($data['modules'] as $raw) {
+            $nameJson = is_string($raw['name_localization_id'] ?? null)
                 ? ($this->stringResolver->resolveToJson($raw['name_localization_id']) ?? ['en' => $raw['module_id']])
                 : ['en' => $raw['module_id']];
 
-            RocketModule::create([
+            RocketModule::query()->create([
                 'module_id' => $raw['module_id'],
                 'module_type' => $raw['module_type'],
                 'mass' => $raw['mass'],

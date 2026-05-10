@@ -9,26 +9,23 @@ use App\Models\PlantVariant;
 use App\Models\PlantVariantInput;
 use App\Models\PlantVariantOutput;
 
-final class PlantImporter
+final readonly class PlantImporter
 {
-    public function __construct(private readonly StringResolver $stringResolver) {}
+    public function __construct(private StringResolver $stringResolver) {}
 
     public function import(string $jsonPath): void
     {
         /** @var array<int, array<string, mixed>> $plants */
-        $plants = json_decode(file_get_contents($jsonPath), true);
+        $plants = json_decode((string) file_get_contents($jsonPath), true);
 
         foreach ($plants as $raw) {
-            $plant = Plant::firstOrCreate(
-                ['plant_id' => $raw['plant_id']],
-                ['name' => ['en' => $raw['plant_id']], 'dlc_id' => $raw['dlc_id'] ?? null],
-            );
+            $plant = Plant::query()->firstOrCreate(['plant_id' => $raw['plant_id']], ['name' => ['en' => $raw['plant_id']], 'dlc_id' => $raw['dlc_id'] ?? null]);
 
-            $nameJson = isset($raw['name_localization_id'])
+            $nameJson = is_string($raw['name_localization_id'] ?? null)
                 ? ($this->stringResolver->resolveToJson($raw['name_localization_id']) ?? ['en' => $raw['variant_id']])
                 : ['en' => $raw['variant_id']];
 
-            $variant = PlantVariant::create([
+            $variant = PlantVariant::query()->create([
                 'variant_id' => $raw['variant_id'],
                 'plant_id' => $plant->id,
                 'is_base' => $raw['is_base'] ?? false,
@@ -42,8 +39,10 @@ final class PlantImporter
                 'name' => $nameJson,
             ]);
 
-            foreach ($raw['inputs'] ?? [] as $input) {
-                PlantVariantInput::create([
+            /** @var list<array<string, mixed>> $inputs */
+            $inputs = is_array($raw['inputs'] ?? null) ? $raw['inputs'] : [];
+            foreach ($inputs as $input) {
+                PlantVariantInput::query()->create([
                     'plant_variant_id' => $variant->id,
                     'element_id' => $input['element_id'],
                     'amount_per_cycle' => $input['amount_per_cycle'],
@@ -51,8 +50,10 @@ final class PlantImporter
                 ]);
             }
 
-            foreach ($raw['outputs'] ?? [] as $output) {
-                PlantVariantOutput::create([
+            /** @var list<array<string, mixed>> $plantOutputs */
+            $plantOutputs = is_array($raw['outputs'] ?? null) ? $raw['outputs'] : [];
+            foreach ($plantOutputs as $output) {
+                PlantVariantOutput::query()->create([
                     'plant_variant_id' => $variant->id,
                     'element_id' => $output['element_id'],
                     'amount_per_harvest' => $output['amount_per_harvest'],

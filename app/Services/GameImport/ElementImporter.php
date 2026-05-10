@@ -12,12 +12,13 @@ use App\Models\ElementSpecialProperty;
 use App\Models\ElementThermalProperty;
 use Symfony\Component\Yaml\Yaml;
 
-final class ElementImporter
+final readonly class ElementImporter
 {
-    public function __construct(private readonly StringResolver $stringResolver) {}
+    public function __construct(private StringResolver $stringResolver) {}
 
     public function importYaml(string $yamlPath, string $state): void
     {
+        /** @var array{elements: list<array<string, mixed>>} $data */
         $data = Yaml::parseFile($yamlPath);
 
         foreach ($data['elements'] as $raw) {
@@ -25,10 +26,11 @@ final class ElementImporter
                 continue;
             }
 
-            $nameJson = $this->stringResolver->resolveToJson($raw['localizationID'])
-                ?? ['en' => $raw['elementId']];
+            $nameJson = is_string($raw['localizationID'] ?? null)
+                ? ($this->stringResolver->resolveToJson($raw['localizationID']) ?? ['en' => $raw['elementId']])
+                : ['en' => $raw['elementId']];
 
-            $element = Element::create([
+            $element = Element::query()->create([
                 'element_id' => $raw['elementId'],
                 'state' => $state,
                 'molar_mass' => $raw['molarMass'],
@@ -42,7 +44,7 @@ final class ElementImporter
                 'is_disabled' => false,
             ]);
 
-            ElementThermalProperty::create([
+            ElementThermalProperty::query()->create([
                 'element_id' => $element->element_id,
                 'specific_heat_capacity' => $raw['specificHeatCapacity'],
                 'thermal_conductivity' => $raw['thermalConductivity'],
@@ -61,10 +63,10 @@ final class ElementImporter
     /** @param array<string, mixed> $raw */
     private function createStateProperties(string $elementId, string $state, array $raw): void
     {
-        $tags = $raw['tags'] ?? [];
+        $tags = (array) ($raw['tags'] ?? []);
 
         match ($state) {
-            'gas' => ElementGasProperty::create([
+            'gas' => ElementGasProperty::query()->create([
                 'element_id' => $elementId,
                 'flow' => $raw['flow'] ?? 0,
                 'default_pressure' => $raw['defaultPressure'] ?? 0,
@@ -72,12 +74,12 @@ final class ElementImporter
                 'is_breathable' => in_array('Breathable', $tags, true),
                 'is_toxic' => ($raw['toxicity'] ?? 0) > 0,
             ]),
-            'liquid' => ElementLiquidProperty::create([
+            'liquid' => ElementLiquidProperty::query()->create([
                 'element_id' => $elementId,
                 'flow' => $raw['flow'] ?? 0,
                 'liquid_surface_area_multiplier' => $raw['liquidSurfaceAreaMultiplier'] ?? 1,
             ]),
-            'solid' => ElementSolidProperty::create([
+            'solid' => ElementSolidProperty::query()->create([
                 'element_id' => $elementId,
                 'solid_surface_area_multiplier' => $raw['solidSurfaceAreaMultiplier'] ?? 1,
                 'hardness' => $raw['hardness'] ?? null,
@@ -85,7 +87,7 @@ final class ElementImporter
                 'is_metal' => in_array('Metal', $tags, true),
                 'is_refined_metal' => in_array('RefinedMetal', $tags, true),
             ]),
-            'special' => ElementSpecialProperty::create(['element_id' => $elementId]),
+            'special' => ElementSpecialProperty::query()->create(['element_id' => $elementId]),
             default => null,
         };
     }

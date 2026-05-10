@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+#[Fillable([
+    'element_id', 'solid_surface_area_multiplier', 'hardness',
+    'is_ore', 'is_metal', 'is_refined_metal',
+])]
 final class ElementSolidProperty extends Model
 {
     public $incrementing = false;
@@ -15,11 +20,7 @@ final class ElementSolidProperty extends Model
 
     protected $keyType = 'string';
 
-    protected $fillable = [
-        'element_id', 'solid_surface_area_multiplier', 'hardness',
-        'is_ore', 'is_metal', 'is_refined_metal',
-    ];
-
+    /** @return BelongsTo<Element, $this> */
     public function element(): BelongsTo
     {
         return $this->belongsTo(Element::class, 'element_id', 'element_id');

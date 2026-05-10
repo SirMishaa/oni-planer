@@ -6,21 +6,21 @@ namespace App\Services\GameImport;
 
 use App\Models\GeyserType;
 
-final class GeyserImporter
+final readonly class GeyserImporter
 {
-    public function __construct(private readonly StringResolver $stringResolver) {}
+    public function __construct(private StringResolver $stringResolver) {}
 
     public function import(string $jsonPath): void
     {
         /** @var array<int, array<string, mixed>> $geysers */
-        $geysers = json_decode(file_get_contents($jsonPath), true);
+        $geysers = json_decode((string) file_get_contents($jsonPath), true);
 
         foreach ($geysers as $raw) {
-            $nameJson = isset($raw['name_localization_id'])
+            $nameJson = is_string($raw['name_localization_id'] ?? null)
                 ? ($this->stringResolver->resolveToJson($raw['name_localization_id']) ?? ['en' => $raw['geyser_id']])
                 : ['en' => $raw['geyser_id']];
 
-            GeyserType::create([
+            GeyserType::query()->create([
                 'geyser_id' => $raw['geyser_id'],
                 'type' => $raw['type'],
                 'element_id' => $raw['element_id'],
