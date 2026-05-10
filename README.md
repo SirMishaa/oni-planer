@@ -1,98 +1,168 @@
-- Blade (this project) version: **[github.com/nunomaduro/laravel-starter-kit](https://github.com/nunomaduro/laravel-starter-kit)**
-- Inertia & React version: **[github.com/nunomaduro/laravel-starter-kit-inertia-react](https://github.com/nunomaduro/laravel-starter-kit-inertia-react)**
-- Inertia & Vue version: **[github.com/nunomaduro/laravel-starter-kit-inertia-vue](https://github.com/nunomaduro/laravel-starter-kit-inertia-vue)**
+# ONI Planner
 
+**Oxygen Not Included planner** — Calculate oxygen, recipes, critters, and duplicant needs. Built with Laravel 13, powered by real game data extracted directly from the game files.
 
-<p align="center">
-    <a href="https://youtu.be/VhzP0XWGTC4" target="_blank">
-        <img src="/art/banner.png" alt="Overview Laravel Starter Kit" style="width:70%;">
-    </a>
-</p>
+## What is this?
 
-<p>
-    <a href="https://github.com/nunomaduro/laravel-starter-kit/actions"><img src="https://github.com/nunomaduro/laravel-starter-kit/actions/workflows/tests.yml/badge.svg" alt="Build Status"></a>
-    <a href="https://packagist.org/packages/nunomaduro/laravel-starter-kit"><img src="https://img.shields.io/packagist/dt/nunomaduro/laravel-starter-kit" alt="Total Downloads"></a>
-    <a href="https://packagist.org/packages/nunomaduro/laravel-starter-kit"><img src="https://img.shields.io/packagist/v/nunomaduro/laravel-starter-kit" alt="Latest Stable Version"></a>
-    <a href="https://packagist.org/packages/nunomaduro/laravel-starter-kit"><img src="https://img.shields.io/packagist/l/nunomaduro/laravel-starter-kit" alt="License"></a>
-</p>
+ONI Planner is a web-based planning tool for [Oxygen Not Included](https://www.klei.com/games/oxygen-not-included), similar to what [Factorio Planner](https://factoriolab.github.io) or [Satisfactory Tools](https://satisfactory.tools) are for their respective games. It lets you:
 
-**Laravel Starter Kit** is an ultra-strict, type-safe [Laravel](https://laravel.com) skeleton engineered for developers who refuse to compromise on code quality. This opinionated starter kit enforces rigorous development standards through meticulous tooling configuration and architectural decisions that prioritize type safety, immutability, and fail-fast principles.
+- Calculate oxygen and CO₂ production/consumption chains
+- Plan building recipes and production ratios
+- Manage critter populations and their diets/outputs
+- Simulate plant growth cycles and resource inputs
+- Analyze geyser outputs and sustainability
+- Track duplicant traits and base stat requirements
 
-## Why This Starter Kit?
+## Architecture
 
-Modern PHP has evolved into a mature, type-safe language, yet many Laravel projects still operate with loose conventions and optional typing. This starter kit changes that paradigm by enforcing:
+### Two-stage data pipeline
 
-- **100% Type Coverage**: Every method, property, and parameter is explicitly typed
-- **Zero Tolerance for Code Smells**: Rector and PHPStan at maximum strictness catch issues before they become bugs
-- **Immutable-First Architecture**: Data structures favor immutability to prevent unexpected mutations
-- **Fail-Fast Philosophy**: Errors are caught at compile-time, not runtime
-- **Automated Code Quality**: Pre-configured tools ensure consistent, pristine code across your entire team
-- **Bun-Powered**: Leveraging Bun for blazing-fast dependency management...
-- **Just Better Laravel Defaults**: Thanks to **[Essentials](https://github.com/nunomaduro/essentials)** / strict models, auto eager loading, immutable dates, and more...
-
-This isn't just another Laravel boilerplate—it's a statement that PHP applications can and should be built with the same rigor as strongly-typed languages like Rust or TypeScript.
-
-## Getting Started
-
-> **Requires [PHP 8.4+](https://php.net/releases/)**, [Bun](https://bun.sh) and a code coverage driver like [xdebug](https://xdebug.org/docs/install)**.
-
-Create your type-safe Laravel application using [Composer](https://getcomposer.org):
-
-```bash
-composer create-project nunomaduro/laravel-starter-kit --prefer-dist example-app
+```
+Assembly-CSharp.dll ──┐
+Unity asset bundles ──┤── dotnet-extractor ──► json-cache/ ──┐
+StreamingAssets/ ─────┘                                       │
+                                                              ▼
+                                              php artisan game:import
+                                                              │
+                                                              ▼
+                                                        SQLite / PostgreSQL
 ```
 
-### Initial Setup
+**Stage 1 — C# extractor** (`dotnet-extractor/`): Reads the game's managed DLL with Mono.Cecil and Unity asset bundles to extract raw game data into JSON and export sprites as PNG.
 
-Navigate to your project and complete the setup:
+**Stage 2 — Laravel importer** (`php artisan game:import`): Reads YAML element files and the JSON cache to populate 27 database tables. Can run independently of the extractor using `--skip-extractor`.
+
+### Database schema (27 tables)
+
+| Domain | Tables |
+|--------|--------|
+| Elements | `elements`, `element_thermal_properties`, `element_gas_properties`, `element_liquid_properties`, `element_solid_properties`, `element_special_properties`, `food_properties` |
+| Buildings | `buildings`, `recipes`, `recipe_items`, `building_construction_materials` |
+| Critters | `critters`, `critter_morphs`, `critter_morph_diets`, `critter_morph_outputs` |
+| Plants | `plants`, `plant_variants`, `plant_variant_inputs`, `plant_variant_outputs`, `plant_mutations`, `plant_mutation_effects`, `plant_variant_mutations` |
+| Geysers | `geyser_types` |
+| Duplicants | `duplicant_base_stats`, `duplicant_traits`, `duplicant_trait_effects` |
+| Rockets | `rocket_engines`, `rocket_modules` |
+
+Elements use a Class Table Inheritance (CTI) pattern — each state (gas, liquid, solid, special) has its own child table.
+
+## Tech stack
+
+- **PHP 8.5** / **Laravel 13**
+- **Pest 5** for testing
+- **spatie/laravel-translatable** for multilingual entity names
+- **symfony/yaml** for parsing game element YAML files
+- **.NET 8** / **Mono.Cecil** for DLL extraction (C# project)
+- **SQLite** for development and tests, **PostgreSQL** for production
+- **Tailwind CSS v4** / **Vite** for the frontend
+
+## Getting started
+
+### Requirements
+
+- PHP 8.5+
+- Composer
+- Bun
+- A copy of Oxygen Not Included (the game files)
+
+### Setup
 
 ```bash
-cd example-app
+git clone <repo>
+cd ony-planner
 
-# Setup project
-composer setup
+composer install
+bun install
 
-# Start the development server
+cp .env.example .env
+php artisan key:generate
+
+php artisan migrate
+```
+
+### Import game data
+
+Place your game data directory at `game-data/OxygenNotIncluded_Data/` (or update the path in `.env`), then run:
+
+```bash
+# With the C# extractor (requires dotnet 8 + built binary)
+php artisan game:import
+
+# Skip the extractor if json-cache/ is already populated
+php artisan game:import --skip-extractor
+
+# Custom paths
+php artisan game:import \
+  --game-path=/path/to/OxygenNotIncluded_Data \
+  --cache-path=/path/to/json-cache
+```
+
+The import is **destructive** — it truncates all game data tables and reimports from scratch every run.
+
+### Building the C# extractor
+
+```bash
+cd dotnet-extractor
+dotnet build
+dotnet publish -r linux-x64 -o bin/
+```
+
+> **Note:** The extractor stubs are not yet implemented. They require decompiling `Assembly-CSharp.dll` with [ilspycmd](https://github.com/icsharpcode/ILSpy) to map class names and field accessors. See each `Extractors/*.cs` file for guidance.
+
+### Development server
+
+```bash
 composer dev
+# or
+php artisan serve & bun run dev
 ```
-
-### Optional: Browser Testing Setup
-
-If you plan to use Pest's browser testing capabilities:
-
-```bash
-bun add playwright
-bunx playwright install
-```
-
-### Verify Installation
-
-Run the test suite to ensure everything is configured correctly:
-
-```bash
-composer test
-```
-
-You should see 100% test coverage and all quality checks passing.
-
-## Available Tooling
-
-### Development
-- `composer dev` - Starts Laravel server, queue worker, log monitoring, and Vite+ dev server concurrently
-
-### Code Quality
-- `composer lint` - Runs Rector (refactoring), Pint (PHP formatting), and Oxfmt (JS/TS formatting)
-- `composer test:lint` - Dry-run mode for CI/CD pipelines
 
 ### Testing
-- `composer test:type-coverage` - Ensures 100% type coverage with Pest
-- `composer test:types` - Runs PHPStan at level 9 (maximum strictness)
-- `composer test:unit` - Runs Pest tests with 100% code coverage requirement
-- `composer test` - Runs the complete test suite (type coverage, unit tests, linting, static analysis)
 
-### Maintenance
-- `composer update:requirements` - Updates all PHP and Bun dependencies to latest versions
+```bash
+php artisan test --compact
+
+# Filter a specific suite
+php artisan test --compact --filter=ElementImporterTest
+```
+
+## Project structure
+
+```
+app/
+├── Console/Commands/GameImportCommand.php   # game:import command
+├── Models/                                  # 27 Eloquent models
+└── Services/GameImport/                     # Import pipeline services
+    ├── StringResolver.php                   # .pot localization parser
+    ├── ElementImporter.php                  # YAML → elements tables
+    ├── BuildingImporter.php
+    ├── CritterImporter.php
+    ├── PlantImporter.php
+    ├── GeyserImporter.php
+    ├── DuplicantImporter.php
+    └── RocketImporter.php
+
+database/
+├── factories/                               # ElementFactory, GeyserTypeFactory
+├── migrations/                              # 27 game data migrations
+└── seeders/
+
+dotnet-extractor/                            # C# .NET 8 extraction binary
+├── DotnetExtractor.csproj
+├── Program.cs
+└── Extractors/                              # One extractor per entity type
+
+tests/
+├── Feature/
+│   ├── GameImport/                          # Importer tests
+│   └── Models/                             # Model tests
+├── Fixtures/GameImport/                     # JSON/YAML fixtures for tests
+└── Unit/ArchTest.php                        # Architecture preset checks
+
+game-data/                                   # gitignored — your game files here
+json-cache/                                  # gitignored — extractor output
+```
 
 ## License
 
-**Laravel Starter Kit** was created by **[Nuno Maduro](https://x.com/enunomaduro)** under the **[MIT license](https://opensource.org/licenses/MIT)**.
+MIT
