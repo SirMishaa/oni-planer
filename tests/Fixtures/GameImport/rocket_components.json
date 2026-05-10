@@ -1,0 +1,26 @@
+{
+  "engines": [
+    {
+      "engine_id": "RocketEngineHydrogen",
+      "fuel_element_id": "LiquidHydrogen",
+      "oxidizer_element_id": "LiquidOxygen",
+      "max_range": 180000,
+      "fuel_consumption_rate": 0.1,
+      "oxidizer_consumption_rate": 0.053,
+      "exhaust_temperature": 800,
+      "name_localization_id": null,
+      "dlc_id": null
+    }
+  ],
+  "modules": [
+    {
+      "module_id": "SolidCargoBay",
+      "module_type": "cargo_solid",
+      "mass": 2,
+      "capacity": 1,
+      "power_consumption": null,
+      "name_localization_id": null,
+      "dlc_id": null
+    }
+  ]
+}

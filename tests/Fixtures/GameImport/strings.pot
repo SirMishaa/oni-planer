@@ -1,0 +1,18 @@
+msgid ""
+msgstr ""
+"Application: Oxygen Not Included"
+
+#. STRINGS.ELEMENTS.CARBONDIOXIDE.NAME
+msgctxt "STRINGS.ELEMENTS.CARBONDIOXIDE.NAME"
+msgid "Carbon Dioxide"
+msgstr ""
+
+#. STRINGS.ELEMENTS.OXYGEN.NAME
+msgctxt "STRINGS.ELEMENTS.OXYGEN.NAME"
+msgid "Oxygen"
+msgstr ""
+
+#. STRINGS.BUILDINGS.COALGEN.NAME
+msgctxt "STRINGS.BUILDINGS.COALGEN.NAME"
+msgid "Coal Generator"
+msgstr ""

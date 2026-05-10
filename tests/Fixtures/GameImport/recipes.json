@@ -1,0 +1,10 @@
+[
+  {
+    "building_id": "CoalGenerator",
+    "duration": 600,
+    "fabricators": null,
+    "name_localization_id": null,
+    "inputs": [{"element_id": "Carbon", "amount": 1.0}],
+    "outputs": [{"element_id": "CarbonDioxide", "amount": 0.5}]
+  }
+]

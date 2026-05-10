@@ -1,0 +1,45 @@
+---
+elements:
+  - elementId: CarbonDioxide
+    specificHeatCapacity: 0.846
+    thermalConductivity: 0.0146
+    solidSurfaceAreaMultiplier: 25
+    liquidSurfaceAreaMultiplier: 1
+    gasSurfaceAreaMultiplier: 1
+    flow: 0.1
+    lowTemp: 225
+    lowTempTransitionTarget: LiquidCarbonDioxide
+    defaultTemperature: 300
+    defaultPressure: 139
+    molarMass: 44.01
+    toxicity: 0.0001
+    lightAbsorptionFactor: 0.1
+    radiationAbsorptionFactor: 0.08
+    radiationPer1000Mass: 0
+    materialCategory: Unbreathable
+    tags: []
+    isDisabled: false
+    state: Gas
+    localizationID: STRINGS.ELEMENTS.CARBONDIOXIDE.NAME
+    dlcId: ""
+  - elementId: Oxygen
+    specificHeatCapacity: 1.005
+    thermalConductivity: 0.024
+    solidSurfaceAreaMultiplier: 25
+    liquidSurfaceAreaMultiplier: 1
+    gasSurfaceAreaMultiplier: 1
+    flow: 0.1
+    defaultTemperature: 300
+    defaultPressure: 101
+    molarMass: 32.0
+    toxicity: 0
+    lightAbsorptionFactor: 0
+    radiationAbsorptionFactor: 0
+    radiationPer1000Mass: 0
+    materialCategory: Breathable
+    tags:
+      - Breathable
+    isDisabled: false
+    state: Gas
+    localizationID: STRINGS.ELEMENTS.OXYGEN.NAME
+    dlcId: ""

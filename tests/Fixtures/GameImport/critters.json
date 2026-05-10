@@ -1,0 +1,16 @@
+[
+  {
+    "critter_id": "HatchHardSkin",
+    "parent_critter_id": "BasicHatch",
+    "is_base": false,
+    "min_temp": 243.15,
+    "max_temp": 373.15,
+    "calories_per_cycle": 700,
+    "incubation_time": 9000,
+    "lifespan": 25,
+    "overcrowding_threshold": 8,
+    "name_localization_id": null,
+    "diets": [{"consumed_element_id": "Sand", "amount_per_cycle": 140, "produced_element_id": "Carbon", "conversion_ratio": 1.0}],
+    "outputs": [{"element_id": "Sand", "amount_per_cycle": 0.1, "output_type": "dropping"}]
+  }
+]

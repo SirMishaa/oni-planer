@@ -1,0 +1,19 @@
+[
+  {
+    "geyser_id": "GeyserGeneric_hot_water",
+    "type": "geyser",
+    "element_id": "Water",
+    "temperature": 368.15,
+    "max_pressure": 500,
+    "min_yield_rate": 1,
+    "max_yield_rate": 4,
+    "min_eruption_duration": 60,
+    "max_eruption_duration": 1140,
+    "min_eruption_period": 167,
+    "max_eruption_period": 833,
+    "dormancy_min_cycles": 25,
+    "dormancy_max_cycles": 75,
+    "name_localization_id": null,
+    "dlc_id": null
+  }
+]

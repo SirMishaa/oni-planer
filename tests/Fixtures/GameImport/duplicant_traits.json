@@ -1,0 +1,18 @@
+{
+  "base_stats": {
+    "oxygen_consumption_gs": 100,
+    "co2_production_gs": 2,
+    "calories_per_cycle": 1000,
+    "mass_kg": 30,
+    "bladder_fill_per_cycle": 1.0
+  },
+  "traits": [
+    {
+      "trait_id": "BottomlessStomach",
+      "is_positive": false,
+      "name_localization_id": null,
+      "dlc_id": null,
+      "effects": [{"stat": "calories_per_cycle", "modifier": 2.0, "modifier_type": "multiply"}]
+    }
+  ]
+}

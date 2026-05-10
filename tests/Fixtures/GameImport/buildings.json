@@ -1,0 +1,15 @@
+[
+  {
+    "building_id": "CoalGenerator",
+    "category": "Power",
+    "power_generation": 600,
+    "power_consumption": null,
+    "heat_generation": 1.0,
+    "width": 4,
+    "height": 3,
+    "construction_time": 60,
+    "tags": ["BuildableAnyground"],
+    "name_localization_id": "STRINGS.BUILDINGS.COALGEN.NAME",
+    "dlc_id": null
+  }
+]
