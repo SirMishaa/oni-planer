@@ -30,7 +30,7 @@ public sealed class RecipeExtractor
         var results = new List<RecipeDto>();
         var seen = new HashSet<string>();
 
-        foreach (var type in module.Types)
+        foreach (var type in module.GetAllTypes())
         {
             foreach (var method in type.Methods)
             {
@@ -76,26 +76,6 @@ public sealed class RecipeExtractor
         // args (HEP ints, DLC string arrays) back to the results then ingredients ldloc.
 
         int paramCount = ctor.Parameters.Count;
-        // Extra parameters after (id, ingr, results): paramCount - 3
-        int extraParamCount = paramCount - 3;
-
-        // Scan backward from newobjIdx - 1 to find the ldloc for results (skipping extra params)
-        // and then for ingredients
-        int resultsLocalIdx = -1;
-        int ingrLocalIdx = -1;
-        int scanPos = newobjIdx - 1;
-
-        // Skip extra params (pushed after results): these might be int constants or array refs
-        int skipped = 0;
-        while (skipped < extraParamCount && scanPos >= 0)
-        {
-            // Extra args could be: ldc.i4.0 (HEP), ldsfld (DLC array), newarr + stloc sequence, etc.
-            // We skip one "value" worth of instructions, but this is complex.
-            // Simpler: scan backward looking for two ldloc instructions that match stloc patterns.
-            // We'll use a different approach below.
-            scanPos--;
-            skipped++;
-        }
 
         // Better approach: find all ldloc instructions immediately before newobj (up to paramCount back),
         // looking for the pattern ldloc[ingr], ldloc[results], [extra args...], newobj.
@@ -117,6 +97,8 @@ public sealed class RecipeExtractor
 
         // Find the two ldloc that load ingr and results arrays.
         // Walk backward collecting ldloc indices, stopping once we find two consecutive ldlocs.
+        int resultsLocalIdx = -1;
+        int ingrLocalIdx = -1;
         var ldlocSequence = new List<(int pos, int localIdx)>();
         int j = newobjIdx - 1;
 
@@ -139,10 +121,12 @@ public sealed class RecipeExtractor
 
         // If we didn't find two ldlocs by going backward ignoring non-ldlocs, try a different scan:
         // find exactly the last two ldloc instructions before newobjIdx
+        const int LdlocScanWindow = 20; // max instructions to scan back when local tracking fails
+
         if (ldlocSequence.Count < 2)
         {
             ldlocSequence.Clear();
-            for (int k = newobjIdx - 1; k >= Math.Max(0, newobjIdx - 20); k--)
+            for (int k = newobjIdx - 1; k >= Math.Max(0, newobjIdx - LdlocScanWindow); k--)
             {
                 int localIdx = GetLdlocIndex(instructions[k]);
                 if (localIdx >= 0)
@@ -275,7 +259,6 @@ public sealed class RecipeExtractor
                     }
 
                     fabricators = fabs;
-                    break; // fabricators is typically the last interesting field before sortOrder
                 }
             }
         }
@@ -404,6 +387,8 @@ public sealed class RecipeExtractor
                         if (instructions[k].OpCode == OpCodes.Stelem_Ref ||
                             instructions[k].OpCode == OpCodes.Stelem_Any) { break; }
                     }
+
+                    if (elementId != null) { continue; }
                 }
 
                 // Pattern 4: ldsfld Tag SomeConfig::SOME_TAG — a static Tag field
