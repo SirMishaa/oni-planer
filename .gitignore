@@ -26,5 +26,7 @@ Homestead.yaml
 .superpowers/
 dotnet-extractor/bin/
 dotnet-extractor/obj/
+dotnet-extractor.Tests/bin/
+dotnet-extractor.Tests/obj/
 json-cache/
 public/assets/game/
