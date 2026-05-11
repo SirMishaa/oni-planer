@@ -1,5 +1,6 @@
 using Mono.Cecil;
 using Mono.Cecil.Cil;
+using Mono.Cecil.Rocks;
 
 public static class IlHelper
 {
@@ -27,8 +28,13 @@ public static class IlHelper
                 case Code.Ldarg_0: case Code.Ldarg_1: case Code.Ldarg_2: case Code.Ldarg_3:
                 case Code.Ldarg_S: case Code.Ldarg:
                 case Code.Ldfld: case Code.Ldsfld: case Code.Ldsflda: case Code.Ldflda:
-                case Code.Ldnull: case Code.Ldtoken:
+                case Code.Ldtoken:
+                    stack.Push(null);
+                    break;
+
                 case Code.Dup:
+                    if (stack.Count > 0) { stack.Push(stack.Peek()); } else { stack.Push(null); }
+                    break;
                 case Code.Sizeof:
                     stack.Push(null);
                     break;
@@ -38,6 +44,7 @@ public static class IlHelper
                 case Code.Stloc_0: case Code.Stloc_1: case Code.Stloc_2: case Code.Stloc_3:
                 case Code.Stloc_S: case Code.Stloc:
                 case Code.Stfld: case Code.Stsfld:
+                    if (stack.Count > 0) stack.Pop();
                     if (stack.Count > 0) stack.Pop();
                     break;
 
@@ -126,7 +133,7 @@ public static class IlHelper
     // Build a dictionary of SimHashes enum: int value → string name (= element ID)
     public static Dictionary<int, string> BuildSimHashesMap(ModuleDefinition module)
     {
-        var simHashesType = module.Types.FirstOrDefault(t => t.Name == "SimHashes");
+        var simHashesType = module.GetAllTypes().FirstOrDefault(t => t.Name == "SimHashes");
         if (simHashesType == null) return [];
 
         return simHashesType.Fields
