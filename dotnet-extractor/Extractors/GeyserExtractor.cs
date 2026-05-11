@@ -1,9 +1,10 @@
 using Mono.Cecil;
 using Mono.Cecil.Cil;
+using Mono.Cecil.Rocks;
 using System.Text.Json.Serialization;
 
 public record GeyserDto(
-    [property: JsonPropertyName("geyser_id")] string GeyserIds,
+    [property: JsonPropertyName("geyser_id")] string GeyserId,
     [property: JsonPropertyName("type")] string Type,
     [property: JsonPropertyName("element_id")] string ElementId,
     [property: JsonPropertyName("temperature")] float Temperature,
@@ -42,16 +43,18 @@ public sealed class GeyserExtractor
 
         // GeyserType instances are created via constructor calls in GeyserGenericConfig.GenerateConfigs,
         // not by GeyserConfigurator itself. Search all types to find the method with the most newobj calls.
-        var allTypes = module.Types
-            .SelectMany(t => new[] { t }.Concat(t.NestedTypes));
+        var allTypes = module.GetAllTypes();
 
         var populateMethod = allTypes
             .SelectMany(t => t.Methods)
-            .Where(m => m.HasBody)
+            .Where(m => m.HasBody && m.Body.Instructions.Any(i =>
+                i.OpCode == OpCodes.Newobj &&
+                i.Operand is MethodReference mr &&
+                mr.DeclaringType.FullName == geyserTypeNested.FullName))
             .OrderByDescending(m => m.Body.Instructions
                 .Count(i => i.OpCode == OpCodes.Newobj &&
                             i.Operand is MethodReference mr &&
-                            mr.DeclaringType.Name == "GeyserType"))
+                            mr.DeclaringType.FullName == geyserTypeNested.FullName))
             .FirstOrDefault();
 
         if (populateMethod == null) return results;
@@ -64,7 +67,7 @@ public sealed class GeyserExtractor
 
             if (instr.OpCode == OpCodes.Newobj &&
                 instr.Operand is MethodReference ctor &&
-                ctor.DeclaringType.Name == "GeyserType")
+                ctor.DeclaringType.FullName == geyserTypeNested.FullName)
             {
                 var args = IlHelper.ExtractCallArgs(instructions, i, ctor.Parameters.Count);
                 var dto = BuildDtoFromCtorArgs(args, ctor, simHashes);
@@ -87,8 +90,8 @@ public sealed class GeyserExtractor
     // [8]  string[] forbiddenDlcIds
     // [9]  float minIterationLength
     // [10] float maxIterationLength
-    // [11] float minIterationPercent
-    // [12] float maxIterationPercent
+    // [11] float minIterationPercent  (actual eruption duration in seconds, not a fraction)
+    // [12] float maxIterationPercent  (actual eruption duration in seconds, not a fraction)
     // [13] float minYearLength
     // [14] float maxYearLength
     // [15] float minYearPercent  (ignored)
@@ -121,15 +124,15 @@ public sealed class GeyserExtractor
             : "geyser";
 
         return new GeyserDto(
-            GeyserIds: id,
+            GeyserId: id,
             Type: type,
             ElementId: elementId,
             Temperature: temperature,
             MaxPressure: maxPressure,
             MinYieldRate: minRatePerCycle,
             MaxYieldRate: maxRatePerCycle,
-            MinEruptionDuration: minIterLen * minIterPct,
-            MaxEruptionDuration: maxIterLen * maxIterPct,
+            MinEruptionDuration: minIterPct,
+            MaxEruptionDuration: maxIterPct,
             MinEruptionPeriod: minIterLen,
             MaxEruptionPeriod: maxIterLen,
             DormancyMinCycles: minYearLen,
