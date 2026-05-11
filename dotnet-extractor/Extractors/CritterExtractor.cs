@@ -44,8 +44,9 @@ public sealed class CritterExtractor
 
         // Adult critter configs: IEntityConfig implementors that call ExtendEntityToWildCreature
         var adultConfigs = module.GetAllTypes()
-            .Where(t => t.Interfaces.Any(i => i.InterfaceType.Name == "IEntityConfig"))
-            .Where(IsAdultCritterConfig)
+            .Where(t => t.Interfaces.Any(i => i.InterfaceType.Name == "IEntityConfig")
+                     && !t.Name.StartsWith("Baby")
+                     && IsAdultCritterConfig(t))
             .ToList();
 
         // Baby critter configs: IEntityConfig implementors whose name starts with "Baby"
@@ -170,10 +171,11 @@ public sealed class CritterExtractor
 
                 if (calledHasTempParams || isDirectCall)
                 {
+                    const float MinPlausibleTempKelvin = 50f; // valid critter temps in Kelvin are always higher
                     // The 4 temperature floats are the last ldc.r4 values immediately
                     // before the call (no other call between them and the temps)
                     var floats = CollectLastFourFloatsStrict(instrs, i);
-                    if (floats.Count == 4 && floats[0] > 50 && floats[1] > 50)
+                    if (floats.Count == 4 && floats[0] > MinPlausibleTempKelvin && floats[1] > MinPlausibleTempKelvin)
                         return (floats[0], floats[1]);
                 }
 
@@ -195,12 +197,13 @@ public sealed class CritterExtractor
 
                             // In pattern A, temps may be args passed in (ldarg.s) OR inline constants
                             // For inline constants, collect last 4 floats before ExtendEntityToBasicCreature
+                            const float MinPlausibleTempKelvin = 50f; // valid critter temps in Kelvin are always higher
                             var floats2 = CollectLastFourFloatsStrict(instrs2, j);
-                            if (floats2.Count == 4 && floats2[0] > 50 && floats2[1] > 50)
+                            if (floats2.Count == 4 && floats2[0] > MinPlausibleTempKelvin && floats2[1] > MinPlausibleTempKelvin)
                                 return (floats2[0], floats2[1]);
                         }
                     }
-                    catch { /* ignore resolution failures */ }
+                    catch (AssemblyResolutionException) { /* base type is in another assembly */ }
                 }
             }
         }
@@ -250,7 +253,7 @@ public sealed class CritterExtractor
                     mr.Name != "ExtendEntityToFertileCreature") continue;
 
                 var args = IlHelper.ExtractCallArgs(instructions, i, mr.Parameters.Count);
-                if (args[9] is float incubation) return incubation;
+                if (args.Length > 9 && args[9] is float incubation) return incubation;
             }
         }
         return 0;
@@ -267,7 +270,7 @@ public sealed class CritterExtractor
         foreach (var method in type.Methods.Where(m => m.HasBody))
         {
             var instructions = method.Body.Instructions;
-            for (int i = 1; i < instructions.Count; i++)
+            for (int i = 0; i < instructions.Count; i++)
             {
                 if ((instructions[i].OpCode != OpCodes.Call && instructions[i].OpCode != OpCodes.Callvirt) ||
                     instructions[i].Operand is not MethodReference mr ||
