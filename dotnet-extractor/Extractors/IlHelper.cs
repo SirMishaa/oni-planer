@@ -39,11 +39,16 @@ public static class IlHelper
                     stack.Push(null);
                     break;
 
-                // Pops (no push)
+                // Single-pop instructions
                 case Code.Pop:
                 case Code.Stloc_0: case Code.Stloc_1: case Code.Stloc_2: case Code.Stloc_3:
                 case Code.Stloc_S: case Code.Stloc:
-                case Code.Stfld: case Code.Stsfld:
+                case Code.Stsfld:
+                    if (stack.Count > 0) stack.Pop();
+                    break;
+
+                // Double-pop: stfld pops value then object reference
+                case Code.Stfld:
                     if (stack.Count > 0) stack.Pop();
                     if (stack.Count > 0) stack.Pop();
                     break;
