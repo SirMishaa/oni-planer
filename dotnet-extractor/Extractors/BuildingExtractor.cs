@@ -30,20 +30,20 @@ public sealed class BuildingExtractor
 
         foreach (var type in module.GetAllTypes())
         {
-            if (type.BaseType?.Name != "IBuildingConfig")
+            if (!InheritsFromIBuildingConfig(type))
                 continue;
 
             var createMethod = type.Methods.FirstOrDefault(m => m.Name == "CreateBuildingDef");
             if (createMethod?.HasBody != true) continue;
 
-            var dto = ExtractFromMethod(createMethod, type);
+            var dto = ExtractFromMethod(createMethod);
             if (dto != null) results.Add(dto);
         }
 
         return results;
     }
 
-    private BuildingDto? ExtractFromMethod(MethodDefinition method, TypeDefinition configType)
+    private BuildingDto? ExtractFromMethod(MethodDefinition method)
     {
         var instructions = method.Body.Instructions;
 
@@ -80,18 +80,9 @@ public sealed class BuildingExtractor
         string? dlcId = null;
         var tags = new List<string>();
 
-        for (int i = callIdx + 1; i < instructions.Count; i++)
+        IlHelper.ReadFieldStores(instructions, callIdx + 1, (fieldName, rawVal) =>
         {
-            var instr = instructions[i];
-            if (instr.OpCode != OpCodes.Stfld) continue;
-            if (instr.Operand is not FieldReference fr) continue;
-
-            var valInstr = i > 0 ? instructions[i - 1] : null;
-            if (valInstr == null) continue;
-
-            if (!IlHelper.TryReadConstant(valInstr, out var rawVal)) continue;
-
-            switch (fr.Name)
+            switch (fieldName)
             {
                 case "GeneratorWattageRating":
                     powerGen = rawVal is float f1 ? f1 : null;
@@ -103,7 +94,7 @@ public sealed class BuildingExtractor
                     heatGen = rawVal is float f3 ? f3 : 0f;
                     break;
             }
-        }
+        });
 
         string category = powerGen.HasValue ? "Power"
             : powerCon.HasValue ? "Power"
@@ -132,5 +123,17 @@ public sealed class BuildingExtractor
             NameLocalizationId: nameKey,
             DlcId: dlcId
         );
+    }
+
+    private static bool InheritsFromIBuildingConfig(TypeDefinition type)
+    {
+        var current = type.BaseType;
+        while (current != null)
+        {
+            if (current.Name == "IBuildingConfig") return true;
+            try { current = current.Resolve()?.BaseType; }
+            catch { break; }
+        }
+        return false;
     }
 }
