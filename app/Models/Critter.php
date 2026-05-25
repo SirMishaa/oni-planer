@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -13,6 +14,7 @@ use Spatie\Translatable\HasTranslations;
 #[Fillable(['critter_id', 'name', 'dlc_id'])]
 final class Critter extends Model
 {
+    use HasFactory;
     use HasTranslations;
 
     /** @var list<string> */

@@ -53,3 +53,27 @@ it('imports recipes with items from json', function (): void {
         ->and($recipe->outputs)->toHaveCount(1)
         ->and($recipe->inputs->first()->element_id)->toBe('Carbon');
 });
+
+it('skips recipe items whose element_id is a crafted object, not a game element', function (): void {
+    $resolver = new StringResolver(base_path('tests/Fixtures/GameImport/strings.pot'));
+    new BuildingImporter($resolver)->import(base_path('tests/Fixtures/GameImport/buildings.json'));
+
+    $json = json_encode([[
+        'building_id' => 'CoalGenerator',
+        'duration' => 60,
+        'fabricators' => null,
+        'name_localization_id' => null,
+        'inputs' => [['element_id' => 'Carbon', 'amount' => 1.0]],
+        'outputs' => [['element_id' => 'EmptyElectrobank', 'amount' => 1.0]],
+    ]]);
+
+    $path = tempnam(sys_get_temp_dir(), 'recipes_test_').'.json';
+    file_put_contents($path, $json);
+
+    new RecipeImporter()->import($path);
+    unlink($path);
+
+    expect(Recipe::query()->count())->toBe(1)
+        ->and(RecipeItem::query()->where('role', 'input')->count())->toBe(1)
+        ->and(RecipeItem::query()->where('role', 'output')->count())->toBe(0);
+});

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\GameImport;
 
 use App\Models\Building;
+use App\Models\Element;
 use App\Models\Recipe;
 use App\Models\RecipeItem;
 
@@ -14,6 +15,9 @@ final class RecipeImporter
     {
         /** @var array<int, array<string, mixed>> $recipes */
         $recipes = json_decode((string) file_get_contents($jsonPath), true);
+
+        // Pre-load valid element IDs to avoid FK violations for crafted-item outputs
+        $validElementIds = Element::query()->pluck('element_id', 'element_id')->all();
 
         foreach ($recipes as $raw) {
             $building = Building::query()->where('building_id', $raw['building_id'])->first();
@@ -31,6 +35,9 @@ final class RecipeImporter
             /** @var list<array<string, mixed>> $recipeInputs */
             $recipeInputs = is_array($raw['inputs'] ?? null) ? $raw['inputs'] : [];
             foreach ($recipeInputs as $item) {
+                if (! isset($validElementIds[$item['element_id']])) {
+                    continue;
+                }
                 RecipeItem::query()->create([
                     'recipe_id' => $recipe->id,
                     'element_id' => $item['element_id'],
@@ -42,6 +49,9 @@ final class RecipeImporter
             /** @var list<array<string, mixed>> $recipeOutputs */
             $recipeOutputs = is_array($raw['outputs'] ?? null) ? $raw['outputs'] : [];
             foreach ($recipeOutputs as $item) {
+                if (! isset($validElementIds[$item['element_id']])) {
+                    continue;
+                }
                 RecipeItem::query()->create([
                     'recipe_id' => $recipe->id,
                     'element_id' => $item['element_id'],

@@ -16,7 +16,7 @@ return new class extends Migration
         Schema::create('rocket_modules', function (Blueprint $table): void {
             $table->id();
             $table->string('module_id')->unique();
-            $table->enum('module_type', ['cargo_solid', 'cargo_liquid', 'cargo_gas', 'cargo_bio', 'utility', 'command']);
+            $table->enum('module_type', ['cargo_solid', 'cargo_liquid', 'cargo_gas', 'cargo_bio', 'utility', 'command', 'nosecone', 'oxidizer', 'fuel']);
             $table->float('mass');
             $table->float('capacity');
             $table->float('power_consumption')->nullable();

@@ -21,19 +21,19 @@ use App\Services\GameImport\PlantImporter;
 use App\Services\GameImport\RecipeImporter;
 use App\Services\GameImport\RocketImporter;
 use App\Services\GameImport\StringResolver;
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 
-final class GameImportCommand extends Command
-{
-    protected $signature = 'game:import
+#[Description('Import all ONI game data into the database (destructive reimport)')]
+#[Signature('game:import
         {--game-path=game-data/OxygenNotIncluded_Data : Path to OxygenNotIncluded_Data directory}
         {--cache-path=json-cache : Path to json-cache directory (extractor output)}
-        {--skip-extractor : Skip running the dotnet-extractor binary}';
-
-    protected $description = 'Import all ONI game data into the database (destructive reimport)';
-
+        {--skip-extractor : Skip running the dotnet-extractor binary}')]
+final class GameImportCommand extends Command
+{
     public function handle(): int
     {
         $gamePath = $this->option('game-path');
