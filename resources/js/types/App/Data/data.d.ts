@@ -20,7 +20,7 @@ thermal: ThermalPropertyData | null,
 export type ThermalPropertyData = {
 specific_heat_capacity: number,
 thermal_conductivity: number,
-low_temp: number,
-high_temp: number,
+low_temp: number | null,
+high_temp: number | null,
 default_temperature: number,
 };

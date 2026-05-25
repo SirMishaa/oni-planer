@@ -27,20 +27,21 @@ function toSlug(elementId: string): string {
     return elementId.replace(/([A-Z])/g, (c, _, i) => (i > 0 ? '-' : '') + c.toLowerCase());
 }
 
-function formatTemp(k: number): string {
-    return `${(k - 273.15).toFixed(1)} °C`;
+function formatTemp(k: number | null): string {
+    return k !== null ? `${(k - 273.15).toFixed(1)} °C` : '—';
 }
 
 type PropRow = { label: string; value: string };
 
 function thermalRows(t: ThermalPropertyData): PropRow[] {
-    return [
+    const rows: PropRow[] = [
         { label: 'Température par défaut', value: formatTemp(t.default_temperature) },
-        { label: 'Température basse',      value: formatTemp(t.low_temp) },
-        { label: 'Température haute',      value: formatTemp(t.high_temp) },
         { label: 'Capacité thermique',     value: `${t.specific_heat_capacity} DTU/g/°C` },
         { label: 'Conductivité',           value: `${t.thermal_conductivity} DTU/m/s/°C` },
     ];
+    if (t.low_temp !== null)  rows.splice(1, 0, { label: 'Température basse', value: formatTemp(t.low_temp) });
+    if (t.high_temp !== null) rows.splice(2, 0, { label: 'Température haute', value: formatTemp(t.high_temp) });
+    return rows;
 }
 </script>
 
