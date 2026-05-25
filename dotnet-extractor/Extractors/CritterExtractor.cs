@@ -27,6 +27,7 @@ public record CritterDto(
     [property: JsonPropertyName("lifespan")] float Lifespan,
     [property: JsonPropertyName("overcrowding_threshold")] int OvercrowdingThreshold,
     [property: JsonPropertyName("name_localization_id")] string? NameLocalizationId,
+    [property: JsonPropertyName("dlc_id")] string? DlcId,
     [property: JsonPropertyName("diets")] List<CritterDietDto> Diets,
     [property: JsonPropertyName("outputs")] List<CritterOutputDto> Outputs
 );
@@ -101,6 +102,7 @@ public sealed class CritterExtractor
             Lifespan: 0f,         // Lifespan not reliably encoded as an IL constant
             OvercrowdingThreshold: overcrowding,
             NameLocalizationId: nameKey,
+            DlcId: IlHelper.ExtractDlcId(type),
             Diets: [],
             Outputs: []
         );

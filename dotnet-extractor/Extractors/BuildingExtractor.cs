@@ -36,14 +36,15 @@ public sealed class BuildingExtractor
             var createMethod = type.Methods.FirstOrDefault(m => m.Name == "CreateBuildingDef");
             if (createMethod?.HasBody != true) continue;
 
-            var dto = ExtractFromMethod(createMethod);
+            var dlcId = IlHelper.ExtractDlcId(type);
+            var dto = ExtractFromMethod(createMethod, dlcId);
             if (dto != null) results.Add(dto);
         }
 
         return results;
     }
 
-    private BuildingDto? ExtractFromMethod(MethodDefinition method)
+    private BuildingDto? ExtractFromMethod(MethodDefinition method, string? dlcId)
     {
         var instructions = method.Body.Instructions;
 
@@ -77,7 +78,6 @@ public sealed class BuildingExtractor
         float? powerGen = null;
         float? powerCon = null;
         float heatGen = 0f;
-        string? dlcId = null;
         var tags = new List<string>();
 
         IlHelper.ReadFieldStores(instructions, callIdx + 1, (fieldName, rawVal) =>

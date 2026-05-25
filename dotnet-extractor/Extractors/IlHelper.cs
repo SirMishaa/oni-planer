@@ -185,4 +185,30 @@ public static class IlHelper
             }
         }
     }
+
+    // Extract the required DLC ID from GetRequiredDlcIds() — returns the DlcManager field name
+    // e.g. "EXPANSION1_ID", "DLC2_ID", "DLC3_ID", "DLC4_ID", or null for base game.
+    public static string? ExtractDlcId(TypeDefinition type)
+    {
+        var method = type.Methods.FirstOrDefault(m => m.Name == "GetRequiredDlcIds");
+        if (method?.HasBody != true) { return null; }
+
+        foreach (var ins in method.Body.Instructions)
+        {
+            if (ins.OpCode != OpCodes.Ldsfld) { continue; }
+            if (ins.Operand is not FieldReference fr) { continue; }
+            if (fr.DeclaringType.Name != "DlcManager") { continue; }
+
+            return fr.Name switch
+            {
+                "EXPANSION1" => "EXPANSION1_ID",
+                "DLC2" => "DLC2_ID",
+                "DLC3" => "DLC3_ID",
+                "DLC4" => "DLC4_ID",
+                _ => fr.Name
+            };
+        }
+
+        return null;
+    }
 }

@@ -70,7 +70,8 @@ public sealed class GeyserExtractor
                 ctor.DeclaringType.FullName == geyserTypeNested.FullName)
             {
                 var args = IlHelper.ExtractCallArgs(instructions, i, ctor.Parameters.Count);
-                var dto = BuildDtoFromCtorArgs(args, ctor, simHashes);
+                var dlcId = ExtractGeyserDlcId(instructions, i);
+                var dto = BuildDtoFromCtorArgs(args, ctor, simHashes, dlcId);
                 if (dto != null) results.Add(dto);
             }
         }
@@ -97,7 +98,30 @@ public sealed class GeyserExtractor
     // [15] float minYearPercent  (ignored)
     // [16] float maxYearPercent  (ignored)
     // [17] float geyserTemperature (ignored)
-    private GeyserDto? BuildDtoFromCtorArgs(object?[] args, MethodReference ctor, Dictionary<int, string> simHashes)
+    // Scan backwards from newobjIdx for ldsfld DlcManager::* in arg[7] position
+    private static string? ExtractGeyserDlcId(IList<Instruction> instructions, int newobjIdx)
+    {
+        for (int j = Math.Max(0, newobjIdx - 25); j < newobjIdx; j++)
+        {
+            var ins = instructions[j];
+            if (ins.OpCode == OpCodes.Ldsfld &&
+                ins.Operand is FieldReference fr &&
+                fr.DeclaringType.Name == "DlcManager")
+            {
+                return fr.Name switch
+                {
+                    "EXPANSION1" => "EXPANSION1_ID",
+                    "DLC2" => "DLC2_ID",
+                    "DLC3" => "DLC3_ID",
+                    "DLC4" => "DLC4_ID",
+                    _ => fr.Name
+                };
+            }
+        }
+        return null;
+    }
+
+    private GeyserDto? BuildDtoFromCtorArgs(object?[] args, MethodReference ctor, Dictionary<int, string> simHashes, string? dlcId)
     {
         if (args.Length < 14) return null;
         if (args[0] is not string id) return null;
@@ -116,8 +140,6 @@ public sealed class GeyserExtractor
         float maxIterPct = args[12] is float map ? map : 0f;
         float minYearLen = args[13] is float mnyl ? mnyl : 0f;
         float maxYearLen = args.Length > 14 && args[14] is float mxyl ? mxyl : 0f;
-
-        string? dlcId = null;
 
         string type = id.Contains("Volcano") ? "volcano"
             : id.Contains("Vent") || id.Contains("vent") ? "vent"

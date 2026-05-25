@@ -94,7 +94,7 @@ public sealed class DuplicantTraitExtractor
                         TraitId: traitId,
                         IsPositive: isPositive,
                         NameLocalizationId: null,
-                        DlcId: null,
+                        DlcId: IlHelper.ExtractDlcId(type),
                         Effects: effects
                     ));
                 }

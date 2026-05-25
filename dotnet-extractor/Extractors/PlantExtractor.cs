@@ -142,7 +142,7 @@ public sealed class PlantExtractor
             LightRequired: false,
             GrowthTime: growthTime,
             NameLocalizationId: string.IsNullOrEmpty(nameKey) ? null : nameKey,
-            DlcId: null,
+            DlcId: IlHelper.ExtractDlcId(type),
             Inputs: [],
             Outputs: []
         );

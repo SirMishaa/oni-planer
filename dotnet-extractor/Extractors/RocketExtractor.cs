@@ -58,14 +58,15 @@ public sealed class RocketExtractor
                             HasFieldStore(type, "exhaustTemperature");
             bool isModule = !isEngine && ModuleKeywords.Any(kw => type.Name.Contains(kw));
 
+            var dlcId = IlHelper.ExtractDlcId(type);
             if (isEngine)
             {
-                var engine = ExtractEngine(type, simHashes);
+                var engine = ExtractEngine(type, simHashes, dlcId);
                 if (engine != null) { engines.Add(engine); }
             }
             else if (isModule)
             {
-                var mod = ExtractModule(type);
+                var mod = ExtractModule(type, dlcId);
                 if (mod != null) { modules.Add(mod); }
             }
         }
@@ -113,10 +114,10 @@ public sealed class RocketExtractor
         return type.Name.EndsWith("Config") ? type.Name[..^6] : type.Name;
     }
 
-    private static RocketEngineDto? ExtractEngine(TypeDefinition type, Dictionary<int, string> simHashes)
+    private static RocketEngineDto? ExtractEngine(TypeDefinition type, Dictionary<int, string> simHashes, string? dlcId)
     {
         var engineId = ExtractBuildingId(type);
-        string? fuelId = null, oxidizerId = null, nameKey = null, dlcId = null;
+        string? fuelId = null, oxidizerId = null, nameKey = null;
         float maxRange = 0f, fuelRate = 0f, oxRate = 0f, exhaustTemp = 0f;
 
         foreach (var method in type.Methods.Where(m => m.HasBody))
@@ -183,11 +184,11 @@ public sealed class RocketExtractor
         );
     }
 
-    private static RocketModuleDto? ExtractModule(TypeDefinition type)
+    private static RocketModuleDto? ExtractModule(TypeDefinition type, string? dlcId)
     {
         var moduleId = ExtractBuildingId(type);
         float mass = 0f, capacity = 0f, powerCon = 0f;
-        string? nameKey = null, dlcId = null;
+        string? nameKey = null;
 
         string moduleType = type.Name switch
         {
