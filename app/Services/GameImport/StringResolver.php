@@ -16,7 +16,9 @@ final class StringResolver
 
     public function resolve(string $localizationId): ?string
     {
-        return $this->strings[$localizationId] ?? null;
+        $value = $this->strings[$localizationId] ?? null;
+
+        return $value !== null ? $this->stripMarkup($value) : null;
     }
 
     /** @return array<string, string>|null */
@@ -25,6 +27,15 @@ final class StringResolver
         $value = $this->resolve($localizationId);
 
         return $value !== null ? ['en' => $value] : null;
+    }
+
+    private function stripMarkup(string $value): string
+    {
+        // Strip ONI link markup: <link="...">text</link> → text
+        $value = (string) preg_replace('/<link=["\'][^"\']*["\']>(.*?)<\/link>/i', '$1', $value);
+
+        // Strip remaining HTML-like tags (<b>, <i>, <color=#...>, etc.)
+        return strip_tags($value);
     }
 
     /** @return array<string, string> */
