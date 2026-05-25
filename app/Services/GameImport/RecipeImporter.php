@@ -38,6 +38,7 @@ final class RecipeImporter
                 if (! isset($validElementIds[$item['element_id']])) {
                     continue;
                 }
+
                 RecipeItem::query()->create([
                     'recipe_id' => $recipe->id,
                     'element_id' => $item['element_id'],
@@ -52,6 +53,7 @@ final class RecipeImporter
                 if (! isset($validElementIds[$item['element_id']])) {
                     continue;
                 }
+
                 RecipeItem::query()->create([
                     'recipe_id' => $recipe->id,
                     'element_id' => $item['element_id'],

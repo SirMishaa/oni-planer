@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
 import { ToggleGroupItem, ToggleGroupRoot } from 'reka-ui';
-import type { ElementData } from '@/types/App/Data/data';
+import { computed, ref } from 'vue';
+import { Link } from '@inertiajs/vue3';
 import Badge from '@/components/ui/Badge.vue';
+import type { ElementData } from '@/types/App/Data/data';
 
 type ElementState = 'solid' | 'liquid' | 'gas' | 'special';
 type ActiveState = 'all' | ElementState;
@@ -15,21 +16,26 @@ const activeState = ref<ActiveState>('all');
 const STATES: ElementState[] = ['solid', 'liquid', 'gas', 'special'];
 
 const stateMonogram: Record<ElementState, { bg: string; text: string }> = {
-    solid:   { bg: 'bg-state-solid',   text: 'text-[oklch(16%_0.06_52)]' },
-    liquid:  { bg: 'bg-state-liquid',  text: 'text-[oklch(98%_0.01_222)]' },
-    gas:     { bg: 'bg-state-gas',     text: 'text-[oklch(16%_0.06_142)]' },
+    solid: { bg: 'bg-state-solid', text: 'text-[oklch(16%_0.06_52)]' },
+    liquid: { bg: 'bg-state-liquid', text: 'text-[oklch(98%_0.01_222)]' },
+    gas: { bg: 'bg-state-gas', text: 'text-[oklch(16%_0.06_142)]' },
     special: { bg: 'bg-state-special', text: 'text-[oklch(98%_0.01_290)]' },
 };
 
 const stateFilterActive: Record<ElementState, string> = {
-    solid:   'bg-state-solid text-[oklch(16%_0.06_52)]',
-    liquid:  'bg-state-liquid text-[oklch(98%_0.01_222)]',
-    gas:     'bg-state-gas text-[oklch(16%_0.06_142)]',
+    solid: 'bg-state-solid text-[oklch(16%_0.06_52)]',
+    liquid: 'bg-state-liquid text-[oklch(98%_0.01_222)]',
+    gas: 'bg-state-gas text-[oklch(16%_0.06_142)]',
     special: 'bg-state-special text-[oklch(98%_0.01_290)]',
 };
 
 const stateCounts = computed(() => {
-    const counts: Record<ElementState, number> = { solid: 0, liquid: 0, gas: 0, special: 0 };
+    const counts: Record<ElementState, number> = {
+        solid: 0,
+        liquid: 0,
+        gas: 0,
+        special: 0,
+    };
     for (const el of props.elements) {
         const s = toState(el.state);
         counts[s]++;
@@ -40,7 +46,8 @@ const stateCounts = computed(() => {
 const filtered = computed<ElementData[]>(() => {
     const q = search.value.toLowerCase();
     return props.elements.filter((el) => {
-        const matchState = activeState.value === 'all' || el.state === activeState.value;
+        const matchState =
+            activeState.value === 'all' || el.state === activeState.value;
         const matchSearch =
             !q ||
             el.element_id.toLowerCase().includes(q) ||
@@ -51,7 +58,13 @@ const filtered = computed<ElementData[]>(() => {
 
 function toState(state: string): ElementState {
     const valid: ElementState[] = ['solid', 'liquid', 'gas', 'special'];
-    return valid.includes(state as ElementState) ? (state as ElementState) : 'special';
+    return valid.includes(state as ElementState)
+        ? (state as ElementState)
+        : 'special';
+}
+
+function toSlug(elementId: string): string {
+    return elementId.replace(/([A-Z])/g, (c, _, i) => (i > 0 ? '-' : '') + c.toLowerCase());
 }
 
 function displayName(el: ElementData): string {
@@ -83,9 +96,11 @@ function onStateChange(val: unknown): void {
         >
             <div class="mx-auto max-w-3xl px-5 py-4">
                 <div class="flex items-baseline justify-between">
-                    <h1 class="text-base font-semibold tracking-tight">Éléments</h1>
+                    <h1 class="text-base font-semibold tracking-tight">
+                        Éléments
+                    </h1>
                     <span
-                        class="tabular-nums text-xs text-[oklch(42%_0.015_250)] dark:text-[oklch(55%_0.012_260)]"
+                        class="text-xs text-[oklch(42%_0.015_250)] tabular-nums dark:text-[oklch(55%_0.012_260)]"
                     >
                         {{ filtered.length
                         }}<span v-if="filtered.length !== elements.length">
@@ -99,7 +114,7 @@ function onStateChange(val: unknown): void {
                     v-model="search"
                     type="search"
                     placeholder="Rechercher un élément…"
-                    class="mt-2.5 w-full rounded-lg border border-[oklch(88%_0.01_250)] bg-[oklch(99%_0.003_260)] px-3 py-2 text-sm placeholder:text-[oklch(58%_0.01_250)] focus:border-state-liquid focus:outline-none focus:ring-1 focus:ring-state-liquid dark:border-[oklch(26%_0.015_260)] dark:bg-[oklch(15%_0.013_260)] dark:placeholder:text-[oklch(44%_0.012_260)]"
+                    class="mt-2.5 w-full rounded-lg border border-[oklch(88%_0.01_250)] bg-[oklch(99%_0.003_260)] px-3 py-2 text-sm placeholder:text-[oklch(58%_0.01_250)] focus:border-state-liquid focus:ring-1 focus:ring-state-liquid focus:outline-none dark:border-[oklch(26%_0.015_260)] dark:bg-[oklch(15%_0.013_260)] dark:placeholder:text-[oklch(44%_0.012_260)]"
                 />
 
                 <!-- State filters — Reka UI ToggleGroup (single, always-selected) -->
@@ -111,20 +126,29 @@ function onStateChange(val: unknown): void {
                 >
                     <ToggleGroupItem
                         value="all"
-                        class="rounded px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-state-liquid data-[state=on]:bg-[oklch(16%_0.012_250)] data-[state=on]:text-[oklch(97%_0.005_260)] data-[state=off]:text-[oklch(42%_0.015_250)] data-[state=off]:hover:bg-[oklch(90%_0.01_250)] dark:data-[state=on]:bg-[oklch(93%_0.008_260)] dark:data-[state=on]:text-[oklch(12%_0.01_260)] dark:data-[state=off]:text-[oklch(55%_0.012_260)] dark:data-[state=off]:hover:bg-[oklch(19%_0.015_260)]"
+                        class="rounded px-2.5 py-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-state-liquid focus-visible:outline-none data-[state=off]:text-[oklch(42%_0.015_250)] data-[state=off]:hover:bg-[oklch(90%_0.01_250)] data-[state=on]:bg-[oklch(16%_0.012_250)] data-[state=on]:text-[oklch(97%_0.005_260)] dark:data-[state=off]:text-[oklch(55%_0.012_260)] dark:data-[state=off]:hover:bg-[oklch(19%_0.015_260)] dark:data-[state=on]:bg-[oklch(93%_0.008_260)] dark:data-[state=on]:text-[oklch(12%_0.01_260)]"
                     >
-                        Tous <span class="ml-1 opacity-50">{{ elements.length }}</span>
+                        Tous
+                        <span class="ml-1 opacity-50">{{
+                            elements.length
+                        }}</span>
                     </ToggleGroupItem>
 
                     <ToggleGroupItem
                         v-for="state in STATES"
                         :key="state"
                         :value="state"
-                        class="rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-state-liquid data-[state=off]:text-[oklch(42%_0.015_250)] data-[state=off]:hover:bg-[oklch(90%_0.01_250)] dark:data-[state=off]:text-[oklch(55%_0.012_260)] dark:data-[state=off]:hover:bg-[oklch(19%_0.015_260)]"
-                        :class="activeState === state ? stateFilterActive[state] : ''"
+                        class="rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors focus-visible:ring-2 focus-visible:ring-state-liquid focus-visible:outline-none data-[state=off]:text-[oklch(42%_0.015_250)] data-[state=off]:hover:bg-[oklch(90%_0.01_250)] dark:data-[state=off]:text-[oklch(55%_0.012_260)] dark:data-[state=off]:hover:bg-[oklch(19%_0.015_260)]"
+                        :class="
+                            activeState === state
+                                ? stateFilterActive[state]
+                                : ''
+                        "
                     >
                         {{ state }}
-                        <span class="ml-1 opacity-50">{{ stateCounts[state] }}</span>
+                        <span class="ml-1 opacity-50">{{
+                            stateCounts[state]
+                        }}</span>
                     </ToggleGroupItem>
                 </ToggleGroupRoot>
             </div>
@@ -146,11 +170,14 @@ function onStateChange(val: unknown): void {
                 <li
                     v-for="el in filtered"
                     :key="el.element_id"
+                >
+                <Link
+                    :href="`/elements/${toSlug(el.element_id)}`"
                     class="-mx-3 flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-[oklch(91%_0.009_250)] dark:hover:bg-[oklch(17%_0.013_260)]"
                 >
                     <!-- State monogram -->
                     <div
-                        class="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-lg text-[10px] font-bold"
+                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold select-none"
                         :class="[
                             stateMonogram[toState(el.state)].bg,
                             stateMonogram[toState(el.state)].text,
@@ -161,7 +188,7 @@ function onStateChange(val: unknown): void {
 
                     <!-- Name + id -->
                     <div class="min-w-0 flex-1">
-                        <p class="truncate text-sm font-medium leading-none">
+                        <p class="truncate text-sm leading-none font-medium">
                             {{ displayName(el) }}
                         </p>
                         <p
@@ -174,12 +201,15 @@ function onStateChange(val: unknown): void {
                     <!-- Category + state badge -->
                     <div class="flex shrink-0 items-center gap-2">
                         <span
-                            class="hidden text-xs text-[oklch(42%_0.015_250)] dark:text-[oklch(55%_0.012_260)] sm:block"
+                            class="hidden text-xs text-[oklch(42%_0.015_250)] sm:block dark:text-[oklch(55%_0.012_260)]"
                         >
                             {{ el.material_category }}
                         </span>
-                        <Badge :variant="toState(el.state)">{{ el.state }}</Badge>
+                        <Badge :variant="toState(el.state)">{{
+                            el.state
+                        }}</Badge>
                     </div>
+                </Link>
                 </li>
             </ul>
         </main>

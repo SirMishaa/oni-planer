@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Str;
 use Spatie\Translatable\HasTranslations;
 
 #[Fillable([
@@ -25,6 +26,14 @@ final class Element extends Model
 
     /** @var list<string> */
     public array $translatable = ['name', 'description'];
+
+    public function resolveRouteBinding($value, $field = null): ?static
+    {
+        return self::query()
+            ->where('element_id', Str::studly((string) $value))
+            ->where('is_disabled', false)
+            ->first();
+    }
 
     /** @return HasOne<ElementThermalProperty, $this> */
     public function thermalProperties(): HasOne
