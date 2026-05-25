@@ -1,35 +1,57 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { ToggleGroupItem, ToggleGroupRoot } from 'reka-ui';
 import type { ElementData } from '@/types/App/Data/data';
+import Badge from '@/components/ui/Badge.vue';
 
 type ElementState = 'solid' | 'liquid' | 'gas' | 'special';
-type State = 'all' | ElementState;
+type ActiveState = 'all' | ElementState;
 
-const props = defineProps<{
-    elements: ElementData[];
-}>();
+const props = defineProps<{ elements: ElementData[] }>();
 
 const search = ref('');
-const activeState = ref<State>('all');
+const activeState = ref<ActiveState>('all');
 
-const states: State[] = ['all', 'solid', 'liquid', 'gas', 'special'];
+const STATES: ElementState[] = ['solid', 'liquid', 'gas', 'special'];
 
-const stateColors: Record<ElementState, { badge: string }> = {
-    solid:   { badge: 'bg-amber-200 text-amber-800' },
-    liquid:  { badge: 'bg-blue-200 text-blue-800' },
-    gas:     { badge: 'bg-green-200 text-green-800' },
-    special: { badge: 'bg-purple-200 text-purple-800' },
+const stateMonogram: Record<ElementState, { bg: string; text: string }> = {
+    solid:   { bg: 'bg-state-solid',   text: 'text-[oklch(16%_0.06_52)]' },
+    liquid:  { bg: 'bg-state-liquid',  text: 'text-[oklch(98%_0.01_222)]' },
+    gas:     { bg: 'bg-state-gas',     text: 'text-[oklch(16%_0.06_142)]' },
+    special: { bg: 'bg-state-special', text: 'text-[oklch(98%_0.01_290)]' },
 };
 
-const avatarBg: Record<ElementState, string> = {
-    solid:   'bg-amber-400',
-    liquid:  'bg-blue-400',
-    gas:     'bg-emerald-400',
-    special: 'bg-purple-400',
+const stateFilterActive: Record<ElementState, string> = {
+    solid:   'bg-state-solid text-[oklch(16%_0.06_52)]',
+    liquid:  'bg-state-liquid text-[oklch(98%_0.01_222)]',
+    gas:     'bg-state-gas text-[oklch(16%_0.06_142)]',
+    special: 'bg-state-special text-[oklch(98%_0.01_290)]',
 };
+
+const stateCounts = computed(() => {
+    const counts: Record<ElementState, number> = { solid: 0, liquid: 0, gas: 0, special: 0 };
+    for (const el of props.elements) {
+        const s = toState(el.state);
+        counts[s]++;
+    }
+    return counts;
+});
+
+const filtered = computed<ElementData[]>(() => {
+    const q = search.value.toLowerCase();
+    return props.elements.filter((el) => {
+        const matchState = activeState.value === 'all' || el.state === activeState.value;
+        const matchSearch =
+            !q ||
+            el.element_id.toLowerCase().includes(q) ||
+            Object.values(el.name).some((n) => n.toLowerCase().includes(q));
+        return matchState && matchSearch;
+    });
+});
 
 function toState(state: string): ElementState {
-    return state in stateColors ? (state as ElementState) : 'special';
+    const valid: ElementState[] = ['solid', 'liquid', 'gas', 'special'];
+    return valid.includes(state as ElementState) ? (state as ElementState) : 'special';
 }
 
 function displayName(el: ElementData): string {
@@ -45,77 +67,121 @@ function initials(name: string): string {
         .toUpperCase();
 }
 
-const filtered = computed<ElementData[]>(() => {
-    const q = search.value.toLowerCase();
-    return props.elements.filter((el) => {
-        const matchState = activeState.value === 'all' || el.state === activeState.value;
-        const matchSearch =
-            !q ||
-            el.element_id.toLowerCase().includes(q) ||
-            Object.values(el.name).some((n) => n.toLowerCase().includes(q));
-        return matchState && matchSearch;
-    });
-});
+function onStateChange(val: unknown): void {
+    if (!val || typeof val !== 'string') return;
+    activeState.value = val as ActiveState;
+}
 </script>
 
 <template>
-    <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <header class="border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-700 dark:bg-gray-800">
-            <h1 class="text-xl font-semibold text-gray-900 dark:text-white">Éléments</h1>
-            <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{{ filtered.length }} éléments</p>
+    <div
+        class="min-h-screen bg-[oklch(95.5%_0.007_250)] text-[oklch(16%_0.012_250)] dark:bg-[oklch(11%_0.01_260)] dark:text-[oklch(93%_0.008_260)]"
+    >
+        <!-- Sticky toolbar -->
+        <header
+            class="sticky top-0 z-10 border-b border-[oklch(88%_0.01_250)] bg-[oklch(95.5%_0.007_250)]/90 backdrop-blur-sm dark:border-[oklch(26%_0.015_260)] dark:bg-[oklch(11%_0.01_260)]/90"
+        >
+            <div class="mx-auto max-w-3xl px-5 py-4">
+                <div class="flex items-baseline justify-between">
+                    <h1 class="text-base font-semibold tracking-tight">Éléments</h1>
+                    <span
+                        class="tabular-nums text-xs text-[oklch(42%_0.015_250)] dark:text-[oklch(55%_0.012_260)]"
+                    >
+                        {{ filtered.length
+                        }}<span v-if="filtered.length !== elements.length">
+                            / {{ elements.length }}</span
+                        >
+                    </span>
+                </div>
+
+                <!-- Search -->
+                <input
+                    v-model="search"
+                    type="search"
+                    placeholder="Rechercher un élément…"
+                    class="mt-2.5 w-full rounded-lg border border-[oklch(88%_0.01_250)] bg-[oklch(99%_0.003_260)] px-3 py-2 text-sm placeholder:text-[oklch(58%_0.01_250)] focus:border-state-liquid focus:outline-none focus:ring-1 focus:ring-state-liquid dark:border-[oklch(26%_0.015_260)] dark:bg-[oklch(15%_0.013_260)] dark:placeholder:text-[oklch(44%_0.012_260)]"
+                />
+
+                <!-- State filters — Reka UI ToggleGroup (single, always-selected) -->
+                <ToggleGroupRoot
+                    type="single"
+                    :model-value="activeState"
+                    class="mt-2.5 flex flex-wrap gap-1.5"
+                    @update:model-value="onStateChange"
+                >
+                    <ToggleGroupItem
+                        value="all"
+                        class="rounded px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-state-liquid data-[state=on]:bg-[oklch(16%_0.012_250)] data-[state=on]:text-[oklch(97%_0.005_260)] data-[state=off]:text-[oklch(42%_0.015_250)] data-[state=off]:hover:bg-[oklch(90%_0.01_250)] dark:data-[state=on]:bg-[oklch(93%_0.008_260)] dark:data-[state=on]:text-[oklch(12%_0.01_260)] dark:data-[state=off]:text-[oklch(55%_0.012_260)] dark:data-[state=off]:hover:bg-[oklch(19%_0.015_260)]"
+                    >
+                        Tous <span class="ml-1 opacity-50">{{ elements.length }}</span>
+                    </ToggleGroupItem>
+
+                    <ToggleGroupItem
+                        v-for="state in STATES"
+                        :key="state"
+                        :value="state"
+                        class="rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-state-liquid data-[state=off]:text-[oklch(42%_0.015_250)] data-[state=off]:hover:bg-[oklch(90%_0.01_250)] dark:data-[state=off]:text-[oklch(55%_0.012_260)] dark:data-[state=off]:hover:bg-[oklch(19%_0.015_260)]"
+                        :class="activeState === state ? stateFilterActive[state] : ''"
+                    >
+                        {{ state }}
+                        <span class="ml-1 opacity-50">{{ stateCounts[state] }}</span>
+                    </ToggleGroupItem>
+                </ToggleGroupRoot>
+            </div>
         </header>
 
-        <div class="flex flex-col gap-3 px-6 py-4 sm:flex-row">
-            <input
-                v-model="search"
-                type="search"
-                placeholder="Rechercher un élément…"
-                class="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-            />
-            <div class="flex flex-wrap gap-2">
-                <button
-                    v-for="state in states"
-                    :key="state"
-                    class="rounded-lg px-3 py-1.5 text-sm font-medium capitalize transition-colors"
-                    :class="activeState === state
-                        ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                        : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'"
-                    @click="activeState = state"
-                >
-                    {{ state === 'all' ? 'Tous' : state }}
-                </button>
-            </div>
-        </div>
+        <!-- Element list -->
+        <main class="mx-auto max-w-3xl px-5 py-3">
+            <p
+                v-if="filtered.length === 0"
+                class="mt-24 text-center text-sm text-[oklch(42%_0.015_250)] dark:text-[oklch(55%_0.012_260)]"
+            >
+                Aucun élément trouvé.
+            </p>
 
-        <main class="px-6 pb-12">
-            <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                <div
+            <ul
+                v-else
+                class="divide-y divide-[oklch(90%_0.008_250)] dark:divide-[oklch(21%_0.015_260)]"
+            >
+                <li
                     v-for="el in filtered"
                     :key="el.element_id"
-                    class="flex cursor-default flex-col items-center gap-3 rounded-xl border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
+                    class="-mx-3 flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-[oklch(91%_0.009_250)] dark:hover:bg-[oklch(17%_0.013_260)]"
                 >
+                    <!-- State monogram -->
                     <div
-                        class="flex h-14 w-14 select-none items-center justify-center rounded-xl text-lg font-bold text-white"
-                        :class="avatarBg[toState(el.state)]"
+                        class="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-lg text-[10px] font-bold"
+                        :class="[
+                            stateMonogram[toState(el.state)].bg,
+                            stateMonogram[toState(el.state)].text,
+                        ]"
                     >
                         {{ initials(displayName(el)) }}
                     </div>
-                    <div class="text-center">
-                        <p class="text-sm font-medium leading-tight text-gray-900 dark:text-white">{{ displayName(el) }}</p>
-                        <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{{ el.material_category }}</p>
-                    </div>
-                    <span
-                        class="rounded-full px-2 py-0.5 text-xs font-medium capitalize"
-                        :class="stateColors[toState(el.state)].badge"
-                    >
-                        {{ el.state }}
-                    </span>
-                </div>
-            </div>
 
-            <p v-if="filtered.length === 0" class="mt-16 text-center text-sm text-gray-400">
-                Aucun élément trouvé.
-            </p>
+                    <!-- Name + id -->
+                    <div class="min-w-0 flex-1">
+                        <p class="truncate text-sm font-medium leading-none">
+                            {{ displayName(el) }}
+                        </p>
+                        <p
+                            class="mt-0.5 font-mono text-[11px] text-[oklch(42%_0.015_250)] dark:text-[oklch(55%_0.012_260)]"
+                        >
+                            {{ el.element_id }}
+                        </p>
+                    </div>
+
+                    <!-- Category + state badge -->
+                    <div class="flex shrink-0 items-center gap-2">
+                        <span
+                            class="hidden text-xs text-[oklch(42%_0.015_250)] dark:text-[oklch(55%_0.012_260)] sm:block"
+                        >
+                            {{ el.material_category }}
+                        </span>
+                        <Badge :variant="toState(el.state)">{{ el.state }}</Badge>
+                    </div>
+                </li>
+            </ul>
         </main>
     </div>
 </template>

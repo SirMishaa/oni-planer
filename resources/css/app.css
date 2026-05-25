@@ -11,4 +11,10 @@
         'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
+
+    /* ONI element state accent colors */
+    --color-state-solid: oklch(72% 0.145 52);
+    --color-state-liquid: oklch(58% 0.185 222);
+    --color-state-gas: oklch(68% 0.18 142);
+    --color-state-special: oklch(65% 0.21 290);
 }
