@@ -78,13 +78,12 @@ def parse_bild_ui_uv(data: bytes) -> tuple[float, float, float, float] | None:
 
 
 def uv_to_pil_crop(uv: tuple[float, float, float, float], w: int, h: int) -> tuple[int, int, int, int]:
-    """Convert raw UV coords (ONI file format, bottom-left origin) to PIL crop box."""
+    """Convert UV coords to PIL crop box. UnityPy already flips textures to y=0-at-top."""
     uv_x1, uv_y1, uv_x2, uv_y2 = uv
     left = int(min(uv_x1, uv_x2) * w)
     right = int(max(uv_x1, uv_x2) * w)
-    # UV y=0 is bottom in Unity, y=0 is top in PIL
-    top = int((1.0 - max(uv_y1, uv_y2)) * h)
-    bottom = int((1.0 - min(uv_y1, uv_y2)) * h)
+    top = int(min(uv_y1, uv_y2) * h)
+    bottom = int(max(uv_y1, uv_y2) * h)
     return (left, top, right, bottom)
 
 
