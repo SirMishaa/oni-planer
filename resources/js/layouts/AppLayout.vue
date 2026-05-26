@@ -30,7 +30,7 @@ const navItems: NavItem[] = [
         key: 'buildings',
         label: 'Bâtiments',
         href: '/buildings',
-        available: false,
+        available: true,
     },
     { key: 'geysers', label: 'Geysers', href: '/geysers', available: false },
     {
@@ -199,6 +199,39 @@ function isActive(item: NavItem): boolean {
                                     d="M9 5.3 L4.8 11.2M9 5.3 L13.2 11.2M5.3 13 L13 13"
                                     stroke="currentColor"
                                     stroke-width="1.2"
+                                    stroke-linecap="round"
+                                />
+                            </svg>
+                            <!-- Buildings icon -->
+                            <svg
+                                v-else-if="item.key === 'buildings'"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 18 18"
+                                fill="none"
+                            >
+                                <rect
+                                    x="2"
+                                    y="8"
+                                    width="6"
+                                    height="8"
+                                    rx="1"
+                                    stroke="currentColor"
+                                    stroke-width="1.3"
+                                />
+                                <rect
+                                    x="10"
+                                    y="4"
+                                    width="6"
+                                    height="12"
+                                    rx="1"
+                                    stroke="currentColor"
+                                    stroke-width="1.3"
+                                />
+                                <path
+                                    d="M4 8V6.5a2 2 0 0 1 4 0V8"
+                                    stroke="currentColor"
+                                    stroke-width="1.3"
                                     stroke-linecap="round"
                                 />
                             </svg>
@@ -521,6 +554,38 @@ function isActive(item: NavItem): boolean {
                                 d="M9 5.3 L4.8 11.2M9 5.3 L13.2 11.2M5.3 13 L13 13"
                                 stroke="currentColor"
                                 stroke-width="1.2"
+                                stroke-linecap="round"
+                            />
+                        </svg>
+                        <svg
+                            v-else-if="item.key === 'buildings'"
+                            width="18"
+                            height="18"
+                            viewBox="0 0 18 18"
+                            fill="none"
+                        >
+                            <rect
+                                x="2"
+                                y="8"
+                                width="6"
+                                height="8"
+                                rx="1"
+                                stroke="currentColor"
+                                stroke-width="1.3"
+                            />
+                            <rect
+                                x="10"
+                                y="4"
+                                width="6"
+                                height="12"
+                                rx="1"
+                                stroke="currentColor"
+                                stroke-width="1.3"
+                            />
+                            <path
+                                d="M4 8V6.5a2 2 0 0 1 4 0V8"
+                                stroke="currentColor"
+                                stroke-width="1.3"
                                 stroke-linecap="round"
                             />
                         </svg>

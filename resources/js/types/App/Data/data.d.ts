@@ -1,3 +1,13 @@
+export type BuildingData = {
+building_id: string,
+name: Record<string, string>,
+category: string,
+width: number,
+height: number,
+power_consumption: number | null,
+power_generation: number | null,
+dlc_id: string | null,
+};
 export type ElementData = {
 element_id: string,
 name: Record<string, string>,
