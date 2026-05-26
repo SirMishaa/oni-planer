@@ -2,8 +2,11 @@
 import { ToggleGroupItem, ToggleGroupRoot } from 'reka-ui';
 import { computed, ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
+import AppLayout from '@/layouts/AppLayout.vue';
 import Badge from '@/components/ui/Badge.vue';
 import type { ElementData } from '@/types/App/Data/data';
+
+defineOptions({ layout: AppLayout });
 
 type ElementState = 'solid' | 'liquid' | 'gas' | 'special';
 type ActiveState = 'all' | ElementState;
@@ -84,15 +87,19 @@ function onStateChange(val: unknown): void {
     if (!val || typeof val !== 'string') return;
     activeState.value = val as ActiveState;
 }
+
+const ELEMENTS_WITHOUT_ICON = new Set(['COMPOSITION', 'Creature', 'Vacuum', 'Void']);
+
+function hasIcon(elementId: string): boolean {
+    return !ELEMENTS_WITHOUT_ICON.has(elementId);
+}
 </script>
 
 <template>
-    <div
-        class="min-h-screen bg-[oklch(95.5%_0.007_250)] text-[oklch(16%_0.012_250)] dark:bg-[oklch(11%_0.01_260)] dark:text-[oklch(93%_0.008_260)]"
-    >
+    <div class="min-h-full pb-16 md:pb-0">
         <!-- Sticky toolbar -->
         <header
-            class="sticky top-0 z-10 border-b border-[oklch(88%_0.01_250)] bg-[oklch(95.5%_0.007_250)]/90 backdrop-blur-sm dark:border-[oklch(26%_0.015_260)] dark:bg-[oklch(11%_0.01_260)]/90"
+            class="sticky top-0 z-10 border-b border-[oklch(82%_0.025_75)] bg-[oklch(94%_0.015_75)]/90 backdrop-blur-sm dark:border-[oklch(32%_0.020_250)] dark:bg-[oklch(22%_0.016_250)]/95"
         >
             <div class="mx-auto max-w-3xl px-5 py-4">
                 <div class="flex items-baseline justify-between">
@@ -100,7 +107,7 @@ function onStateChange(val: unknown): void {
                         Éléments
                     </h1>
                     <span
-                        class="text-xs text-[oklch(42%_0.015_250)] tabular-nums dark:text-[oklch(55%_0.012_260)]"
+                        class="text-xs text-[oklch(42%_0.015_250)] tabular-nums dark:text-[oklch(66%_0.012_260)]"
                     >
                         {{ filtered.length
                         }}<span v-if="filtered.length !== elements.length">
@@ -114,7 +121,7 @@ function onStateChange(val: unknown): void {
                     v-model="search"
                     type="search"
                     placeholder="Rechercher un élément…"
-                    class="mt-2.5 w-full rounded-lg border border-[oklch(88%_0.01_250)] bg-[oklch(99%_0.003_260)] px-3 py-2 text-sm placeholder:text-[oklch(58%_0.01_250)] focus:border-state-liquid focus:ring-1 focus:ring-state-liquid focus:outline-none dark:border-[oklch(26%_0.015_260)] dark:bg-[oklch(15%_0.013_260)] dark:placeholder:text-[oklch(44%_0.012_260)]"
+                    class="mt-2.5 w-full rounded-lg border border-[oklch(88%_0.01_250)] bg-[oklch(99%_0.003_260)] px-3 py-2 text-sm placeholder:text-[oklch(58%_0.01_250)] focus:border-state-liquid focus:ring-1 focus:ring-state-liquid focus:outline-none dark:border-[oklch(35%_0.015_260)] dark:bg-[oklch(18%_0.015_260)] dark:placeholder:text-[oklch(52%_0.012_260)]"
                 />
 
                 <!-- State filters — Reka UI ToggleGroup (single, always-selected) -->
@@ -126,7 +133,7 @@ function onStateChange(val: unknown): void {
                 >
                     <ToggleGroupItem
                         value="all"
-                        class="rounded px-2.5 py-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-state-liquid focus-visible:outline-none data-[state=off]:text-[oklch(42%_0.015_250)] data-[state=off]:hover:bg-[oklch(90%_0.01_250)] data-[state=on]:bg-[oklch(16%_0.012_250)] data-[state=on]:text-[oklch(97%_0.005_260)] dark:data-[state=off]:text-[oklch(55%_0.012_260)] dark:data-[state=off]:hover:bg-[oklch(19%_0.015_260)] dark:data-[state=on]:bg-[oklch(93%_0.008_260)] dark:data-[state=on]:text-[oklch(12%_0.01_260)]"
+                        class="rounded px-2.5 py-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-state-liquid focus-visible:outline-none data-[state=off]:text-[oklch(42%_0.015_250)] data-[state=off]:hover:bg-[oklch(90%_0.01_250)] data-[state=on]:bg-[oklch(16%_0.012_250)] data-[state=on]:text-[oklch(97%_0.005_260)] dark:data-[state=off]:text-[oklch(66%_0.012_260)] dark:data-[state=off]:hover:bg-[oklch(30%_0.015_260)] dark:data-[state=on]:bg-[oklch(88%_0.008_260)] dark:data-[state=on]:text-[oklch(14%_0.01_260)]"
                     >
                         Tous
                         <span class="ml-1 opacity-50">{{
@@ -138,7 +145,7 @@ function onStateChange(val: unknown): void {
                         v-for="state in STATES"
                         :key="state"
                         :value="state"
-                        class="rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors focus-visible:ring-2 focus-visible:ring-state-liquid focus-visible:outline-none data-[state=off]:text-[oklch(42%_0.015_250)] data-[state=off]:hover:bg-[oklch(90%_0.01_250)] dark:data-[state=off]:text-[oklch(55%_0.012_260)] dark:data-[state=off]:hover:bg-[oklch(19%_0.015_260)]"
+                        class="rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors focus-visible:ring-2 focus-visible:ring-state-liquid focus-visible:outline-none data-[state=off]:text-[oklch(42%_0.015_250)] data-[state=off]:hover:bg-[oklch(90%_0.01_250)] dark:data-[state=off]:text-[oklch(66%_0.012_260)] dark:data-[state=off]:hover:bg-[oklch(30%_0.015_260)]"
                         :class="
                             activeState === state
                                 ? stateFilterActive[state]
@@ -158,14 +165,14 @@ function onStateChange(val: unknown): void {
         <main class="mx-auto max-w-3xl px-5 py-3">
             <p
                 v-if="filtered.length === 0"
-                class="mt-24 text-center text-sm text-[oklch(42%_0.015_250)] dark:text-[oklch(55%_0.012_260)]"
+                class="mt-24 text-center text-sm text-[oklch(42%_0.015_250)] dark:text-[oklch(66%_0.012_260)]"
             >
                 Aucun élément trouvé.
             </p>
 
             <ul
                 v-else
-                class="divide-y divide-[oklch(90%_0.008_250)] dark:divide-[oklch(21%_0.015_260)]"
+                class="divide-y divide-[oklch(90%_0.008_250)] dark:divide-[oklch(30%_0.012_260)]"
             >
                 <li
                     v-for="el in filtered"
@@ -173,17 +180,24 @@ function onStateChange(val: unknown): void {
                 >
                 <Link
                     :href="`/elements/${toSlug(el.element_id)}`"
-                    class="-mx-3 flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-[oklch(91%_0.009_250)] dark:hover:bg-[oklch(17%_0.013_260)]"
+                    class="-mx-3 flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-[oklch(91%_0.009_250)] dark:hover:bg-[oklch(28%_0.015_260)]"
                 >
-                    <!-- State monogram -->
+                    <!-- Element icon -->
                     <div
-                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold select-none"
+                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg overflow-hidden select-none"
                         :class="[
                             stateMonogram[toState(el.state)].bg,
                             stateMonogram[toState(el.state)].text,
                         ]"
                     >
-                        {{ initials(displayName(el)) }}
+                        <img
+                            v-if="hasIcon(el.element_id)"
+                            :src="`/assets/game/elements/${el.element_id}.webp`"
+                            :alt="displayName(el)"
+                            class="h-full w-full object-cover"
+                            loading="lazy"
+                        />
+                        <span v-else class="text-[10px] font-bold">{{ initials(displayName(el)) }}</span>
                     </div>
 
                     <!-- Name + id -->
@@ -192,7 +206,7 @@ function onStateChange(val: unknown): void {
                             {{ displayName(el) }}
                         </p>
                         <p
-                            class="mt-0.5 font-mono text-[11px] text-[oklch(42%_0.015_250)] dark:text-[oklch(55%_0.012_260)]"
+                            class="mt-0.5 font-mono text-[11px] text-[oklch(42%_0.015_250)] dark:text-[oklch(66%_0.012_260)]"
                         >
                             {{ el.element_id }}
                         </p>
@@ -201,7 +215,7 @@ function onStateChange(val: unknown): void {
                     <!-- Category + state badge -->
                     <div class="flex shrink-0 items-center gap-2">
                         <span
-                            class="hidden text-xs text-[oklch(42%_0.015_250)] sm:block dark:text-[oklch(55%_0.012_260)]"
+                            class="hidden text-xs text-[oklch(42%_0.015_250)] sm:block dark:text-[oklch(66%_0.012_260)]"
                         >
                             {{ el.material_category }}
                         </span>
