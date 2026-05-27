@@ -13,8 +13,15 @@ final class BuildingController
 {
     public function index(): Response
     {
+        $categoryOrder = ['Base', 'Oxygen', 'Power', 'Food', 'Plumbing', 'HVAC', 'Refining', 'Medical', 'Furniture', 'Equipment', 'Utilities', 'Automation', 'Conveyance', 'Rocketry', 'HEP', 'Other'];
+        $caseExpr = 'CASE category '.implode(' ', array_map(
+            fn (string $cat, int $i): string => "WHEN '{$cat}' THEN {$i}",
+            $categoryOrder,
+            array_keys($categoryOrder),
+        )).' ELSE 99 END';
+
         $buildings = Building::query()
-            ->orderBy('category')
+            ->orderByRaw($caseExpr)
             ->orderBy('building_id')
             ->get(['building_id', 'name', 'category', 'width', 'height', 'power_consumption', 'power_generation', 'dlc_id'])
             ->map(fn (Building $b): BuildingData => BuildingData::from([

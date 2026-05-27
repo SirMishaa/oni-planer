@@ -16,18 +16,19 @@ it('renders the buildings index page', function () {
         );
 });
 
-it('returns buildings ordered by category then building_id', function () {
+it('returns buildings ordered by game category order then building_id', function () {
     Building::factory()->create(['building_id' => 'Zebra', 'category' => 'Power']);
     Building::factory()->create(['building_id' => 'Alpha', 'category' => 'Power']);
     Building::factory()->create(['building_id' => 'Bravo', 'category' => 'Other']);
 
+    // Power (index 2) sorts before Other (index 15) in the game's tab order
     $this->get(route('buildings.index'))
         ->assertOk()
         ->assertInertia(
             fn ($page) => $page
                 ->component('Buildings/Index')
-                ->where('buildings.0.building_id', 'Bravo')
-                ->where('buildings.1.building_id', 'Alpha')
-                ->where('buildings.2.building_id', 'Zebra')
+                ->where('buildings.0.building_id', 'Alpha')
+                ->where('buildings.1.building_id', 'Zebra')
+                ->where('buildings.2.building_id', 'Bravo')
         );
 });

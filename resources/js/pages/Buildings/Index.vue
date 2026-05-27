@@ -7,12 +7,35 @@ defineOptions({ layout: AppLayout });
 
 const props = defineProps<{ buildings: BuildingData[] }>();
 
+// region Constants
+const CATEGORY_ORDER: [string, string][] = [
+    ['Base', 'Construction'],
+    ['Oxygen', 'Oxygène'],
+    ['Power', 'Énergie'],
+    ['Food', 'Nourriture'],
+    ['Plumbing', 'Plomberie'],
+    ['HVAC', 'Ventilation'],
+    ['Refining', 'Raffinage'],
+    ['Medical', 'Médecine'],
+    ['Furniture', 'Mobilier'],
+    ['Equipment', 'Équipement'],
+    ['Utilities', 'Utilitaires'],
+    ['Automation', 'Automatisation'],
+    ['Conveyance', 'Transport'],
+    ['Rocketry', 'Fusées'],
+    ['HEP', 'Radiation'],
+    ['Other', 'Autre'],
+];
+
+const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(CATEGORY_ORDER);
+// endregion
+
 const search = ref('');
 const activeCategory = ref<string>('all');
 
 const categories = computed<string[]>(() => {
-    const cats = new Set(props.buildings.map((b) => b.category));
-    return Array.from(cats).sort();
+    const available = new Set(props.buildings.map((b) => b.category));
+    return CATEGORY_ORDER.map(([key]) => key).filter((k) => available.has(k));
 });
 
 const categoryCounts = computed<Record<string, number>>(() => {
@@ -113,7 +136,7 @@ function powerClass(b: BuildingData): string {
                         "
                         @click="activeCategory = cat"
                     >
-                        {{ cat }}
+                        {{ CATEGORY_LABEL[cat] ?? cat }}
                         <span class="ml-1 opacity-50">{{ categoryCounts[cat] }}</span>
                     </button>
                 </div>
@@ -162,8 +185,14 @@ function powerClass(b: BuildingData): string {
                             </p>
                         </div>
 
-                        <!-- Size + power -->
-                        <div class="flex shrink-0 items-center gap-3">
+                        <!-- Meta: category badge + size + power -->
+                        <div class="flex shrink-0 items-center gap-2.5">
+                            <span
+                                v-if="activeCategory === 'all'"
+                                class="hidden rounded px-1.5 py-0.5 text-[10px] font-medium text-[oklch(40%_0.015_250)] ring-1 ring-[oklch(86%_0.01_250)] sm:block dark:text-[oklch(64%_0.012_260)] dark:ring-[oklch(36%_0.014_260)]"
+                            >
+                                {{ CATEGORY_LABEL[b.category] ?? b.category }}
+                            </span>
                             <span
                                 class="hidden text-xs tabular-nums text-[oklch(42%_0.015_250)] sm:block dark:text-[oklch(66%_0.012_260)]"
                             >

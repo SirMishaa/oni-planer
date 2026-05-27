@@ -25,6 +25,8 @@ public sealed class BuildingExtractor
 
     public List<BuildingDto> Extract()
     {
+        var categoryMap = new BuildingCategoryExtractor(_managedPath).Extract();
+
         var module = ModuleDefinition.ReadModule(Path.Combine(_managedPath, "Assembly-CSharp.dll"));
         var results = new List<BuildingDto>();
 
@@ -37,14 +39,14 @@ public sealed class BuildingExtractor
             if (createMethod?.HasBody != true) continue;
 
             var dlcId = IlHelper.ExtractDlcId(type);
-            var dto = ExtractFromMethod(createMethod, dlcId);
+            var dto = ExtractFromMethod(createMethod, dlcId, categoryMap);
             if (dto != null) results.Add(dto);
         }
 
         return results;
     }
 
-    private BuildingDto? ExtractFromMethod(MethodDefinition method, string? dlcId)
+    private BuildingDto? ExtractFromMethod(MethodDefinition method, string? dlcId, Dictionary<string, string> categoryMap)
     {
         var instructions = method.Body.Instructions;
 
@@ -96,9 +98,9 @@ public sealed class BuildingExtractor
             }
         });
 
-        string category = powerGen.HasValue ? "Power"
-            : powerCon.HasValue ? "Power"
-            : "Other";
+        string category = categoryMap.TryGetValue(buildingId, out var mappedCat)
+            ? mappedCat
+            : powerGen.HasValue || powerCon.HasValue ? "Power" : "Other";
 
         string? nameKey = null;
         foreach (var instr in instructions)
