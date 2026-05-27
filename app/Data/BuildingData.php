@@ -13,6 +13,7 @@ final class BuildingData extends Data
         /** @var array<string, string> */
         public array $name,
         public string $category,
+        public ?string $sub_group,
         public int $width,
         public int $height,
         public ?float $power_consumption,

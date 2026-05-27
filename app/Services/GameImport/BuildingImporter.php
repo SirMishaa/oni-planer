@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\GameImport;
 
+use App\Http\Controllers\BuildingController;
 use App\Models\Building;
+use Illuminate\Support\Facades\Cache;
 
 final readonly class BuildingImporter
 {
@@ -34,5 +36,7 @@ final readonly class BuildingImporter
                 'dlc_id' => ($raw['dlc_id'] ?? '') ?: null,
             ]);
         }
+
+        Cache::forget(BuildingController::CACHE_KEY);
     }
 }

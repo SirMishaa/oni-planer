@@ -2,6 +2,7 @@ export type BuildingData = {
 building_id: string,
 name: Record<string, string>,
 category: string,
+sub_group: string | null,
 width: number,
 height: number,
 power_consumption: number | null,
