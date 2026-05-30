@@ -4,7 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\GameImport;
 
+use App\Models\Building;
 use App\Models\CodexEntry;
+use App\Models\Critter;
+use App\Models\Element;
+use App\Models\GeyserType;
+use App\Models\Plant;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Yaml\Tag\TaggedValue;
 use Symfony\Component\Yaml\Yaml;
@@ -42,6 +47,32 @@ final readonly class CodexImporter
                 'dlc_id' => null,
             ]);
         }
+
+        $this->linkEntities();
+    }
+
+    private function linkEntities(): void
+    {
+        CodexEntry::query()->each(function (CodexEntry $entry): void {
+            match ($entry->category) {
+                'Buildings' => $entry->buildings()->attach(
+                    Building::query()->where('building_id', $entry->codex_id)->pluck('id'),
+                ),
+                'ElementTypes' => $entry->elements()->attach(
+                    Element::query()->where('element_id', $entry->codex_id)->pluck('id'),
+                ),
+                'Creatures' => $entry->critters()->attach(
+                    Critter::query()->where('critter_id', $entry->codex_id)->pluck('id'),
+                ),
+                'Plants' => $entry->plants()->attach(
+                    Plant::query()->where('plant_id', $entry->codex_id)->pluck('id'),
+                ),
+                'Geysers' => $entry->geyserTypes()->attach(
+                    GeyserType::query()->where('geyser_id', $entry->codex_id)->pluck('id'),
+                ),
+                default => null,
+            };
+        });
     }
 
     private function categoryFor(string $relativePath): string

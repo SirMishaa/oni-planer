@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Building;
 use App\Models\CodexEntry;
 use App\Services\GameImport\CodexImporter;
 use App\Services\GameImport\StringResolver;
@@ -49,4 +50,18 @@ it('drops text blocks whose string key is missing', function (): void {
     // Only the resolvable Title block remains; the MISSING block is dropped.
     expect($genetics->content[0]['blocks'])->toHaveCount(1)
         ->and($genetics->content[0]['blocks'][0]['style'])->toBe('Title');
+});
+
+it('links an entry to a building that shares its codex id, leaving lore unlinked', function (): void {
+    $building = Building::factory()->create(['building_id' => 'Electrolyzer']);
+
+    runCodexImporter();
+
+    $electrolyzer = CodexEntry::query()->where('codex_id', 'Electrolyzer')->sole();
+    $genetics = CodexEntry::query()->where('codex_id', 'Genetics')->sole();
+
+    expect($building->fresh()->codexEntries)->toHaveCount(1)
+        ->and($building->fresh()->codexEntries->first()->codex_id)->toBe('Electrolyzer')
+        ->and($electrolyzer->buildings)->toHaveCount(1)
+        ->and($genetics->buildings)->toHaveCount(0);
 });
