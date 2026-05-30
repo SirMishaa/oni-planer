@@ -1,0 +1,17 @@
+id: "Electrolyzer"
+title: STRINGS.CODEX.ELECTROLYZER.TITLE
+contentContainers:
+  - contentLayout: Vertical
+    lockID:
+    content:
+      - !CodexText
+        stringKey: STRINGS.CODEX.ELECTROLYZER.TITLE
+        style: Title
+      - !CodexDividerLine
+        preferredWidth: -1
+      - !CodexImage
+        spriteName: electrolyzer_img
+        preferredHeight: 128
+      - !CodexText
+        stringKey: STRINGS.CODEX.ELECTROLYZER.BODY
+        style: Body

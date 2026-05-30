@@ -23,3 +23,18 @@ msgid ""
 "First part of the body. "
 "Second part with a <link=\"OXYGEN\">link</link>."
 msgstr ""
+
+#. STRINGS.CODEX.ELECTROLYZER.TITLE
+msgctxt "STRINGS.CODEX.ELECTROLYZER.TITLE"
+msgid "Electrolyzer"
+msgstr ""
+
+#. STRINGS.CODEX.ELECTROLYZER.BODY
+msgctxt "STRINGS.CODEX.ELECTROLYZER.BODY"
+msgid "Splits water into oxygen and hydrogen."
+msgstr ""
+
+#. STRINGS.CODEX.GENETICS.TITLE
+msgctxt "STRINGS.CODEX.GENETICS.TITLE"
+msgid "Genetics"
+msgstr ""

@@ -1,0 +1,13 @@
+id: "Genetics"
+title: STRINGS.CODEX.GENETICS.TITLE
+parentId: SYSTEMSTUTORIALS
+iconAssetName: codex_genetics
+contentContainers:
+  - contentLayout: Vertical
+    content:
+      - !CodexText
+        stringKey: STRINGS.CODEX.GENETICS.TITLE
+        style: Title
+      - !CodexText
+        stringKey: STRINGS.CODEX.GENETICS.MISSING
+        style: Body
