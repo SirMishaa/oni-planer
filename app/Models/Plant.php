@@ -11,14 +11,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\Translatable\HasTranslations;
 
-#[Fillable(['plant_id', 'name', 'dlc_id'])]
+#[Fillable(['plant_id', 'name', 'description', 'dlc_id'])]
 final class Plant extends Model
 {
     use HasFactory;
     use HasTranslations;
 
     /** @var list<string> */
-    public array $translatable = ['name'];
+    public array $translatable = ['name', 'description'];
 
     /** @return HasMany<PlantVariant, $this> */
     public function variants(): HasMany
@@ -34,6 +34,6 @@ final class Plant extends Model
 
     public function casts(): array
     {
-        return ['name' => 'array'];
+        return ['name' => 'array', 'description' => 'array'];
     }
 }

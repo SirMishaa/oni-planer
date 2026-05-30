@@ -13,7 +13,7 @@ use Spatie\Translatable\HasTranslations;
 #[Fillable([
     'building_id', 'category', 'power_consumption', 'power_generation',
     'heat_generation', 'width', 'height', 'construction_time',
-    'tags', 'name', 'description', 'dlc_id',
+    'tags', 'name', 'description', 'effect', 'dlc_id',
 ])]
 final class Building extends Model
 {
@@ -21,7 +21,7 @@ final class Building extends Model
     use HasTranslations;
 
     /** @var list<string> */
-    public array $translatable = ['name', 'description'];
+    public array $translatable = ['name', 'description', 'effect'];
 
     /** @return HasMany<Recipe, $this> */
     public function recipes(): HasMany
@@ -37,6 +37,6 @@ final class Building extends Model
 
     public function casts(): array
     {
-        return ['tags' => 'array', 'name' => 'array', 'description' => 'array'];
+        return ['tags' => 'array', 'name' => 'array', 'description' => 'array', 'effect' => 'array'];
     }
 }

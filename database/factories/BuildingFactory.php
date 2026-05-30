@@ -26,6 +26,7 @@ final class BuildingFactory extends Factory
             'tags' => [],
             'name' => ['en' => $this->faker->words(2, true)],
             'description' => null,
+            'effect' => null,
             'dlc_id' => null,
         ];
     }
