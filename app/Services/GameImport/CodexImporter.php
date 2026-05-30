@@ -37,15 +37,17 @@ final readonly class CodexImporter
             $titleKey = is_string($data['title'] ?? null) ? $data['title'] : null;
             $title = ($titleKey !== null ? $this->stringResolver->resolveToJson($titleKey) : null) ?? ['en' => $codexId];
 
-            CodexEntry::query()->create([
-                'codex_id' => $codexId,
-                'category' => $category,
-                'parent_codex_id' => is_string($data['parentId'] ?? null) ? $data['parentId'] : null,
-                'title' => $title,
-                'icon_asset' => is_string($data['iconAssetName'] ?? null) ? $data['iconAssetName'] : null,
-                'content' => $this->buildContent($data['contentContainers'] ?? []),
-                'dlc_id' => null,
-            ]);
+            CodexEntry::query()->updateOrCreate(
+                ['codex_id' => $codexId],
+                [
+                    'category' => $category,
+                    'parent_codex_id' => is_string($data['parentId'] ?? null) ? $data['parentId'] : null,
+                    'title' => $title,
+                    'icon_asset' => is_string($data['iconAssetName'] ?? null) ? $data['iconAssetName'] : null,
+                    'content' => $this->buildContent($data['contentContainers'] ?? []),
+                    'dlc_id' => null,
+                ],
+            );
         }
 
         $this->linkEntities();

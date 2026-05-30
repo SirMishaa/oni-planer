@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\Building;
+use App\Models\CodexEntry;
 use App\Models\Critter;
 use App\Models\CritterMorph;
 use App\Models\Element;
@@ -13,6 +14,7 @@ use App\Models\Plant;
 use App\Models\PlantVariant;
 use App\Models\Recipe;
 use App\Services\GameImport\BuildingImporter;
+use App\Services\GameImport\CodexImporter;
 use App\Services\GameImport\CritterImporter;
 use App\Services\GameImport\DuplicantImporter;
 use App\Services\GameImport\ElementImporter;
@@ -111,6 +113,12 @@ final class GameImportCommand extends Command
             new RocketImporter($resolver)->import($rocketJson);
         }
 
+        $this->info('Importing codex...');
+        $codexDir = $gamePath.'/StreamingAssets/codex';
+        if (is_dir($codexDir)) {
+            new CodexImporter($resolver)->import($codexDir);
+        }
+
         $this->info('');
         $this->info('Import complete:');
         $this->line('  Elements: '.Element::query()->count());
@@ -119,6 +127,7 @@ final class GameImportCommand extends Command
         $this->line('  Critters: '.Critter::query()->count().' species / '.CritterMorph::query()->count().' morphs');
         $this->line('  Plants: '.Plant::query()->count().' species / '.PlantVariant::query()->count().' variants');
         $this->line('  Geysers: '.GeyserType::query()->count());
+        $this->line('  Codex: '.CodexEntry::query()->count().' entries');
 
         return self::SUCCESS;
     }
