@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Attributes\GameData;
 use App\Models\Concerns\HasCodexEntries;
 use Database\Factories\GeyserTypeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Translatable\HasTranslations;
 
+#[GameData]
 #[Fillable([
     'geyser_id', 'type', 'element_id', 'temperature', 'max_pressure',
     'min_yield_rate', 'max_yield_rate', 'min_eruption_duration', 'max_eruption_duration',

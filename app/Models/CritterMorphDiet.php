@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Attributes\GameData;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+#[GameData]
 #[Fillable([
     'critter_morph_id', 'consumed_element_id', 'amount_per_cycle',
     'produced_element_id', 'conversion_ratio',

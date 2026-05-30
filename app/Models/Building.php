@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Attributes\GameData;
 use App\Models\Concerns\HasCodexEntries;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Translatable\HasTranslations;
 
+#[GameData]
 #[Fillable([
     'building_id', 'category', 'power_consumption', 'power_generation',
     'heat_generation', 'width', 'height', 'construction_time',

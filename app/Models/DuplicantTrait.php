@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Attributes\GameData;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Translatable\HasTranslations;
 
+#[GameData]
 #[Fillable(['trait_id', 'is_positive', 'name', 'description', 'dlc_id'])]
 final class DuplicantTrait extends Model
 {

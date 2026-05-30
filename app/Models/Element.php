@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Attributes\GameData;
 use App\Models\Concerns\HasCodexEntries;
 use Database\Factories\ElementFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 use Spatie\Translatable\HasTranslations;
 
+#[GameData]
 #[Fillable([
     'element_id', 'state', 'molar_mass', 'toxicity', 'material_category',
     'tags', 'low_temp_transition_target', 'high_temp_transition_target',

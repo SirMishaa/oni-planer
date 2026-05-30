@@ -16,6 +16,7 @@ use App\Services\GameImport\BuildingImporter;
 use App\Services\GameImport\CritterImporter;
 use App\Services\GameImport\DuplicantImporter;
 use App\Services\GameImport\ElementImporter;
+use App\Services\GameImport\GameDataTables;
 use App\Services\GameImport\GeyserImporter;
 use App\Services\GameImport\PlantImporter;
 use App\Services\GameImport\RecipeImporter;
@@ -126,18 +127,7 @@ final class GameImportCommand extends Command
     {
         DB::statement('PRAGMA foreign_keys = OFF');
 
-        $tables = [
-            'plant_variant_mutations', 'plant_mutation_effects', 'plant_mutations',
-            'plant_variant_outputs', 'plant_variant_inputs', 'plant_variants', 'plants',
-            'critter_morph_outputs', 'critter_morph_diets', 'critter_morphs', 'critters',
-            'building_construction_materials', 'recipe_items', 'recipes', 'buildings',
-            'geyser_types', 'duplicant_trait_effects', 'duplicant_traits', 'duplicant_base_stats',
-            'food_properties', 'element_special_properties', 'element_solid_properties',
-            'element_liquid_properties', 'element_gas_properties', 'element_thermal_properties',
-            'elements', 'rocket_engines', 'rocket_modules',
-        ];
-
-        foreach ($tables as $table) {
+        foreach (GameDataTables::all() as $table) {
             DB::table($table)->truncate();
         }
 

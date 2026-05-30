@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Attributes\GameData;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Translatable\HasTranslations;
 
+#[GameData]
 #[Fillable(['module_id', 'module_type', 'mass', 'capacity', 'power_consumption', 'name', 'dlc_id'])]
 final class RocketModule extends Model
 {

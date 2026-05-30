@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Attributes\GameData;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Translatable\HasTranslations;
 
+#[GameData]
 #[Fillable([
     'engine_id', 'fuel_element_id', 'oxidizer_element_id', 'max_range',
     'fuel_consumption_rate', 'oxidizer_consumption_rate', 'exhaust_temperature', 'name', 'dlc_id',
