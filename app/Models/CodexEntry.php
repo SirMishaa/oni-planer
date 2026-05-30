@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Attributes\GameData;
+use Database\Factories\CodexEntryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,7 +16,9 @@ use Spatie\Translatable\HasTranslations;
 #[Fillable(['codex_id', 'category', 'parent_codex_id', 'title', 'icon_asset', 'content', 'dlc_id'])]
 final class CodexEntry extends Model
 {
+    /** @use HasFactory<CodexEntryFactory> */
     use HasFactory;
+
     use HasTranslations;
 
     /** @var list<string> */
