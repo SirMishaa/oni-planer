@@ -23,3 +23,10 @@ it('builds a name json with english key', function (): void {
 
     expect($resolver->resolveToJson('STRINGS.ELEMENTS.OXYGEN.NAME'))->toBe(['en' => 'Oxygen']);
 });
+
+it('resolves a multi-line continuation block into the full concatenated value', function (): void {
+    $resolver = new StringResolver(base_path('tests/Fixtures/GameImport/strings.pot'));
+
+    expect($resolver->resolve('STRINGS.CODEX.TEST.MULTILINE'))
+        ->toBe('First part of the body. Second part with a link.');
+});

@@ -44,20 +44,62 @@ final class StringResolver
         $content = (string) file_get_contents($path);
         $strings = [];
         $currentCtxt = null;
+        $capturing = false;
+        $buffer = '';
 
-        foreach (explode("\n", $content) as $line) {
+        $flush = function () use (&$strings, &$currentCtxt, &$capturing, &$buffer): void {
+            if ($currentCtxt !== null && $capturing && $buffer !== '') {
+                $strings[$currentCtxt] = $buffer;
+            }
+
+            $currentCtxt = null;
+            $capturing = false;
+            $buffer = '';
+        };
+
+        foreach (explode("\n", $content) as $rawLine) {
+            $line = mb_rtrim($rawLine, "\r");
+
             if (str_starts_with($line, 'msgctxt "')) {
-                $currentCtxt = mb_trim(mb_substr($line, 9), '"');
-            } elseif (str_starts_with($line, 'msgid "') && $currentCtxt !== null) {
-                $value = mb_trim(mb_substr($line, 7), '"');
-                if ($value !== '') {
-                    $strings[$currentCtxt] = $value;
-                }
+                $flush();
+                $currentCtxt = $this->unquote(mb_substr($line, 8));
 
-                $currentCtxt = null;
+                continue;
+            }
+
+            if (str_starts_with($line, 'msgid "')) {
+                $capturing = true;
+                $buffer = $this->unquote(mb_substr($line, 6));
+
+                continue;
+            }
+
+            if ($capturing && str_starts_with($line, '"')) {
+                $buffer .= $this->unquote($line);
+
+                continue;
+            }
+
+            if ($capturing) {
+                $flush();
             }
         }
 
+        $flush();
+
         return $strings;
+    }
+
+    private function unquote(string $token): string
+    {
+        $token = mb_trim($token);
+        if (str_starts_with($token, '"')) {
+            $token = mb_substr($token, 1);
+        }
+        if (str_ends_with($token, '"')) {
+            $token = mb_substr($token, 0, -1);
+        }
+
+        return str_replace(['\\"', '\\\\'], ['"', '\\'], $token);
     }
 }

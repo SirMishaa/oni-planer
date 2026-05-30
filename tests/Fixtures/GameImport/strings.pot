@@ -16,3 +16,10 @@ msgstr ""
 msgctxt "STRINGS.BUILDINGS.COALGEN.NAME"
 msgid "Coal Generator"
 msgstr ""
+
+#. STRINGS.CODEX.TEST.MULTILINE
+msgctxt "STRINGS.CODEX.TEST.MULTILINE"
+msgid ""
+"First part of the body. "
+"Second part with a <link=\"OXYGEN\">link</link>."
+msgstr ""
