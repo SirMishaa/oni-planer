@@ -40,6 +40,7 @@ final readonly class ElementImporter
                 'low_temp_transition_target' => $raw['lowTempTransitionTarget'] ?? null,
                 'high_temp_transition_target' => $raw['highTempTransitionTarget'] ?? null,
                 'name' => $nameJson,
+                'description' => $this->resolveSibling(is_string($raw['localizationID'] ?? null) ? $raw['localizationID'] : null, 'DESC'),
                 'dlc_id' => ($raw['dlcId'] ?? '') ?: null,
                 'is_disabled' => false,
             ]);
@@ -58,6 +59,18 @@ final readonly class ElementImporter
 
             $this->createStateProperties($element->element_id, $state, $raw);
         }
+    }
+
+    /** @return array<string, string>|null */
+    private function resolveSibling(?string $nameKey, string $suffix): ?array
+    {
+        if ($nameKey === null || ! str_ends_with($nameKey, '.NAME')) {
+            return null;
+        }
+
+        $key = mb_substr($nameKey, 0, -mb_strlen('.NAME')).'.'.$suffix;
+
+        return $this->stringResolver->resolveToJson($key);
     }
 
     /** @param array<string, mixed> $raw */

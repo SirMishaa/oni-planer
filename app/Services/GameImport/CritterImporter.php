@@ -40,6 +40,14 @@ final readonly class CritterImporter
                 'name' => $nameJson,
             ]);
 
+            if (($raw['is_base'] ?? false) === true) {
+                $descKey = is_string($raw['name_localization_id'] ?? null) ? $raw['name_localization_id'] : null;
+                $description = $this->resolveSibling($descKey, 'DESC');
+                if ($description !== null) {
+                    $critter->update(['description' => $description]);
+                }
+            }
+
             /** @var list<array<string, mixed>> $diets */
             $diets = is_array($raw['diets'] ?? null) ? $raw['diets'] : [];
             foreach ($diets as $diet) {
@@ -63,5 +71,17 @@ final readonly class CritterImporter
                 ]);
             }
         }
+    }
+
+    /** @return array<string, string>|null */
+    private function resolveSibling(?string $nameKey, string $suffix): ?array
+    {
+        if ($nameKey === null || ! str_ends_with($nameKey, '.NAME')) {
+            return null;
+        }
+
+        $key = mb_substr($nameKey, 0, -mb_strlen('.NAME')).'.'.$suffix;
+
+        return $this->stringResolver->resolveToJson($key);
     }
 }

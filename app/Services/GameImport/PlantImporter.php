@@ -39,6 +39,14 @@ final readonly class PlantImporter
                 'name' => $nameJson,
             ]);
 
+            if (($raw['is_base'] ?? false) === true) {
+                $descKey = is_string($raw['name_localization_id'] ?? null) ? $raw['name_localization_id'] : null;
+                $description = $this->resolveSibling($descKey, 'DESC');
+                if ($description !== null) {
+                    $plant->update(['description' => $description]);
+                }
+            }
+
             /** @var list<array<string, mixed>> $inputs */
             $inputs = is_array($raw['inputs'] ?? null) ? $raw['inputs'] : [];
             foreach ($inputs as $input) {
@@ -61,5 +69,17 @@ final readonly class PlantImporter
                 ]);
             }
         }
+    }
+
+    /** @return array<string, string>|null */
+    private function resolveSibling(?string $nameKey, string $suffix): ?array
+    {
+        if ($nameKey === null || ! str_ends_with($nameKey, '.NAME')) {
+            return null;
+        }
+
+        $key = mb_substr($nameKey, 0, -mb_strlen('.NAME')).'.'.$suffix;
+
+        return $this->stringResolver->resolveToJson($key);
     }
 }
