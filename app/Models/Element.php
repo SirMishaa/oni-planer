@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Concerns\HasCodexEntries;
 use Database\Factories\ElementFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -19,6 +20,8 @@ use Spatie\Translatable\HasTranslations;
 ])]
 final class Element extends Model
 {
+    use HasCodexEntries;
+
     /** @use HasFactory<ElementFactory> */
     use HasFactory;
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Concerns\HasCodexEntries;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,7 @@ use Spatie\Translatable\HasTranslations;
 ])]
 final class Building extends Model
 {
+    use HasCodexEntries;
     use HasFactory;
     use HasTranslations;
 
