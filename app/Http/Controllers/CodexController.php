@@ -15,6 +15,13 @@ final class CodexController
     public function index(): JsonResponse
     {
         $entries = CodexEntry::query()
+            ->with([
+                'buildings:id,building_id',
+                'elements:id,element_id',
+                'critters:id,critter_id',
+                'plants:id,plant_id',
+                'geyserTypes:id,geyser_id',
+            ])
             ->orderBy('category')
             ->orderBy('codex_id')
             ->get(['id', 'codex_id', 'category', 'parent_codex_id', 'title'])
@@ -23,6 +30,7 @@ final class CodexController
                 'category' => $entry->category,
                 'parent_codex_id' => $entry->parent_codex_id,
                 'title' => $entry->getTranslations('title'),
+                'image' => $this->imageFor($entry),
             ]));
 
         return response()->json($entries);

@@ -104,3 +104,21 @@ it('returns a null image when no linked entity has an asset', function (): void 
         ->assertOk()
         ->assertJsonPath('image', null);
 });
+
+it('includes a thumbnail on list items whose linked entity has an asset', function (): void {
+    $entry = CodexEntry::factory()->create(['codex_id' => 'Generator', 'category' => 'Buildings']);
+    $building = Building::factory()->create(['building_id' => 'Generator']);
+    $entry->buildings()->attach($building->id);
+
+    $relative = 'assets/game/buildings/Generator.webp';
+    @mkdir(public_path('assets/game/buildings'), 0777, true);
+    file_put_contents(public_path($relative), 'webp');
+
+    try {
+        $this->getJson(route('codex.index'))
+            ->assertOk()
+            ->assertJsonFragment(['codex_id' => 'Generator', 'image' => '/'.$relative]);
+    } finally {
+        @unlink(public_path($relative));
+    }
+});

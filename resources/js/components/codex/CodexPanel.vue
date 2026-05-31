@@ -499,6 +499,13 @@ onBeforeUnmount(stopResize);
                                             codex.openArticle(entry.codex_id)
                                         "
                                     >
+                                        <img
+                                            v-if="entry.image"
+                                            :src="entry.image"
+                                            alt=""
+                                            loading="lazy"
+                                            class="h-6 w-6 shrink-0 rounded object-contain"
+                                        />
                                         <span class="truncate">{{
                                             pickLocale(
                                                 entry.title,
@@ -579,6 +586,13 @@ onBeforeUnmount(stopResize);
                                                     )
                                                 "
                                             >
+                                                <img
+                                                    v-if="entry.image"
+                                                    :src="entry.image"
+                                                    alt=""
+                                                    loading="lazy"
+                                                    class="h-6 w-6 shrink-0 rounded object-contain"
+                                                />
                                                 <span class="truncate">{{
                                                     pickLocale(
                                                         entry.title,
