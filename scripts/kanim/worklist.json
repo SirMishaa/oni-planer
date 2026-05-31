@@ -1,0 +1,582 @@
+[
+    {
+        "category": "critters",
+        "key": "AlgaeStego",
+        "kanim": "algae_stego"
+    },
+    {
+        "category": "critters",
+        "key": "Chameleon",
+        "kanim": "chameleon"
+    },
+    {
+        "category": "critters",
+        "key": "Crab",
+        "kanim": "crab"
+    },
+    {
+        "category": "critters",
+        "key": "CrabFreshWater",
+        "kanim": "crab_fresh_water"
+    },
+    {
+        "category": "critters",
+        "key": "CrabWood",
+        "kanim": "crab_wood"
+    },
+    {
+        "category": "critters",
+        "key": "DieselMoo",
+        "kanim": "diesel_moo"
+    },
+    {
+        "category": "critters",
+        "key": "DivergentBeetle",
+        "kanim": "divergent_beetle"
+    },
+    {
+        "category": "critters",
+        "key": "DivergentWorm",
+        "kanim": "divergent_worm"
+    },
+    {
+        "category": "critters",
+        "key": "Drecko",
+        "kanim": "drecko"
+    },
+    {
+        "category": "critters",
+        "key": "DreckoPlastic",
+        "kanim": "drecko_plastic"
+    },
+    {
+        "category": "critters",
+        "key": "GlassDeer",
+        "kanim": "glass_deer"
+    },
+    {
+        "category": "critters",
+        "key": "GoldBelly",
+        "kanim": "gold_belly"
+    },
+    {
+        "category": "critters",
+        "key": "Hatch",
+        "kanim": "hatch"
+    },
+    {
+        "category": "critters",
+        "key": "HatchHard",
+        "kanim": "hatch_hard"
+    },
+    {
+        "category": "critters",
+        "key": "HatchMetal",
+        "kanim": "hatch_metal"
+    },
+    {
+        "category": "critters",
+        "key": "HatchVeggie",
+        "kanim": "hatch_veggie"
+    },
+    {
+        "category": "critters",
+        "key": "IceBelly",
+        "kanim": "ice_belly"
+    },
+    {
+        "category": "critters",
+        "key": "LightBugBlack",
+        "kanim": "light_bug_black"
+    },
+    {
+        "category": "critters",
+        "key": "LightBugBlue",
+        "kanim": "light_bug_blue"
+    },
+    {
+        "category": "critters",
+        "key": "LightBug",
+        "kanim": "light_bug"
+    },
+    {
+        "category": "critters",
+        "key": "LightBugCrystal",
+        "kanim": "light_bug_crystal"
+    },
+    {
+        "category": "critters",
+        "key": "LightBugOrange",
+        "kanim": "light_bug_orange"
+    },
+    {
+        "category": "critters",
+        "key": "LightBugPink",
+        "kanim": "light_bug_pink"
+    },
+    {
+        "category": "critters",
+        "key": "LightBugPurple",
+        "kanim": "light_bug_purple"
+    },
+    {
+        "category": "critters",
+        "key": "Mole",
+        "kanim": "mole"
+    },
+    {
+        "category": "critters",
+        "key": "MoleDelicacy",
+        "kanim": "mole_delicacy"
+    },
+    {
+        "category": "critters",
+        "key": "Moo",
+        "kanim": "moo"
+    },
+    {
+        "category": "critters",
+        "key": "OilFloater",
+        "kanim": "oil_floater"
+    },
+    {
+        "category": "critters",
+        "key": "OilFloaterDecor",
+        "kanim": "oil_floater_decor"
+    },
+    {
+        "category": "critters",
+        "key": "OilFloaterHighTemp",
+        "kanim": "oil_floater_high_temp"
+    },
+    {
+        "category": "critters",
+        "key": "PacuCleaner",
+        "kanim": "pacu_cleaner"
+    },
+    {
+        "category": "critters",
+        "key": "Pacu",
+        "kanim": "pacu"
+    },
+    {
+        "category": "critters",
+        "key": "PacuTropical",
+        "kanim": "pacu_tropical"
+    },
+    {
+        "category": "critters",
+        "key": "PrehistoricPacu",
+        "kanim": "prehistoric_pacu"
+    },
+    {
+        "category": "critters",
+        "key": "PuftAlpha",
+        "kanim": "puft_alpha"
+    },
+    {
+        "category": "critters",
+        "key": "PuftBleachstone",
+        "kanim": "puft_bleachstone"
+    },
+    {
+        "category": "critters",
+        "key": "Puft",
+        "kanim": "puft"
+    },
+    {
+        "category": "critters",
+        "key": "PuftOxylite",
+        "kanim": "puft_oxylite"
+    },
+    {
+        "category": "critters",
+        "key": "Raptor",
+        "kanim": "raptor"
+    },
+    {
+        "category": "critters",
+        "key": "Seal",
+        "kanim": "seal"
+    },
+    {
+        "category": "critters",
+        "key": "Squirrel",
+        "kanim": "squirrel"
+    },
+    {
+        "category": "critters",
+        "key": "SquirrelHug",
+        "kanim": "squirrel_hug"
+    },
+    {
+        "category": "critters",
+        "key": "Staterpillar",
+        "kanim": "staterpillar"
+    },
+    {
+        "category": "critters",
+        "key": "StaterpillarGas",
+        "kanim": "staterpillar_gas"
+    },
+    {
+        "category": "critters",
+        "key": "StaterpillarLiquid",
+        "kanim": "staterpillar_liquid"
+    },
+    {
+        "category": "critters",
+        "key": "Stego",
+        "kanim": "stego"
+    },
+    {
+        "category": "critters",
+        "key": "WoodDeer",
+        "kanim": "wood_deer"
+    },
+    {
+        "category": "critters",
+        "key": "Bee",
+        "kanim": "bee"
+    },
+    {
+        "category": "critters",
+        "key": "Worm",
+        "kanim": "worm"
+    },
+    {
+        "category": "plants",
+        "key": "BasicFabricMaterialPlant",
+        "kanim": "basic_fabric_material_plant"
+    },
+    {
+        "category": "plants",
+        "key": "BasicSingleHarvestPlant",
+        "kanim": "basic_single_harvest_plant"
+    },
+    {
+        "category": "plants",
+        "key": "BeanPlant",
+        "kanim": "bean_plant"
+    },
+    {
+        "category": "plants",
+        "key": "BlueGrass",
+        "kanim": "blue_grass"
+    },
+    {
+        "category": "plants",
+        "key": "BulbPlant",
+        "kanim": "bulb_plant"
+    },
+    {
+        "category": "plants",
+        "key": "ButterflyPlant",
+        "kanim": "butterfly_plant"
+    },
+    {
+        "category": "plants",
+        "key": "CactusPlant",
+        "kanim": "cactus_plant"
+    },
+    {
+        "category": "plants",
+        "key": "CarrotPlant",
+        "kanim": "carrot_plant"
+    },
+    {
+        "category": "plants",
+        "key": "ColdWheat",
+        "kanim": "cold_wheat"
+    },
+    {
+        "category": "plants",
+        "key": "CritterTrapPlant",
+        "kanim": "critter_trap_plant"
+    },
+    {
+        "category": "plants",
+        "key": "Cylindrica",
+        "kanim": "cylindrica"
+    },
+    {
+        "category": "plants",
+        "key": "DewDripperPlant",
+        "kanim": "dew_dripper_plant"
+    },
+    {
+        "category": "plants",
+        "key": "Dinofern",
+        "kanim": "dinofern"
+    },
+    {
+        "category": "plants",
+        "key": "EvilFlower",
+        "kanim": "evil_flower"
+    },
+    {
+        "category": "plants",
+        "key": "FilterPlant",
+        "kanim": "filter_plant"
+    },
+    {
+        "category": "plants",
+        "key": "FlyTrapPlant",
+        "kanim": "fly_trap_plant"
+    },
+    {
+        "category": "plants",
+        "key": "ForestTreeBranch",
+        "kanim": "forest_tree_branch"
+    },
+    {
+        "category": "plants",
+        "key": "ForestTree",
+        "kanim": "forest_tree"
+    },
+    {
+        "category": "plants",
+        "key": "GardenDecorPlant",
+        "kanim": "garden_decor_plant"
+    },
+    {
+        "category": "plants",
+        "key": "GardenFoodPlant",
+        "kanim": "garden_food_plant"
+    },
+    {
+        "category": "plants",
+        "key": "GasGrass",
+        "kanim": "gas_grass"
+    },
+    {
+        "category": "plants",
+        "key": "HardSkinBerryPlant",
+        "kanim": "hard_skin_berry_plant"
+    },
+    {
+        "category": "plants",
+        "key": "IceFlower",
+        "kanim": "ice_flower"
+    },
+    {
+        "category": "plants",
+        "key": "KelpPlant",
+        "kanim": "kelp_plant"
+    },
+    {
+        "category": "plants",
+        "key": "LeafyPlant",
+        "kanim": "leafy_plant"
+    },
+    {
+        "category": "plants",
+        "key": "MushroomPlant",
+        "kanim": "mushroom_plant"
+    },
+    {
+        "category": "plants",
+        "key": "Oxyfern",
+        "kanim": "oxyfern"
+    },
+    {
+        "category": "plants",
+        "key": "PrickleFlower",
+        "kanim": "prickle_flower"
+    },
+    {
+        "category": "plants",
+        "key": "PrickleGrass",
+        "kanim": "prickle_grass"
+    },
+    {
+        "category": "plants",
+        "key": "SaltPlant",
+        "kanim": "salt_plant"
+    },
+    {
+        "category": "plants",
+        "key": "SeaLettuce",
+        "kanim": "sea_lettuce"
+    },
+    {
+        "category": "plants",
+        "key": "SpaceTreeBranch",
+        "kanim": "space_tree_branch"
+    },
+    {
+        "category": "plants",
+        "key": "SpaceTree",
+        "kanim": "space_tree"
+    },
+    {
+        "category": "plants",
+        "key": "SpiceVine",
+        "kanim": "spice_vine"
+    },
+    {
+        "category": "plants",
+        "key": "SwampHarvestPlant",
+        "kanim": "swamp_harvest_plant"
+    },
+    {
+        "category": "plants",
+        "key": "SwampLily",
+        "kanim": "swamp_lily"
+    },
+    {
+        "category": "plants",
+        "key": "ToePlant",
+        "kanim": "toe_plant"
+    },
+    {
+        "category": "plants",
+        "key": "VineBranch",
+        "kanim": "vine_branch"
+    },
+    {
+        "category": "plants",
+        "key": "VineMother",
+        "kanim": "vine_mother"
+    },
+    {
+        "category": "plants",
+        "key": "WineCups",
+        "kanim": "wine_cups"
+    },
+    {
+        "category": "plants",
+        "key": "WormPlant",
+        "kanim": "worm_plant"
+    },
+    {
+        "category": "geysers",
+        "key": "steam",
+        "kanim": "steam"
+    },
+    {
+        "category": "geysers",
+        "key": "hot_steam",
+        "kanim": "hot_steam"
+    },
+    {
+        "category": "geysers",
+        "key": "hot_water",
+        "kanim": "hot_water"
+    },
+    {
+        "category": "geysers",
+        "key": "slush_water",
+        "kanim": "slush_water"
+    },
+    {
+        "category": "geysers",
+        "key": "filthy_water",
+        "kanim": "filthy_water"
+    },
+    {
+        "category": "geysers",
+        "key": "slush_salt_water",
+        "kanim": "slush_salt_water"
+    },
+    {
+        "category": "geysers",
+        "key": "salt_water",
+        "kanim": "salt_water"
+    },
+    {
+        "category": "geysers",
+        "key": "small_volcano",
+        "kanim": "small_volcano"
+    },
+    {
+        "category": "geysers",
+        "key": "big_volcano",
+        "kanim": "big_volcano"
+    },
+    {
+        "category": "geysers",
+        "key": "liquid_co2",
+        "kanim": "liquid_co2"
+    },
+    {
+        "category": "geysers",
+        "key": "hot_co2",
+        "kanim": "hot_co2"
+    },
+    {
+        "category": "geysers",
+        "key": "hot_hydrogen",
+        "kanim": "hot_hydrogen"
+    },
+    {
+        "category": "geysers",
+        "key": "hot_po2",
+        "kanim": "hot_po2"
+    },
+    {
+        "category": "geysers",
+        "key": "slimy_po2",
+        "kanim": "slimy_po2"
+    },
+    {
+        "category": "geysers",
+        "key": "chlorine_gas",
+        "kanim": "chlorine_gas"
+    },
+    {
+        "category": "geysers",
+        "key": "chlorine_gas_cool",
+        "kanim": "chlorine_gas_cool"
+    },
+    {
+        "category": "geysers",
+        "key": "methane",
+        "kanim": "methane"
+    },
+    {
+        "category": "geysers",
+        "key": "molten_copper",
+        "kanim": "molten_copper"
+    },
+    {
+        "category": "geysers",
+        "key": "molten_iron",
+        "kanim": "molten_iron"
+    },
+    {
+        "category": "geysers",
+        "key": "molten_gold",
+        "kanim": "molten_gold"
+    },
+    {
+        "category": "geysers",
+        "key": "molten_aluminum",
+        "kanim": "molten_aluminum"
+    },
+    {
+        "category": "geysers",
+        "key": "molten_tungsten",
+        "kanim": "molten_tungsten"
+    },
+    {
+        "category": "geysers",
+        "key": "molten_niobium",
+        "kanim": "molten_niobium"
+    },
+    {
+        "category": "geysers",
+        "key": "molten_cobalt",
+        "kanim": "molten_cobalt"
+    },
+    {
+        "category": "geysers",
+        "key": "oil_drip",
+        "kanim": "oil_drip"
+    },
+    {
+        "category": "geysers",
+        "key": "liquid_sulfur",
+        "kanim": "liquid_sulfur"
+    }
+]
