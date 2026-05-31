@@ -9,6 +9,48 @@ power_consumption: number | null,
 power_generation: number | null,
 dlc_id: string | null,
 };
+export type BuildingMaterialData = {
+element_id: string | null,
+material_category: string | null,
+amount: number,
+};
+export type BuildingShowData = {
+building_id: string,
+name: Record<string, string>,
+category: string,
+sub_group: string | null,
+width: number,
+height: number,
+power_consumption: number | null,
+power_generation: number | null,
+heat_generation: number | null,
+construction_time: number | null,
+description: Record<string, string>,
+dlc_id: string | null,
+materials: BuildingMaterialData[],
+};
+export type CodexArticleData = {
+codex_id: string,
+category: string,
+parent_codex_id: string | null,
+title: Record<string, string>,
+icon_asset: string | null,
+content: any[],
+image: string | null,
+links: CodexLinkData[],
+};
+export type CodexLinkData = {
+type: string,
+key: string,
+label: string,
+url: string | null,
+};
+export type CodexListItemData = {
+codex_id: string,
+category: string,
+parent_codex_id: string | null,
+title: Record<string, string>,
+};
 export type ElementData = {
 element_id: string,
 name: Record<string, string>,
