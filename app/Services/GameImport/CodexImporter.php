@@ -29,7 +29,10 @@ final readonly class CodexImporter
             $data = Yaml::parseFile($file->getRealPath(), Yaml::PARSE_CUSTOM_TAGS);
 
             $codexId = $data['id'] ?? null;
-            if (! is_string($codexId) || $codexId === '') {
+            if (! is_string($codexId)) {
+                continue;
+            }
+            if ($codexId === '') {
                 continue;
             }
 

@@ -47,22 +47,17 @@ final class StringResolver
         $capturing = false;
         $buffer = '';
 
-        $flush = function () use (&$strings, &$currentCtxt, &$capturing, &$buffer): void {
-            if ($currentCtxt !== null && $capturing && $buffer !== '') {
-                $strings[$currentCtxt] = $buffer;
-            }
-
-            $currentCtxt = null;
-            $capturing = false;
-            $buffer = '';
-        };
-
         foreach (explode("\n", $content) as $rawLine) {
             $line = mb_rtrim($rawLine, "\r");
 
             if (str_starts_with($line, 'msgctxt "')) {
-                $flush();
+                if ($capturing && $currentCtxt !== null && $buffer !== '') {
+                    $strings[$currentCtxt] = $buffer;
+                }
+
                 $currentCtxt = $this->unquote(mb_substr($line, 8));
+                $capturing = false;
+                $buffer = '';
 
                 continue;
             }
@@ -81,11 +76,18 @@ final class StringResolver
             }
 
             if ($capturing) {
-                $flush();
+                if ($currentCtxt !== null && $buffer !== '') {
+                    $strings[$currentCtxt] = $buffer;
+                }
+
+                $capturing = false;
+                $buffer = '';
             }
         }
 
-        $flush();
+        if ($capturing && $currentCtxt !== null && $buffer !== '') {
+            $strings[$currentCtxt] = $buffer;
+        }
 
         return $strings;
     }
@@ -96,6 +98,7 @@ final class StringResolver
         if (str_starts_with($token, '"')) {
             $token = mb_substr($token, 1);
         }
+
         if (str_ends_with($token, '"')) {
             $token = mb_substr($token, 0, -1);
         }

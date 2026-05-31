@@ -39,13 +39,14 @@ final class BuildingSubGroupResolver
         $result = [];
         $unassigned = [];
         foreach ($buildings as $building) {
-            if (isset(self::OVERRIDES[$building->building_id])) {
+            if (isset(self::OVERRIDES[$building->building_id])) { // @phpstan-ignore isset.offset (OVERRIDES is an intentionally empty extension point for edge-case building IDs)
                 $result[$building->building_id] = self::OVERRIDES[$building->building_id];
 
                 continue;
             }
 
-            $words = $this->splitCamelCase($building->getTranslation('name', 'en'));
+            $name = $building->getTranslation('name', 'en');
+            $words = $this->splitCamelCase(is_string($name) ? $name : '');
             $last = end($words);
 
             if (isset($lastGroups[$last])) {
@@ -72,7 +73,8 @@ final class BuildingSubGroupResolver
     {
         $counts = [];
         foreach ($buildings as $building) {
-            $words = $this->splitCamelCase($building->getTranslation('name', 'en'));
+            $name = $building->getTranslation('name', 'en');
+            $words = $this->splitCamelCase(is_string($name) ? $name : '');
             $word = $position === 'last' ? end($words) : reset($words);
             $counts[$word] = ($counts[$word] ?? 0) + 1;
         }

@@ -6,7 +6,6 @@ namespace App\Models;
 
 use App\Models\Attributes\GameData;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -14,8 +13,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['critter_morph_id', 'element_id', 'amount_per_cycle', 'output_type'])]
 final class CritterMorphOutput extends Model
 {
-    use HasFactory;
-
     /** @return BelongsTo<Element, $this> */
     public function element(): BelongsTo
     {

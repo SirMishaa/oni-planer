@@ -31,8 +31,10 @@ final class GameDataTables
 
             /** @var class-string $class */
             $class = 'App\\Models\\'.str_replace(['/', '.php'], ['\\', ''], $file->getRelativePathname());
-
-            if (! class_exists($class) || ! is_subclass_of($class, Model::class)) {
+            if (! class_exists($class)) {
+                continue;
+            }
+            if (! is_subclass_of($class, Model::class)) {
                 continue;
             }
 

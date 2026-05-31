@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Data\BuildingData;
+use App\Data\BuildingMaterialData;
+use App\Data\BuildingShowData;
 use App\Models\Building;
 use App\Services\BuildingSubGroupResolver;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
@@ -19,14 +22,46 @@ final class BuildingController
     public function index(): Response
     {
         /** @var list<array<string, mixed>> $buildings */
-        $buildings = Cache::rememberForever(self::CACHE_KEY, fn () => $this->buildArray());
+        $buildings = Cache::rememberForever(self::CACHE_KEY, fn (): array => $this->buildArray());
 
         return Inertia::render('Buildings/Index', [
             'buildings' => $buildings,
         ]);
     }
 
-    private static function splitCamelCase(string $name): string
+    public function show(Building $building): JsonResponse
+    {
+        $building->load('constructionMaterials');
+
+        $materials = $building->constructionMaterials
+            ->map(fn ($m): BuildingMaterialData => BuildingMaterialData::from([
+                'element_id' => $m->element_id ?? null,
+                'material_category' => $m->material_category ?? null,
+                'amount' => $m->amount,
+            ]))
+            ->values()
+            ->all();
+
+        $data = BuildingShowData::from([
+            'building_id' => $building->building_id,
+            'name' => array_map(fn (mixed $value): string => $this->splitCamelCase(is_string($value) ? $value : ''), $building->getTranslations('name')),
+            'category' => $building->category,
+            'sub_group' => null,
+            'width' => $building->width,
+            'height' => $building->height,
+            'power_consumption' => $building->power_consumption,
+            'power_generation' => $building->power_generation,
+            'heat_generation' => $building->heat_generation,
+            'construction_time' => $building->construction_time,
+            'description' => $building->getTranslations('description'),
+            'dlc_id' => $building->dlc_id ?: null,
+            'materials' => $materials,
+        ]);
+
+        return response()->json($data);
+    }
+
+    private function splitCamelCase(string $name): string
     {
         if (mb_strpos($name, ' ') !== false) {
             return $name;
@@ -44,24 +79,25 @@ final class BuildingController
     {
         $categoryOrder = ['Base', 'Oxygen', 'Power', 'Food', 'Plumbing', 'HVAC', 'Refining', 'Medical', 'Furniture', 'Equipment', 'Utilities', 'Automation', 'Conveyance', 'Rocketry', 'HEP', 'Other'];
         $caseExpr = 'CASE category '.implode(' ', array_map(
-            fn (string $cat, int $i): string => "WHEN '{$cat}' THEN {$i}",
+            fn (string $cat, int $i): string => sprintf("WHEN '%s' THEN %s", $cat, $i),
             $categoryOrder,
             array_keys($categoryOrder),
         )).' ELSE 99 END';
 
         $buildings = Building::query()
-            ->orderByRaw($caseExpr)
+            ->orderByRaw($caseExpr) // @phpstan-ignore argument.type (CASE expression built from a hardcoded category whitelist, no user input)
             ->orderBy('building_id')
             ->get(['building_id', 'name', 'category', 'width', 'height', 'power_consumption', 'power_generation', 'dlc_id']);
 
         $resolver = new BuildingSubGroupResolver;
         $subGroups = $buildings
             ->groupBy('category')
-            ->flatMap(fn (Collection $group) => $resolver->resolve($group));
+            ->flatMap(fn (Collection $group): array => $resolver->resolve($group));
 
-        return $buildings->map(fn (Building $b): BuildingData => BuildingData::from([
+        /** @var list<array<string, mixed>> $result */
+        $result = $buildings->map(fn (Building $b): BuildingData => BuildingData::from([
             'building_id' => $b->building_id,
-            'name' => array_map(self::splitCamelCase(...), $b->getTranslations('name')),
+            'name' => array_map(fn (mixed $value): string => $this->splitCamelCase(is_string($value) ? $value : ''), $b->getTranslations('name')),
             'category' => $b->category,
             'sub_group' => $subGroups[$b->building_id] ?? null,
             'width' => $b->width,
@@ -70,5 +106,7 @@ final class BuildingController
             'power_generation' => $b->power_generation,
             'dlc_id' => $b->dlc_id,
         ]))->values()->jsonSerialize();
+
+        return $result;
     }
 }

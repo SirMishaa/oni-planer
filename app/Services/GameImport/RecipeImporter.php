@@ -35,13 +35,14 @@ final class RecipeImporter
             /** @var list<array<string, mixed>> $recipeInputs */
             $recipeInputs = is_array($raw['inputs'] ?? null) ? $raw['inputs'] : [];
             foreach ($recipeInputs as $item) {
-                if (! isset($validElementIds[$item['element_id']])) {
+                $elementId = $item['element_id'] ?? null;
+                if (! is_string($elementId) || ! isset($validElementIds[$elementId])) {
                     continue;
                 }
 
                 RecipeItem::query()->create([
                     'recipe_id' => $recipe->id,
-                    'element_id' => $item['element_id'],
+                    'element_id' => $elementId,
                     'amount' => $item['amount'],
                     'role' => 'input',
                 ]);
@@ -50,13 +51,14 @@ final class RecipeImporter
             /** @var list<array<string, mixed>> $recipeOutputs */
             $recipeOutputs = is_array($raw['outputs'] ?? null) ? $raw['outputs'] : [];
             foreach ($recipeOutputs as $item) {
-                if (! isset($validElementIds[$item['element_id']])) {
+                $elementId = $item['element_id'] ?? null;
+                if (! is_string($elementId) || ! isset($validElementIds[$elementId])) {
                     continue;
                 }
 
                 RecipeItem::query()->create([
                     'recipe_id' => $recipe->id,
-                    'element_id' => $item['element_id'],
+                    'element_id' => $elementId,
                     'amount' => $item['amount'],
                     'role' => 'output',
                 ]);

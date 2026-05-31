@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Models\Attributes\GameData;
 use App\Models\Concerns\HasCodexEntries;
+use Database\Factories\BuildingFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -21,7 +22,10 @@ use Spatie\Translatable\HasTranslations;
 final class Building extends Model
 {
     use HasCodexEntries;
+
+    /** @use HasFactory<BuildingFactory> */
     use HasFactory;
+
     use HasTranslations;
 
     /** @var list<string> */

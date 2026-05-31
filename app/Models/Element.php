@@ -35,7 +35,7 @@ final class Element extends Model
     public function resolveRouteBinding($value, $field = null): ?static
     {
         return self::query()
-            ->where('element_id', Str::studly((string) $value))
+            ->where('element_id', Str::studly(is_string($value) ? $value : ''))
             ->where('is_disabled', false)
             ->first();
     }
