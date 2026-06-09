@@ -140,9 +140,11 @@ Assembly-CSharp.dll
 - **Egg-rate semantics:** `1 / fertilityCycles` is a first-order model; the
   calculator can refine (maturity delay, lifespan) in sub-project 2. The raw
   fertility/incubation values are preserved so no data is lost.
-- **Units:** confirm cycle-vs-second units during implementation (e.g. the
-  fixture's `incubation_time: 9000` looks like seconds while the DB stores 20 for
-  Hatch). Normalize in the extractor and document the unit per field.
+- **Units (decided):** all rates and durations are stored **per cycle**. The
+  extractor normalizes any second-based game constants to cycles (1 cycle =
+  600 s) before emitting JSON, so `amount_per_cycle`, `lifespan`,
+  `incubation_time`, and egg rate are all in cycle units. The fixture's
+  `incubation_time: 9000` (seconds) must therefore be regenerated to cycles.
 
 ## Out of Scope (next sub-project)
 
