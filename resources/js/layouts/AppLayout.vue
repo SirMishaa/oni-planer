@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
+import CodexPanel from '@/components/codex/CodexPanel.vue';
+import { useCodex } from '@/composables/useCodex';
+
+const { dockActive, width: codexWidth } = useCodex();
+
+const contentStyle = computed(() => ({
+    paddingRight: dockActive.value ? `${codexWidth.value}px` : '0px',
+    transition: 'padding-right 320ms cubic-bezier(0.22, 1, 0.36, 1)',
+}));
 
 const STORAGE_KEY = 'oni-sidebar-expanded';
 const expanded = ref(true);
@@ -37,8 +46,9 @@ const navItems: NavItem[] = [
         key: 'critters',
         label: 'Créatures',
         href: '/critters',
-        available: false,
+        available: true,
     },
+    { key: 'ranch', label: 'Élevage', href: '/ranch', available: true },
     { key: 'plants', label: 'Plantes', href: '/plants', available: false },
     { key: 'recipes', label: 'Recettes', href: '/recipes', available: false },
 ];
@@ -58,7 +68,11 @@ function isActive(item: NavItem): boolean {
             :class="expanded ? 'w-55' : 'w-14'"
             style="
                 transition: width 180ms cubic-bezier(0.4, 0, 0.2, 1);
-                background-image: radial-gradient(circle, rgba(255,255,255,0.055) 1px, transparent 1px);
+                background-image: radial-gradient(
+                    circle,
+                    rgba(255, 255, 255, 0.055) 1px,
+                    transparent 1px
+                );
                 background-size: 20px 20px;
             "
         >
@@ -232,6 +246,89 @@ function isActive(item: NavItem): boolean {
                                     d="M4 8V6.5a2 2 0 0 1 4 0V8"
                                     stroke="currentColor"
                                     stroke-width="1.3"
+                                    stroke-linecap="round"
+                                />
+                            </svg>
+                            <!-- Critters icon -->
+                            <svg
+                                v-else-if="item.key === 'critters'"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 18 18"
+                                fill="none"
+                            >
+                                <ellipse
+                                    cx="9"
+                                    cy="11"
+                                    rx="5"
+                                    ry="3.5"
+                                    stroke="currentColor"
+                                    stroke-width="1.3"
+                                />
+                                <circle
+                                    cx="7.2"
+                                    cy="10.5"
+                                    r="0.9"
+                                    fill="currentColor"
+                                />
+                                <circle
+                                    cx="10.8"
+                                    cy="10.5"
+                                    r="0.9"
+                                    fill="currentColor"
+                                />
+                                <path
+                                    d="M4 11c-1.5.5-2.5 1.5-2 2.5"
+                                    stroke="currentColor"
+                                    stroke-width="1.2"
+                                    stroke-linecap="round"
+                                />
+                                <path
+                                    d="M14 11c1.5.5 2.5 1.5 2 2.5"
+                                    stroke="currentColor"
+                                    stroke-width="1.2"
+                                    stroke-linecap="round"
+                                />
+                                <path
+                                    d="M6 7.5C5.5 6 6 4.5 7 4"
+                                    stroke="currentColor"
+                                    stroke-width="1.2"
+                                    stroke-linecap="round"
+                                />
+                                <path
+                                    d="M12 7.5C12.5 6 12 4.5 11 4"
+                                    stroke="currentColor"
+                                    stroke-width="1.2"
+                                    stroke-linecap="round"
+                                />
+                            </svg>
+                            <!-- Ranch icon: enclosure fence -->
+                            <svg
+                                v-else-if="item.key === 'ranch'"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 18 18"
+                                fill="none"
+                            >
+                                <rect
+                                    x="2"
+                                    y="5"
+                                    width="14"
+                                    height="9"
+                                    rx="1"
+                                    stroke="currentColor"
+                                    stroke-width="1.3"
+                                />
+                                <path
+                                    d="M2 8h14M2 11h14"
+                                    stroke="currentColor"
+                                    stroke-width="1.2"
+                                    stroke-linecap="round"
+                                />
+                                <path
+                                    d="M6 5v9M12 5v9"
+                                    stroke="currentColor"
+                                    stroke-width="1.2"
                                     stroke-linecap="round"
                                 />
                             </svg>
@@ -501,13 +598,17 @@ function isActive(item: NavItem): boolean {
         <!-- endregion -->
 
         <!-- region Content -->
-        <div class="flex flex-1 flex-col overflow-hidden">
+        <div class="flex flex-1 flex-col overflow-hidden" :style="contentStyle">
             <div
                 class="content-grid flex-1 overflow-y-auto bg-[oklch(94%_0.015_75)] text-[oklch(18%_0.025_60)] dark:bg-[oklch(22%_0.016_250)] dark:text-[oklch(90%_0.012_65)]"
             >
                 <slot />
             </div>
         </div>
+        <!-- endregion -->
+
+        <!-- region Codex -->
+        <CodexPanel />
         <!-- endregion -->
 
         <!-- region Mobile nav -->
@@ -586,6 +687,77 @@ function isActive(item: NavItem): boolean {
                                 d="M4 8V6.5a2 2 0 0 1 4 0V8"
                                 stroke="currentColor"
                                 stroke-width="1.3"
+                                stroke-linecap="round"
+                            />
+                        </svg>
+                        <svg
+                            v-else-if="item.key === 'critters'"
+                            width="18"
+                            height="18"
+                            viewBox="0 0 18 18"
+                            fill="none"
+                        >
+                            <ellipse
+                                cx="9"
+                                cy="11"
+                                rx="5"
+                                ry="3.5"
+                                stroke="currentColor"
+                                stroke-width="1.3"
+                            />
+                            <circle cx="7.2" cy="10.5" r="0.9" fill="currentColor" />
+                            <circle cx="10.8" cy="10.5" r="0.9" fill="currentColor" />
+                            <path
+                                d="M4 11c-1.5.5-2.5 1.5-2 2.5"
+                                stroke="currentColor"
+                                stroke-width="1.2"
+                                stroke-linecap="round"
+                            />
+                            <path
+                                d="M14 11c1.5.5 2.5 1.5 2 2.5"
+                                stroke="currentColor"
+                                stroke-width="1.2"
+                                stroke-linecap="round"
+                            />
+                            <path
+                                d="M6 7.5C5.5 6 6 4.5 7 4"
+                                stroke="currentColor"
+                                stroke-width="1.2"
+                                stroke-linecap="round"
+                            />
+                            <path
+                                d="M12 7.5C12.5 6 12 4.5 11 4"
+                                stroke="currentColor"
+                                stroke-width="1.2"
+                                stroke-linecap="round"
+                            />
+                        </svg>
+                        <svg
+                            v-else-if="item.key === 'ranch'"
+                            width="18"
+                            height="18"
+                            viewBox="0 0 18 18"
+                            fill="none"
+                        >
+                            <rect
+                                x="2"
+                                y="5"
+                                width="14"
+                                height="9"
+                                rx="1"
+                                stroke="currentColor"
+                                stroke-width="1.3"
+                            />
+                            <path
+                                d="M2 8h14M2 11h14"
+                                stroke="currentColor"
+                                stroke-width="1.2"
+                                stroke-linecap="round"
+                            />
+                            <path
+                                d="M6 5v9M12 5v9"
+                                stroke="currentColor"
+                                stroke-width="1.2"
                                 stroke-linecap="round"
                             />
                         </svg>
