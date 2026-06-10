@@ -6,6 +6,7 @@ use App\Http\Controllers\BuildingController;
 use App\Http\Controllers\CodexController;
 use App\Http\Controllers\CritterController;
 use App\Http\Controllers\ElementController;
+use App\Http\Controllers\RanchController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [ElementController::class, 'index'])->name('elements.index');
@@ -19,3 +20,4 @@ Route::get('/codex/{codexEntry:codex_id}', [CodexController::class, 'show'])->na
 
 Route::get('/critters', [CritterController::class, 'index'])->name('critters.index');
 Route::get('/critters/{family}', [CritterController::class, 'show'])->name('critters.show');
+Route::get('/ranch', [RanchController::class, 'index'])->name('ranch.index');
