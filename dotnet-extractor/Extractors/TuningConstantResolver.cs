@@ -45,6 +45,12 @@ public sealed class TuningConstantResolver
                     if (ins[i].OpCode != OpCodes.Stsfld || ins[i].Operand is not FieldReference fr) { continue; }
 
                     // Walk backwards from the stsfld to find the value being stored.
+                    // Assumes the stored value is a single bare push (a literal or one
+                    // ldsfld), not an arithmetic expression: the scan takes the first
+                    // literal/ldsfld it meets and does not track stack depth, so a
+                    // computed field (e.g. STANDARD_STOMACH_SIZE = A * B) is left
+                    // unresolved rather than mis-resolved. This matches every *Tuning
+                    // field we extract; computed fields are an accepted residual zero.
                     for (int j = i - 1; j >= 0; j--)
                     {
                         var op = ins[j].OpCode.Code;
