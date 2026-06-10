@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\BuildingController;
+use App\Http\Controllers\CodexController;
+use App\Http\Controllers\CritterController;
 use App\Http\Controllers\ElementController;
 use Illuminate\Support\Facades\Route;
 
@@ -11,3 +13,9 @@ Route::get('/elements/{element}', [ElementController::class, 'show'])->name('ele
 
 Route::get('/buildings', [BuildingController::class, 'index'])->name('buildings.index');
 Route::get('/buildings/{building:building_id}', [BuildingController::class, 'show'])->name('buildings.show');
+
+Route::get('/codex', [CodexController::class, 'index'])->name('codex.index');
+Route::get('/codex/{codexEntry:codex_id}', [CodexController::class, 'show'])->name('codex.show');
+
+Route::get('/critters', [CritterController::class, 'index'])->name('critters.index');
+Route::get('/critters/{family}', [CritterController::class, 'show'])->name('critters.show');
