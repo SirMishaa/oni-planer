@@ -11,6 +11,16 @@ public class CritterExtractorTests
     private static readonly Dictionary<int, string> SimHashes = IlHelper.BuildSimHashesMap(Module);
 
     [Fact]
+    public void Hatch_has_calories_and_pen_size()
+    {
+        var hatch = new CritterExtractor(ManagedPath).Extract()
+            .First(c => c.CritterId == "Hatch");
+
+        Assert.Equal(700000f, hatch.CaloriesPerCycle);
+        Assert.True(hatch.OvercrowdingThreshold > 0); // PEN_SIZE_PER_CREATURE
+    }
+
+    [Fact]
     public void Hatch_diet_consumes_minerals_and_produces_coal()
     {
         var resolver = new CritterDietResolver(Module, SimHashes, new TuningConstantResolver(Module));
