@@ -45,14 +45,15 @@ public class CritterExtractorTests
         var hatch = new CritterExtractor(ManagedPath).Extract()
             .First(c => c.CritterId == "Hatch");
 
-        // Diets must be populated (Hatch eats minerals and produces Coal)
-        Assert.NotEmpty(hatch.Diets);
+        // Diets must be populated (Hatch eats minerals and produces Coal) at
+        // 700000 cal/cycle ÷ 5000 cal/kg = 140 kg/cycle consumed per entry.
+        Assert.Equal(7, hatch.Diets.Count);
+        Assert.All(hatch.Diets, d => Assert.Equal(140f, d.AmountPerCycle));
 
-        // Egg output must be present
+        // Egg output: Hatch fertilityCycles = 60 → amount = 1/60 egg/cycle.
         Assert.Contains(hatch.Outputs, o => o.OutputType == "egg");
         var egg = hatch.Outputs.First(o => o.OutputType == "egg");
-
-        // Hatch fertilityCycles = 60 → amount = 1/60 ≈ 0.0167
-        Assert.True(egg.AmountPerCycle > 0);
+        // fertilityCycles is stored as ~60.000004 in IL, so compare with tolerance.
+        Assert.Equal(1f / 60f, egg.AmountPerCycle, 5);
     }
 }

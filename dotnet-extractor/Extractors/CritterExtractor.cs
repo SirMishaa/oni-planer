@@ -198,9 +198,10 @@ public sealed class CritterExtractor
 
     private static object? ArgByName(MethodReference mr, object?[] args, string nameContains)
     {
+        var needle = nameContains.ToLower().Replace("_", "");
         for (int p = 0; p < mr.Parameters.Count && p < args.Length; p++)
         {
-            if (mr.Parameters[p].Name.ToLower().Replace("_", "").Contains(nameContains.ToLower().Replace("_", "")))
+            if (mr.Parameters[p].Name.ToLower().Replace("_", "").Contains(needle))
             {
                 return args[p];
             }
