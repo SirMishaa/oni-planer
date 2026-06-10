@@ -20,6 +20,7 @@ public record CritterDto(
     [property: JsonPropertyName("critter_id")] string CritterId,
     [property: JsonPropertyName("parent_critter_id")] string? ParentCritterId,
     [property: JsonPropertyName("is_base")] bool IsBase,
+    [property: JsonPropertyName("variant_family")] string? VariantFamily,
     [property: JsonPropertyName("min_temp")] float MinTemp,
     [property: JsonPropertyName("max_temp")] float MaxTemp,
     [property: JsonPropertyName("calories_per_cycle")] float CaloriesPerCycle,
@@ -160,6 +161,7 @@ public sealed class CritterExtractor
             CritterId: critterId,
             ParentCritterId: parentId,
             IsBase: isBase,
+            VariantFamily: FindVariantFamily(type),
             MinTemp: minTemp,
             MaxTemp: maxTemp,
             CaloriesPerCycle: calories,
@@ -464,6 +466,31 @@ public sealed class CritterExtractor
                     return s;
             }
         }
+        return null;
+    }
+
+    /// <summary>
+    /// Derive a variant-family grouping label from the shared Base*Config the critter calls.
+    /// Strips "Base" prefix and "Config" suffix: BaseHatchConfig → "Hatch".
+    /// Returns the first match found (multiple Base*Config refs are rare for critters).
+    /// Returns null for critters with no shared base config.
+    /// </summary>
+    private static string? FindVariantFamily(TypeDefinition type)
+    {
+        if (!type.HasMethods) { return null; }
+
+        foreach (var method in type.Methods.Where(m => m.HasBody))
+        {
+            foreach (var instr in method.Body.Instructions)
+            {
+                if (instr.OpCode != OpCodes.Call && instr.OpCode != OpCodes.Callvirt) { continue; }
+                if (instr.Operand is not MethodReference mr) { continue; }
+
+                var n = mr.DeclaringType.Name;
+                if (n.StartsWith("Base") && n.EndsWith("Config")) { return n[4..^6]; } // BaseHatchConfig → "Hatch"
+            }
+        }
+
         return null;
     }
 }

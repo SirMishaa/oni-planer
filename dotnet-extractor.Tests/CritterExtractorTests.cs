@@ -56,4 +56,15 @@ public class CritterExtractorTests
         // fertilityCycles is stored as ~60.000004 in IL, so compare with tolerance.
         Assert.Equal(1f / 60f, egg.AmountPerCycle, 5);
     }
+
+    [Fact]
+    public void Hatch_variants_share_a_variant_family()
+    {
+        var critters = new CritterExtractor(ManagedPath).Extract();
+        var hatch = critters.First(c => c.CritterId == "Hatch");
+        var stone = critters.First(c => c.CritterId == "HatchHard");
+
+        Assert.False(string.IsNullOrEmpty(hatch.VariantFamily));
+        Assert.Equal(hatch.VariantFamily, stone.VariantFamily);
+    }
 }
