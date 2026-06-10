@@ -2,11 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Models\Critter;
-use App\Models\CritterMorph;
-use App\Models\CritterMorphDiet;
-use App\Models\CritterMorphOutput;
-use App\Models\Element;
 use App\Services\Critters\CritterPresenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -16,20 +11,6 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     app()->usePublicPath(sys_get_temp_dir().'/ony-planner-test-public');
 });
-
-function makeHatch(): Critter
-{
-    Element::factory()->create(['element_id' => 'Sand', 'name' => ['en' => 'Sand']]);
-    Element::factory()->create(['element_id' => 'Carbon', 'name' => ['en' => 'Coal']]);
-
-    $critter = Critter::factory()->create(['critter_id' => 'Hatch', 'variant_family' => 'Hatch', 'name' => ['en' => 'Hatch']]);
-    $adult = CritterMorph::factory()->create(['critter_id' => $critter->id, 'morph_id' => 'Hatch', 'is_base' => true]);
-    CritterMorphDiet::factory()->create(['critter_morph_id' => $adult->id, 'consumed_element_id' => 'Sand', 'produced_element_id' => 'Carbon', 'amount_per_cycle' => 140, 'conversion_ratio' => 0.5]);
-    CritterMorphOutput::factory()->egg()->create(['critter_morph_id' => $adult->id, 'element_id' => 'HatchEgg', 'amount_per_cycle' => 1 / 60]);
-    CritterMorph::factory()->baby()->create(['critter_id' => $critter->id, 'morph_id' => 'HatchBaby']);
-
-    return $critter;
-}
 
 it('presents a family with resolved diet element refs and egg outputs', function (): void {
     makeHatch();
