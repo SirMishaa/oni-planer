@@ -60,9 +60,14 @@ def render_anim(symbols: SymbolTable, anim: Anim, skip_hashes: frozenset[int] = 
             if abs(det) < 1e-8:
                 continue
             ia, ib, ic, id_ = d / det, -b / det, -c / det, a / det
+            # The build pivot is measured from the symbol center, so the anchor
+            # in sprite-pixel space is (w/2 - pivot_x, h/2 - pivot_y). Using the
+            # raw pivot scatters limbs by an offset that grows with sprite size.
+            sw, sh = sprite.size
+            ax, ay = sw / 2 - bf.pivot_x, sh / 2 - bf.pivot_y
             wx0, wy0 = ox - tx, oy - ty
-            cu = bf.pivot_x + ia * wx0 + ic * wy0
-            cv = bf.pivot_y + ib * wx0 + id_ * wy0
+            cu = ax + ia * wx0 + ic * wy0
+            cv = ay + ib * wx0 + id_ * wy0
             warped = sprite.transform((cw, ch), Image.AFFINE, (ia, ic, cu, ib, id_, cv), resample=Image.BILINEAR)
             canvas.alpha_composite(warped)
         out.append(canvas)
@@ -83,7 +88,7 @@ def render_anim(symbols: SymbolTable, anim: Anim, skip_hashes: frozenset[int] = 
     return out
 
 
-def encode_webp(frames: list[Image.Image], rate: float, out_path, max_px: int = 160, quality: int = 80) -> None:
+def encode_webp(frames: list[Image.Image], rate: float, out_path, max_px: int = 256, quality: int = 82) -> None:
     if not frames:
         raise ValueError("no frames to encode")
     big = max(frames[0].size)
