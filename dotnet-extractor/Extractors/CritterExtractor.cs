@@ -35,7 +35,6 @@ public record CritterDto(
 public sealed class CritterExtractor
 {
     private readonly string _managedPath;
-    private TuningConstantResolver _tuning = null!;
 
     // critter_id -> (calories_per_cycle, lifespan_cycles, overcrowding_threshold) for configs
     // whose IL resists extraction. Values sourced from the game source / wiki and documented inline.
@@ -52,7 +51,7 @@ public sealed class CritterExtractor
     public List<CritterDto> Extract()
     {
         var module = ModuleDefinition.ReadModule(Path.Combine(_managedPath, "Assembly-CSharp.dll"));
-        _tuning = new TuningConstantResolver(module);
+        var tuning = new TuningConstantResolver(module);
         var results = new List<CritterDto>();
 
         // Adult critter configs: IEntityConfig implementors that call ExtendEntityToWildCreature
@@ -69,13 +68,13 @@ public sealed class CritterExtractor
 
         foreach (var type in adultConfigs)
         {
-            var dto = ExtractCritter(type, isBaby: false);
+            var dto = ExtractCritter(type, isBaby: false, tuning);
             if (dto != null) results.Add(dto);
         }
 
         foreach (var type in babyConfigs)
         {
-            var dto = ExtractCritter(type, isBaby: true);
+            var dto = ExtractCritter(type, isBaby: true, tuning);
             if (dto != null) results.Add(dto);
         }
 
@@ -92,7 +91,7 @@ public sealed class CritterExtractor
             mr.Name == "ExtendEntityToWildCreature"));
     }
 
-    private CritterDto? ExtractCritter(TypeDefinition type, bool isBaby)
+    private static CritterDto? ExtractCritter(TypeDefinition type, bool isBaby, TuningConstantResolver tuning)
     {
         var critterId = DeriveCritterId(type.Name);
         var parentId = isBaby ? DeriveParentId(type.Name) : null;
@@ -109,12 +108,12 @@ public sealed class CritterExtractor
 
         if (!isBaby)
         {
-            var tuning = FindTuningTypeFor(type);
-            calories = ResolveCaloriesPerCycle(tuning);
-            lifespan = ResolveLifespan(tuning);
+            var tuningType = FindTuningTypeFor(type);
+            calories = ResolveCaloriesPerCycle(tuning, tuningType);
+            lifespan = ResolveLifespan(tuning, tuningType);
 
-            if (overcrowding == 0 && _tuning.TryResolve(tuning, "PEN_SIZE_PER_CREATURE", out var pen))
-                overcrowding = (int)pen;
+            if (overcrowding == 0 && tuning.TryResolve(tuningType, "PEN_SIZE_PER_CREATURE", out var pen))
+                overcrowding = (int)Math.Round(pen);
         }
 
         if (Overrides.TryGetValue(critterId, out var ov))
@@ -180,9 +179,9 @@ public sealed class CritterExtractor
     /// Resolve STANDARD_CALORIES_PER_CYCLE from the critter's tuning type.
     /// Returns 0 if the tuning type is null or the field is not a literal.
     /// </summary>
-    private float ResolveCaloriesPerCycle(TypeDefinition? tuning)
+    private static float ResolveCaloriesPerCycle(TuningConstantResolver tuning, TypeDefinition? tuningType)
     {
-        if (_tuning.TryResolve(tuning, "STANDARD_CALORIES_PER_CYCLE", out var value)) { return value; }
+        if (tuning.TryResolve(tuningType, "STANDARD_CALORIES_PER_CYCLE", out var value)) { return value; }
 
         return 0f;
     }
@@ -193,9 +192,9 @@ public sealed class CritterExtractor
     /// a tuning constant — returns 0 for those. MooTuning and a few others may have
     /// a lifespan-like field that the resolver can extract.
     /// </summary>
-    private float ResolveLifespan(TypeDefinition? tuning)
+    private static float ResolveLifespan(TuningConstantResolver tuning, TypeDefinition? tuningType)
     {
-        if (_tuning.TryResolve(tuning, "STANDARD_LIFESPAN", out var value)) { return value; }
+        if (tuning.TryResolve(tuningType, "STANDARD_LIFESPAN", out var value)) { return value; }
 
         return 0f;
     }
