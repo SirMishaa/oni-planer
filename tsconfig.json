@@ -14,7 +14,8 @@
         "allowImportingTsExtensions": true,
         "noEmit": true,
         "paths": {
-            "@/*": ["./resources/js/*"]
+            "@/*": ["./resources/js/*"],
+            "vitest": ["./node_modules/@voidzero-dev/vite-plus-test"]
         }
     },
     "include": [
