@@ -3,6 +3,7 @@ import {
     computeBalance,
     decodeRows,
     encodeRows,
+    useRanch,
     type RanchRow,
     type RanchCatalog,
 } from './useRanch';
@@ -54,6 +55,29 @@ const catalog: RanchCatalog = {
                         min_temp: 0, max_temp: 0, calories_per_cycle: 0, incubation_time: 0, lifespan: 0, overcrowding_threshold: 0,
                         diets: [],
                         outputs: [{ kind: 'egg', element_id: 'DreckoEgg', label: 'DreckoEgg', icon: null, url: null, amount_per_cycle: 1 / 90 }],
+                    },
+                    baby: null,
+                },
+            ],
+        },
+        {
+            slug: 'pacu',
+            name: 'Pacu',
+            description: null,
+            image: null,
+            variants: [
+                {
+                    critter_id: 'Pacu',
+                    name: { en: 'Pacu' },
+                    image: null,
+                    adult: {
+                        morph_id: 'Pacu', is_base: true, name: { en: 'Pacu' },
+                        min_temp: 0, max_temp: 0, calories_per_cycle: 0, incubation_time: 0, lifespan: 0, overcrowding_threshold: 0,
+                        diets: [],
+                        outputs: [
+                            { kind: 'egg', element_id: 'PacuEgg', label: 'PacuEgg', icon: null, url: null, amount_per_cycle: 1 / 120 },
+                            { kind: 'dropping', element_id: 'Sand', label: 'Sand', icon: null, url: null, amount_per_cycle: 5 },
+                        ],
                     },
                     baby: null,
                 },
@@ -115,5 +139,23 @@ describe('useRanch calc', () => {
             { critterId: 'Ghost', foodElementId: 'X', count: 3 },
             { critterId: 'Hatch', foodElementId: 'Sand', count: 2 },
         ]);
+    });
+
+    it('non-egg outputs (droppings) contribute to element net', () => {
+        // Pacu produces 5 kg Sand per cycle as a dropping (non-egg output)
+        const rows: RanchRow[] = [{ critterId: 'Pacu', foodElementId: null, count: 3 }];
+        const balance = computeBalance(catalog, rows);
+        // 3 pacus × 5 kg Sand dropping = +15 net Sand
+        const sand = balance.elements.find((e) => e.element_id === 'Sand')!;
+        expect(sand.net_per_cycle).toBeCloseTo(15);
+        // egg output should still be tracked separately
+        expect(balance.eggs[0]!.element_id).toBe('PacuEgg');
+    });
+
+    it('useRanch filters unknown critters AND count≤0 rows on init', () => {
+        // 'Ghost.X:3' → unknown critter, 'Hatch.Sand:0' → count 0, 'Hatch.Sand:2' → valid
+        const { rows } = useRanch(catalog, 'Ghost.X:3,Hatch.Sand:0,Hatch.Sand:2');
+        expect(rows.value).toHaveLength(1);
+        expect(rows.value[0]).toEqual({ critterId: 'Hatch', foodElementId: 'Sand', count: 2 });
     });
 });

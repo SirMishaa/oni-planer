@@ -4,7 +4,6 @@ import type {
     ElementRefData,
     RanchCatalogData,
 } from '@/types/App/Data/data';
-import { router } from '@inertiajs/vue3';
 import { computed, ref, type Ref } from 'vue';
 
 // region Types
@@ -131,6 +130,7 @@ export function computeBalance(
 
 export function encodeRows(rows: RanchRow[]): string {
     return rows
+        .filter((r) => r.count > 0)
         .map((r) => `${r.critterId}.${r.foodElementId ?? ''}:${r.count}`)
         .join(',');
 }
@@ -164,20 +164,22 @@ export function decodeRows(value: string): RanchRow[] {
 export function useRanch(catalog: RanchCatalog, initialQuery: string) {
     const rows: Ref<RanchRow[]> = ref(
         decodeRows(initialQuery).filter(
-            (r) => findVariant(catalog, r.critterId) !== null,
+            (r) => r.count > 0 && findVariant(catalog, r.critterId) !== null,
         ),
     );
 
     const balance = computed(() => computeBalance(catalog, rows.value));
 
     function syncUrl(): void {
-        const r = encodeRows(rows.value);
-        router.get(window.location.pathname, r ? { r } : {}, {
-            replace: true,
-            preserveState: true,
-            preserveScroll: true,
-            only: [],
-        });
+        if (typeof window === 'undefined') return;
+        const encoded = encodeRows(rows.value);
+        const url = new URL(window.location.href);
+        if (encoded) {
+            url.searchParams.set('r', encoded);
+        } else {
+            url.searchParams.delete('r');
+        }
+        window.history.replaceState(window.history.state, '', url);
     }
 
     function addCritter(critterId: string): void {
