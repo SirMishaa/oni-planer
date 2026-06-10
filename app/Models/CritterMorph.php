@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Attributes\GameData;
+use Database\Factories\CritterMorphFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -19,6 +21,9 @@ use Spatie\Translatable\HasTranslations;
 ])]
 final class CritterMorph extends Model
 {
+    /** @use HasFactory<CritterMorphFactory> */
+    use HasFactory;
+
     use HasTranslations;
 
     /** @var list<string> */
