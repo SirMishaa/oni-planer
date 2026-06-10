@@ -23,6 +23,10 @@ final readonly class CritterImporter
 
             $critter = Critter::query()->firstOrCreate(['critter_id' => $parentId], ['name' => ['en' => $parentId]]);
 
+            if (is_string($raw['variant_family'] ?? null) && $critter->variant_family !== $raw['variant_family']) {
+                $critter->update(['variant_family' => $raw['variant_family']]);
+            }
+
             $nameJson = is_string($raw['name_localization_id'] ?? null)
                 ? ($this->stringResolver->resolveToJson($raw['name_localization_id']) ?? ['en' => $raw['critter_id']])
                 : ['en' => $raw['critter_id']];
