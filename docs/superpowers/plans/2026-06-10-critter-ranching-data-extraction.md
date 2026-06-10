@@ -747,3 +747,205 @@ git commit -m "test(import): per-cycle critter fixture matching extractor output
 - **Format-uncertainty handling:** Task 1 is a recorded spike pinning the real diet/egg/tuning IL across 6 representative critters before any extraction code ships; diet/calorie tasks implement against those findings, mirroring the proven approach used by the kanim plan.
 - **Type consistency:** `TuningConstantResolver.TryResolve(TypeDefinition?, string, out float)`, `CritterDietResolver.Resolve(TypeDefinition?) → List<ResolvedDiet>`, `CritterDto.VariantFamily` (JSON `variant_family`), Laravel `critters.variant_family` — names consistent across tasks. `CritterOutputDto`/`CritterDietDto` already exist with the field names used here.
 - **Known residual risk:** category-tag diets (e.g. `GameTags.Metal`) cannot map to a single `element_id` and are deliberately skipped from `diets` (recorded for OVERRIDES); lifespan may stay 0 where no tuning constant exists, filled via `Overrides` where known — consistent with the approved best-effort policy.
+
+---
+
+## Spike Findings
+
+Recorded on 2026-06-10 by running a temporary `CritterProbe` against `game-data/OxygenNotIncluded_Data/Managed/Assembly-CSharp.dll`. SimHashes map contained 191 entries.
+
+### Config type name corrections
+
+| Plan name (tentative) | Actual DLL name |
+|---|---|
+| `HatchHardSkinConfig` | **`HatchHardConfig`** |
+| `SageHatchConfig` | **does not exist** (no matching type) |
+| `HatchVeggieConfig` | confirmed ✓ |
+| `DreckoConfig`, `PacuConfig`, `PuftConfig` | all confirmed ✓ |
+| Metal Hatch | **`HatchMetalConfig`** (confirmed ✓) |
+
+Actual hatch variants (IEntityConfig with `BaseHatchConfig` base): `HatchConfig`, `HatchHardConfig`, `HatchVeggieConfig`, `HatchMetalConfig`.
+
+### ExtendEntityToFertileCreature — single overload confirmed
+
+One overload observed across all probed configs:
+
+```
+ExtendEntityToFertileCreature(
+  GameObject prefab,          // [0]
+  IHasDlcRestrictions dlcRestrictions, // [1]
+  String eggId,               // [2]
+  String eggName,             // [3]
+  String eggDesc,             // [4]
+  String eggAnim,             // [5]
+  Single eggMass,             // [6]  — ldsfld *Tuning::EGG_MASS
+  String babyId,              // [7]
+  Single fertilityCycles,     // [8]  — inline float constant
+  Single incubationCycles,    // [9]  — inline float constant
+  List<BreedingChance> eggChances, // [10] — ldsfld *Tuning::EGG_CHANCES_*
+  Int32 eggSortOrder,         // [11]
+  Boolean is_ranchable,       // [12]
+  Boolean add_fish_overcrowding_monitor, // [13]
+  Single egg_anim_scale,      // [14]
+  Boolean deprecated          // [15]
+)
+```
+
+`fertilityCycles` and `incubationCycles` are **in cycles** (not seconds). Confirmed: HatchConfig passes `fertilityCycles=60.000004`, `incubationCycles=20` — consistent with wiki (60-cycle fertility, 20-cycle incubation). `eggMass` and `eggChances` are `ldsfld` loads from `*Tuning` fields (not inline constants — `IlHelper.ExtractCallArgs` returns null for them).
+
+### Egg IDs confirmed
+
+| Config | arg[2] eggId | arg[7] babyId | fertilityCycles | incubationCycles |
+|---|---|---|---|---|
+| HatchConfig | `HatchEgg` | `HatchBaby` | 60 | 20 |
+| HatchHardConfig | `HatchHardEgg` | `HatchHardBaby` | 60 | 20 |
+| HatchVeggieConfig | `HatchVeggieEgg` | `HatchVeggieBaby` | 60 | 20 |
+| HatchMetalConfig | `HatchMetalEgg` | `HatchMetalBaby` | 60 | 20 |
+| DreckoConfig | `DreckoEgg` | `DreckoBaby` | 90 | 30 |
+| PacuConfig | `PacuEgg` | `PacuBaby` | 15 | 5 |
+| PuftConfig | `PuftEgg` | `PuftBaby` | 45 | 15 |
+
+### Diet IL patterns
+
+#### Hatch family — base diet method pattern
+
+Hatch uses separate `Base*Config` diet methods called from `CreateHatch`. Each diet method is a static method on `BaseHatchConfig` with this signature:
+
+```
+BaseHatchConfig.BasicRockDiet(Tag poopTag, Single caloriesPerKg, Single producedConversionRate, String diseaseId, Single diseasePerKgProduced)
+BaseHatchConfig.HardRockDiet(same signature)
+BaseHatchConfig.VeggieDiet(same signature)
+BaseHatchConfig.MetalDiet(same signature)
+BaseHatchConfig.FoodDiet(same signature)
+```
+
+**Call-site arg mapping** (in `HatchConfig.CreateHatch`, reading `IlHelper.ExtractCallArgs`):
+- `arg[0] (poopTag)` → `ldsfld` (not a constant — TOOLTIPS field)
+- `arg[1] (caloriesPerKg)` → `ldsfld HatchConfig::CALORIES_PER_KG_OF_ORE` — **not a literal at call site**
+- `arg[2] (producedConversionRate)` → `ldsfld CONVERSION_EFFICIENCY::NORMAL` — **not a literal at call site**
+- `arg[3] (diseaseId)` → null string or ldsfld
+- `arg[4] (diseasePerKgProduced)` → `0` (literal)
+
+`HatchConfig::CALORIES_PER_KG_OF_ORE` is a static field — NOT a `const`, so its value is not in `Constant`. It is set in the HatchConfig `.cctor`:
+- `KG_ORE_EATEN_PER_CYCLE = 140` (Single) — confirmed literal in `.cctor`
+- `MIN_POOP_SIZE_IN_KG = 25` (Single) — confirmed literal
+- `CALORIES_PER_KG_OF_ORE` — NOT written in `.cctor` as a direct literal (it is computed: `STANDARD_CALORIES_PER_CYCLE / KG_ORE_EATEN_PER_CYCLE = 700000 / 140 = 5000`); the probe did not capture it because the computation involves a division. The `HatchConfig::EMIT_ELEMENT = 947100397 → Carbon` (confirmed).
+
+`CONVERSION_EFFICIENCY` constants (from its `.cctor`):
+- `BAD_2 = 0.1`, `BAD_1 = 0.25`, `NORMAL = 0.5`, `GOOD_1 = 0.75`, `GOOD_2 = 0.95`, `GOOD_3 = 1.0`
+
+**Inside the base diet methods** (`BasicRockDiet`, `HardRockDiet`, etc.) — consumed elements are inline `CreateTag(SimHashes)`:
+- `BasicRockDiet` consumed: Sand (381796644), SandStone (493438017), Clay (867327137), CrushedRock (-1714565729), Dirt (1624244999), SedimentaryRock (183408504), Shale (-1708952091) — all concrete `SimHashes`, no category tags.
+- `HardRockDiet` consumed: SedimentaryRock (183408504), IgneousRock (-355957251), Obsidian (-474151749), Granite (-105943486) — all concrete `SimHashes`.
+- `VeggieDiet` consumed: Dirt (1624244999), SlimeMold (-1153056158), Algae (-1870043872), Fertilizer (-1396791454), ToxicSand (869554203) — all concrete `SimHashes`.
+- `MetalDiet` consumed: **`ldsfld GameTags::BasicMetalOres`** (category tag) and **`ldsfld GameTags::Metal`** (category tag) — plus individual pairs of (consumed: GoldAmalgam/Wolframite as SimHash + produced: Gold/Tungsten SimHash). The MetalDiet builds multiple `Diet.Info` instances, each with concrete (consumed ore SimHash → produced metal SimHash).
+  - GoldAmalgam (361868060) → Gold (-279785280)
+  - Wolframite (-1208854194) → Tungsten (-1058835580)
+  - (additional entries using `GameTags::BasicMetalOres` and `GameTags::Metal` as consumed category — these need special handling)
+- `FoodDiet`: no `CreateTag` calls observed inside the method body — consumed is built from the `poopTag` arg (a `Tag` constructed at the call site, not extractable as a constant via the current probe).
+
+The `Diet.Info` constructor inside the base methods has args where `consumed_tags`, `produced_element`, `calories_per_kg`, `produced_conversion_rate` all resolve to `<non-const>` — they depend on the `poopTag`/`caloriesPerKg`/`producedConversionRate` params passed from the call site, which are themselves `ldsfld` loads (not inline constants).
+
+**Key implication for CritterDietResolver:** `caloriesPerKg` and `producedConversionRate` in the `Diet.Info` ctor args are NOT directly readable as constants from `IlHelper.ExtractCallArgs` on the `Diet.Info` newobj. They must be resolved by following the ldsfld chain: `HatchConfig::CALORIES_PER_KG_OF_ORE` → computed as `STANDARD_CALORIES_PER_CYCLE / KG_ORE_EATEN_PER_CYCLE`. For the produced element (HatchConfig): `EMIT_ELEMENT = 947100397 → Carbon`.
+
+#### Pacu — diet in BasePacuConfig.CreatePrefab (base method acts as both entity-create and diet)
+
+PacuConfig calls `BasePacuConfig.CreatePrefab` (single combined method, not split like Hatch). Inside that base method:
+- `ldsfld GameTags::SwimmingCreature` appears before diet setup — **category tag**, not a consumed element
+- Two concrete consumed elements via `CreateTag`: ToxicSand (869554203), Algae (-1870043872)
+- Three `Diet.Info` ctor calls (foods + filter mode); `food_type=1` on the third entry (filter feeder)
+- All `calories_per_kg`, `produced_conversion_rate`, `produced_element` are `<non-const>` in `Diet.Info` ctor args
+
+`GameTags::SwimmingCreature` in a Pacu base method is a creature-type tag (not a diet consumed-element tag) — the diet resolver must distinguish GameTags category usage (SwimmingCreature is NOT a consumed element).
+
+#### Puft — diet via BasePuftConfig.SetupDiet with explicit consumed/produced Tag args
+
+PuftConfig calls `BasePuftConfig.SetupDiet` with signature:
+```
+SetupDiet(GameObject prefab, Tag consumed_tag, Tag producedTag, Single caloriesPerKg, Single producedConversionRate, String diseaseId, Single diseasePerKgProduced, Single minPoopSizeInKg)
+```
+
+Call site args in `PuftConfig.CreatePuft`:
+- `arg[1] (consumed_tag)` → `ldsfld CONVERSION_EFFICIENCY::GOOD_2` ← **wrong** (probe misidentifies due to ldsfld ordering heuristic; actual consumed is `GameTags::SlimeMold` observed inside `BasePuft`)
+- `arg[2] (producedTag)` → `ldsfld PuftConfig::MIN_POOP_SIZE_IN_KG` ← probe misidentification again
+
+`BasePuftConfig.BasePuft` contains `ldsfld GameTags::SlimeMold` — this is the consumed tag (Puft eats SlimeMold). The actual consumed/produced tags are passed as `Tag` objects built from `ldsfld` at the call site; `PuftConfig` has declared constants:
+- `CONSUME_ELEMENT = 721531317 → ContaminatedOxygen` (**Note:** this is a SimHashes field, suggesting Puft actually consumes ContaminatedOxygen, not SlimeMold — both may appear in the diet setup)
+- `EMIT_ELEMENT = -1153056158 → SlimeMold` (Puft produces SlimeMold)
+- `KG_ORE_EATEN_PER_CYCLE = 50` (Single literal in `.cctor`)
+- `MIN_POOP_SIZE_IN_KG = 15` (Single literal in `.cctor`)
+
+**Puft diet conclusion:** consumed = ContaminatedOxygen (PuftConfig::CONSUME_ELEMENT), produced = SlimeMold (PuftConfig::EMIT_ELEMENT). The `BasePuftConfig.BasePuft` `ldsfld GameTags::SlimeMold` is the *produced* tag passed to consumed-set (possibly a secondary diet entry). This requires direct field resolution from `PuftConfig` statics, not the base-method `CreateTag` pattern.
+
+#### Drecko — no Base*Config diet method; diet built inline in CreateDrecko
+
+DreckoConfig does NOT call a separate diet method on `BaseDreckoConfig`. The diet is assembled inline in `DreckoConfig.CreateDrecko` using:
+- `TagExtensions.ToTag` for consumed plant tags (Gas Grass + Swamp Lily — loaded via string IDs)
+- `ldsfld DreckoConfig::POOP_ELEMENT`, `CALORIES_PER_DAY_OF_PLANT_EATEN`, `KG_POOP_PER_DAY_OF_PLANT` — static fields set in `.cctor`:
+  - `DAYS_PLANT_GROWTH_EATEN_PER_CYCLE = 0.75`
+  - `KG_POOP_PER_DAY_OF_PLANT = 13.33`
+  - `MIN_POOP_SIZE_IN_KG = 1.5`
+  - `SCALE_GROWTH_TIME_IN_CYCLES = 8`
+  - `FIBER_PER_CYCLE = 0.25`
+  - `POOP_ELEMENT` and `EMIT_ELEMENT` are `Tag`/non-simhash fields — the `.cctor` builds them via `GameTagExtensions.CreateTag` (not a literal int), so they cannot be read from `TryReadConstant`.
+
+**Drecko diet conclusion:** diet is not through a `Base*Config` diet method — it uses `TagExtensions.ToTag` (string-to-tag) and `EntityTemplateExtensions.AddOrGetDef` directly. The `CritterDietResolver` must handle this second pattern: scan for `TagExtensions.ToTag`/`ToTag` calls consuming string IDs (plant IDs) as consumed elements, and `DreckoConfig` statics for kg/cycle rates. This is an anomalous pattern requiring a separate resolver branch or an override entry.
+
+### Produced element resolution
+
+For Hatch-family:
+- The produced element is NOT from a `ldsfld SimHashes` or a `CreateTag` call at the `Base*Config` diet call site in the `IEntityConfig`
+- It must be read from the config's own `EMIT_ELEMENT` static field (SimHashes literal):
+  - `HatchConfig::EMIT_ELEMENT = 947100397 → Carbon` (all hatch variants produce Coal/Carbon)
+- For MetalDiet entries: the produced element IS an inline `CreateTag` inside the base method (per individual ore→metal pairs)
+
+For Pacu: produced element not directly observable from `Diet.Info` ctor args. Requires following `ldsfld` in `BasePacuConfig.CreatePrefab`.
+
+For Puft: `PuftConfig::EMIT_ELEMENT = -1153056158 → SlimeMold`.
+
+### Tuning constants confirmed
+
+| Type | STANDARD_CALORIES_PER_CYCLE | STANDARD_STARVE_CYCLES | EGG_MASS | PEN_SIZE_PER_CREATURE |
+|---|---|---|---|---|
+| HatchTuning | 700000 | 10 | 2 | 12 (TIER3) |
+| DreckoTuning | 2000000 | 5 | 2 | — (not in probe) |
+| PacuTuning | 100000 | 5 | 4 | — |
+| PuftTuning | 200000 | 6 | 0.5 | — |
+| LightBugTuning | 40000 | 8 | 1 | 2 (literal) |
+| CrabTuning | 100000 | 10 | 2 | — |
+| MooTuning | 200000 | 6 | — | — |
+| SquirrelTuning | 100000 | 10 | 2 | — |
+| StaterpillarTuning | 2000000 | 5 | 2 | — |
+
+`HatchTuning::PEN_SIZE_PER_CREATURE` is set in `.cctor` as `ldsfld TUNING.CREATURES/SPACE_REQUIREMENTS::TIER3` (not a literal). SPACE_REQUIREMENTS constants (from their own `.cctor`):
+- `TIER1 = 4`, `TIER2 = 8`, `TIER3 = 12`, `TIER4 = 16`
+
+So `HatchTuning::PEN_SIZE_PER_CREATURE = 12`.
+
+For tunings where `PEN_SIZE_PER_CREATURE` is not a literal in `.cctor` directly, `TuningConstantResolver` will miss it (it stops scanning at `ldsfld`). The resolver must either follow one level of `ldsfld` to resolve `SPACE_REQUIREMENTS::TIER*` values, or `SPACE_REQUIREMENTS` constants should be pre-seeded in the resolver.
+
+`HatchTuning::STANDARD_STOMACH_SIZE` is computed (`STANDARD_CALORIES_PER_CYCLE * STANDARD_STARVE_CYCLES`), confirmed not a literal — the resolver will return 0 for it, which is acceptable.
+
+`LightBugTuning::PEN_SIZE_PER_CREATURE = 2` is a direct literal (`ldc.i4.2` in cctor) — the resolver handles this correctly.
+
+### No-lifespan finding
+
+None of the probed critter tunings has a `STANDARD_LIFESPAN` field except `MooTuning` (75). Hatch, Drecko, Pacu, Puft all have no lifespan literal in their tuning types — lifespan will remain 0 for these families unless added to the OVERRIDES table.
+
+### CONVERSION_EFFICIENCY reference constants
+
+These are needed to decode call-site args for Hatch diet methods:
+- `NORMAL = 0.5` (Hatch basic rock → 50% conversion)
+- `GOOD_1 = 0.75` (Hatch food diet)
+- `GOOD_3 = 1.0` (Hatch veggie diet → 100% conversion)
+- `BAD_1 = 0.25` (HatchHard metal diet)
+
+### Summary of patterns for CritterDietResolver
+
+| Family | Pattern | Consumed source | Produced source | calories_per_kg source |
+|---|---|---|---|---|
+| Hatch (rock/veggie/hard) | `BaseHatchConfig.BasicRockDiet` etc. — consumed via `CreateTag(SimHashes)` inside base method | SimHash literals in base method | `Config::EMIT_ELEMENT` static field (SimHashes literal in field declaration) | `Config::CALORIES_PER_KG_OF_ORE` = computed from `STANDARD_CALORIES_PER_CYCLE / KG_ORE_EATEN_PER_CYCLE` |
+| Hatch (metal) | `BaseHatchConfig.MetalDiet` — mixed: `GameTags::BasicMetalOres`/`Metal` category tags + concrete ore→metal pairs via `CreateTag` | Category tags (skip) + concrete SimHash pairs | `CreateTag(SimHashes)` inline in base method per pair | same as above |
+| Pacu | `BasePacuConfig.CreatePrefab` (combined base method) — `CreateTag(SimHashes)` inside | SimHash literals (ToxicSand, Algae) | non-const (ldsfld in base) | non-const |
+| Puft | `BasePuftConfig.SetupDiet` — consumed/produced are `Tag` args | `PuftConfig::CONSUME_ELEMENT` SimHash field | `PuftConfig::EMIT_ELEMENT` SimHash field | `STANDARD_CALORIES_PER_CYCLE / KG_ORE_EATEN_PER_CYCLE` |
+| Drecko | No `Base*Config` diet method — inline in `CreateDrecko` via `TagExtensions.ToTag(string)` | String IDs of consumed plants | `DreckoConfig::POOP_ELEMENT` (Tag, built via CreateTag in cctor — not a literal SimHashes field) | `DreckoTuning::STANDARD_CALORIES_PER_CYCLE` via tuning |
