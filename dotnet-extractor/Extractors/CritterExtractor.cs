@@ -81,6 +81,24 @@ public sealed class CritterExtractor
             if (dto != null) results.Add(dto);
         }
 
+        // variant_family is a parent-level grouping label. Most baby configs do not
+        // call a Base*Config, so they resolve to null above; inherit it from the
+        // adult so every morph of a critter carries the same family regardless of
+        // import order.
+        var familyByCritterId = results
+            .Where(c => c.VariantFamily != null)
+            .ToDictionary(c => c.CritterId, c => c.VariantFamily);
+
+        for (int i = 0; i < results.Count; i++)
+        {
+            if (results[i].VariantFamily == null
+                && results[i].ParentCritterId is string parent
+                && familyByCritterId.TryGetValue(parent, out var family))
+            {
+                results[i] = results[i] with { VariantFamily = family };
+            }
+        }
+
         return results;
     }
 

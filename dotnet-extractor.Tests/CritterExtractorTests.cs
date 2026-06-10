@@ -64,7 +64,11 @@ public class CritterExtractorTests
         var hatch = critters.First(c => c.CritterId == "Hatch");
         var stone = critters.First(c => c.CritterId == "HatchHard");
 
-        Assert.False(string.IsNullOrEmpty(hatch.VariantFamily));
+        Assert.Equal("Hatch", hatch.VariantFamily);
         Assert.Equal(hatch.VariantFamily, stone.VariantFamily);
+
+        // Baby morphs inherit the family from their parent adult config.
+        var babyHatch = critters.First(c => c.CritterId == "HatchBaby");
+        Assert.Equal("Hatch", babyHatch.VariantFamily);
     }
 }
