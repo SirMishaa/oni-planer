@@ -16,10 +16,16 @@ public class CritterExtractorTests
         var resolver = new CritterDietResolver(Module, SimHashes, new TuningConstantResolver(Module));
         var diets = resolver.Resolve(Module.GetType("HatchConfig"));
 
-        Assert.NotEmpty(diets);
-        // Hatch produces Coal (Carbon) for its rock/veggie diets.
-        Assert.Contains(diets, d => d.ProducedElementId == "Carbon");
-        Assert.Contains(diets, d => d.ConsumedElementId is not null);
-        Assert.Contains(diets, d => d.ConsumedElementId is not null && d.CaloriesPerKg > 0);
+        // HatchConfig BasicRockDiet: exactly 7 entries, all producing Carbon at fixed rates.
+        Assert.Equal(7, diets.Count);
+
+        var consumed = diets.Select(d => d.ConsumedElementId).ToHashSet();
+        Assert.Equal(
+            new HashSet<string?> { "Sand", "SandStone", "Clay", "CrushedRock", "Dirt", "SedimentaryRock", "Shale" },
+            consumed);
+
+        Assert.All(diets, d => Assert.Equal("Carbon", d.ProducedElementId));
+        Assert.All(diets, d => Assert.Equal(5000f, d.CaloriesPerKg));
+        Assert.All(diets, d => Assert.Equal(0.5f, d.ConversionRatio));
     }
 }

@@ -78,8 +78,8 @@ public sealed class CritterDietResolver
         }
 
         // Puft-style configs declare the consumed element on the config itself (CONSUME_ELEMENT)
-        // rather than inline in the base method; emit it if nothing else picked it up.
-        if (consumeElement is not null && !results.Any(d => d.ConsumedElementId is not null))
+        // rather than inline in the base method; emit it if nothing else was collected.
+        if (consumeElement is not null && !results.Any())
         {
             results.Add(new ResolvedDiet(consumeElement, null, defaultProduced, caloriesPerKg, 0f));
         }
@@ -104,7 +104,7 @@ public sealed class CritterDietResolver
         // and category-tag handling kick in.
         bool isMetalStyle = ins.Any(x =>
             x.Operand is MethodReference m &&
-            (m.Name == "FindElementByTag" || m.Name == "op_Equality"));
+            m.DeclaringType.Name == "ElementLoader" && m.Name == "FindElementByTag");
 
         var recordedTags = new HashSet<string>();
         var createTagHashes = new List<int>();
@@ -227,7 +227,8 @@ public sealed class CritterDietResolver
     /// </summary>
     private float ResolveConversionRatioAtCallSite(IList<Instruction> instructions, int callIndex)
     {
-        for (int j = callIndex - 1; j >= 0; j--)
+        const int maxLookback = 24;
+        for (int j = callIndex - 1; j >= 0 && callIndex - j <= maxLookback; j--)
         {
             var instr = instructions[j];
             if (instr.OpCode == OpCodes.Ldsfld && instr.Operand is FieldReference fr &&
