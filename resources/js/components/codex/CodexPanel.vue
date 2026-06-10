@@ -480,56 +480,59 @@ onBeforeUnmount(stopResize);
                         </template>
                         <!-- endregion -->
 
-                        <!-- region Category list -->
+                        <!-- region Category tiles -->
                         <template v-else-if="bodyView === 'category'">
-                            <ul class="space-y-0.5">
-                                <li
-                                    v-for="entry in selectedItems"
+                            <div
+                                class="grid grid-cols-2 gap-2.5"
+                                :style="
+                                    selectedMeta
+                                        ? { '--tile-hue': selectedMeta.hue }
+                                        : undefined
+                                "
+                            >
+                                <button
+                                    v-for="(entry, i) in selectedItems"
                                     :key="entry.codex_id"
+                                    type="button"
+                                    class="codex-thumb group flex flex-col overflow-hidden rounded-xl border border-black/5 text-left ring-1 ring-white/30 transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ring-inset hover:-translate-y-0.5 hover:shadow-md dark:border-white/5 dark:ring-white/5"
+                                    :class="
+                                        activeId === entry.codex_id
+                                            ? 'shadow-md ring-2 ring-oni-amber/60'
+                                            : ''
+                                    "
+                                    :style="{ animationDelay: `${i * 22}ms` }"
+                                    @click="codex.openArticle(entry.codex_id)"
                                 >
-                                    <button
-                                        type="button"
-                                        class="codex-row flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[13px] text-[oklch(28%_0.02_60)] transition-colors hover:bg-[oklch(90%_0.02_75)] dark:text-[oklch(84%_0.012_65)] dark:hover:bg-[oklch(26%_0.014_250)]"
-                                        :class="
-                                            activeId === entry.codex_id
-                                                ? 'bg-[oklch(90%_0.03_52)] dark:bg-[oklch(26%_0.03_52)]'
-                                                : ''
-                                        "
-                                        @click="
-                                            codex.openArticle(entry.codex_id)
-                                        "
+                                    <div
+                                        class="flex h-20 items-center justify-center px-3 pt-3"
                                     >
                                         <img
                                             v-if="entry.image"
                                             :src="entry.image"
                                             alt=""
                                             loading="lazy"
-                                            class="h-6 w-6 shrink-0 rounded object-contain"
+                                            class="max-h-full w-auto object-contain drop-shadow-sm transition-transform duration-300 group-hover:scale-105"
                                         />
-                                        <span class="truncate">{{
+                                        <span
+                                            v-else
+                                            class="scale-[2.2] text-[oklch(45%_0.06_var(--tile-hue))] opacity-40 dark:text-[oklch(75%_0.06_var(--tile-hue))]"
+                                        >
+                                            <CodexCategoryIcon
+                                                :category="entry.category"
+                                            />
+                                        </span>
+                                    </div>
+                                    <span
+                                        class="line-clamp-2 px-3 pt-1.5 pb-2.5 text-center text-[12px] leading-tight font-semibold text-[oklch(28%_0.04_var(--tile-hue))] dark:text-[oklch(90%_0.03_var(--tile-hue))]"
+                                        >{{
                                             pickLocale(
                                                 entry.title,
                                                 entry.codex_id,
                                             )
-                                        }}</span>
-                                        <svg
-                                            class="ml-auto shrink-0 text-[oklch(70%_0.02_60)]"
-                                            width="12"
-                                            height="12"
-                                            viewBox="0 0 12 12"
-                                            fill="none"
-                                        >
-                                            <path
-                                                d="M4.5 2.5L8 6l-3.5 3.5"
-                                                stroke="currentColor"
-                                                stroke-width="1.3"
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                            />
-                                        </svg>
-                                    </button>
-                                </li>
-                            </ul>
+                                        }}</span
+                                    >
+                                </button>
+                            </div>
                         </template>
                         <!-- endregion -->
 
@@ -832,6 +835,25 @@ onBeforeUnmount(stopResize);
     }
 }
 
+/* Per-entry thumbnail card, softly tinted so the critter/plant render pops */
+.codex-thumb {
+    background-image: linear-gradient(
+        160deg,
+        oklch(97% 0.02 var(--tile-hue)),
+        oklch(93% 0.045 var(--tile-hue))
+    );
+    animation: codex-tile-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-color-scheme: dark) {
+    .codex-thumb {
+        background-image: linear-gradient(
+            160deg,
+            oklch(27% 0.03 var(--tile-hue)),
+            oklch(22% 0.028 var(--tile-hue))
+        );
+    }
+}
+
 /* Languette slide/fade */
 .codex-tab-enter-active,
 .codex-tab-leave-active {
@@ -884,6 +906,7 @@ onBeforeUnmount(stopResize);
 
 @media (prefers-reduced-motion: reduce) {
     .codex-tile,
+    .codex-thumb,
     .codex-row {
         animation: none;
     }
