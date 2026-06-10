@@ -26,6 +26,12 @@ final class CritterPresenter
     /** @var array<string, string>|null element_id => display name */
     private ?array $elementNames = null;
 
+    /** @var array<string, string|null>|null element_id => root-relative URL */
+    private ?array $elementUrls = null;
+
+    /** @var array<string, string>|null critter_id => family slug */
+    private ?array $critterFamilySlugs = null;
+
     /** Build a single family by slug, or null if not found. */
     public function family(string $slug): ?CritterFamilyData
     {
@@ -219,16 +225,21 @@ final class CritterPresenter
     /** Codex entry preferred, else element page. Returns a root-relative path. */
     private function elementUrl(string $elementId): ?string
     {
-        $codexId = Element::query()
-            ->where('element_id', $elementId)
-            ->with('codexEntries:id,codex_id')
-            ->first()?->codexEntries?->first()?->codex_id;
-
-        if ($codexId !== null) {
-            return $this->routePath('codex.show', $codexId);
+        if ($this->elementUrls === null) {
+            $this->elementUrls = [];
+            Element::query()
+                ->with('codexEntries:id,codex_id')
+                ->get(['id', 'element_id'])
+                ->each(function (Element $element): void {
+                    $codexId = $element->codexEntries?->first()?->codex_id;
+                    $this->elementUrls[$element->element_id] = $codexId !== null
+                        ? $this->routePath('codex.show', $codexId)
+                        : $this->routePath('elements.show', $element->element_id);
+                });
         }
 
-        return $this->routePath('elements.show', $elementId);
+        return $this->elementUrls[$elementId]
+            ?? $this->routePath('elements.show', $elementId);
     }
 
     private function critterImage(string $critterId): ?string
@@ -244,14 +255,22 @@ final class CritterPresenter
 
     private function familyUrlForEgg(string $eggId): ?string
     {
-        $critterId = Str::beforeLast($eggId, 'Egg');
-        $critter = Critter::query()->where('critter_id', $critterId)->first();
-        if ($critter === null) {
-            return null;
+        if ($this->critterFamilySlugs === null) {
+            $this->critterFamilySlugs = [];
+            Critter::query()
+                ->get(['critter_id', 'variant_family'])
+                ->each(function (Critter $critter): void {
+                    $slug = Str::slug(Str::kebab($critter->variant_family ?? $critter->critter_id));
+                    $this->critterFamilySlugs[$critter->critter_id] = $slug;
+                });
         }
-        $slug = Str::slug(Str::kebab($critter->variant_family ?? $critter->critter_id));
 
-        return $this->routePath('critters.show', $slug);
+        $critterId = Str::beforeLast($eggId, 'Egg');
+        $slug = $this->critterFamilySlugs[$critterId] ?? null;
+
+        return $slug !== null
+            ? $this->routePath('critters.show', $slug)
+            : null;
     }
 
     private function assetIfExists(string $relative): ?string
