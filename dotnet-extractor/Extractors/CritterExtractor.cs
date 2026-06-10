@@ -52,6 +52,8 @@ public sealed class CritterExtractor
     {
         var module = ModuleDefinition.ReadModule(Path.Combine(_managedPath, "Assembly-CSharp.dll"));
         var tuning = new TuningConstantResolver(module);
+        var simHashes = IlHelper.BuildSimHashesMap(module);
+        var dietResolver = new CritterDietResolver(module, simHashes, tuning);
         var results = new List<CritterDto>();
 
         // Adult critter configs: IEntityConfig implementors that call ExtendEntityToWildCreature
@@ -68,13 +70,13 @@ public sealed class CritterExtractor
 
         foreach (var type in adultConfigs)
         {
-            var dto = ExtractCritter(type, isBaby: false, tuning);
+            var dto = ExtractCritter(type, isBaby: false, tuning, dietResolver);
             if (dto != null) results.Add(dto);
         }
 
         foreach (var type in babyConfigs)
         {
-            var dto = ExtractCritter(type, isBaby: true, tuning);
+            var dto = ExtractCritter(type, isBaby: true, tuning, dietResolver);
             if (dto != null) results.Add(dto);
         }
 
@@ -91,7 +93,7 @@ public sealed class CritterExtractor
             mr.Name == "ExtendEntityToWildCreature"));
     }
 
-    private static CritterDto? ExtractCritter(TypeDefinition type, bool isBaby, TuningConstantResolver tuning)
+    private static CritterDto? ExtractCritter(TypeDefinition type, bool isBaby, TuningConstantResolver tuning, CritterDietResolver dietResolver)
     {
         var critterId = DeriveCritterId(type.Name);
         var parentId = isBaby ? DeriveParentId(type.Name) : null;
@@ -124,6 +126,36 @@ public sealed class CritterExtractor
         }
         // endregion
 
+        // region diets / outputs (adult only)
+        var diets = new List<CritterDietDto>();
+        var outputs = new List<CritterOutputDto>();
+
+        if (!isBaby)
+        {
+            // Resolve diets: skip category-tag entries (ConsumedElementId == null)
+            var resolved = dietResolver.Resolve(type);
+            foreach (var d in resolved)
+            {
+                if (d.ConsumedElementId == null) { continue; }
+
+                var amountPerCycle = (d.CaloriesPerKg > 0f && calories > 0f)
+                    ? calories / d.CaloriesPerKg
+                    : 0f;
+
+                diets.Add(new CritterDietDto(
+                    ConsumedElementId: d.ConsumedElementId,
+                    AmountPerCycle: amountPerCycle,
+                    ProducedElementId: d.ProducedElementId,
+                    ConversionRatio: d.ConversionRatio
+                ));
+            }
+
+            // Egg output
+            var egg = FindEgg(type);
+            if (egg != null) { outputs.Add(egg); }
+        }
+        // endregion
+
         return new CritterDto(
             CritterId: critterId,
             ParentCritterId: parentId,
@@ -136,9 +168,45 @@ public sealed class CritterExtractor
             OvercrowdingThreshold: overcrowding,
             NameLocalizationId: nameKey,
             DlcId: IlHelper.ExtractDlcId(type),
-            Diets: [],
-            Outputs: []
+            Diets: diets,
+            Outputs: outputs
         );
+    }
+
+    private static CritterOutputDto? FindEgg(TypeDefinition type)
+    {
+        foreach (var method in type.Methods.Where(m => m.HasBody))
+        {
+            var ins = method.Body.Instructions;
+            for (int i = 0; i < ins.Count; i++)
+            {
+                if (ins[i].Operand is not MethodReference mr || mr.Name != "ExtendEntityToFertileCreature") { continue; }
+
+                var args = IlHelper.ExtractCallArgs(ins, i, mr.Parameters.Count);
+                string? eggId = ArgByName(mr, args, "eggId") as string;
+                float fertility = ArgByName(mr, args, "fertilityCycles") is float f ? f : 0f;
+
+                if (eggId != null && fertility > 0)
+                {
+                    return new CritterOutputDto(eggId, 1f / fertility, "egg");
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static object? ArgByName(MethodReference mr, object?[] args, string nameContains)
+    {
+        for (int p = 0; p < mr.Parameters.Count && p < args.Length; p++)
+        {
+            if (mr.Parameters[p].Name.ToLower().Replace("_", "").Contains(nameContains.ToLower().Replace("_", "")))
+            {
+                return args[p];
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

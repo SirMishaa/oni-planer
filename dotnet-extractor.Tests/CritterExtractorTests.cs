@@ -38,4 +38,21 @@ public class CritterExtractorTests
         Assert.All(diets, d => Assert.Equal(5000f, d.CaloriesPerKg));
         Assert.All(diets, d => Assert.Equal(0.5f, d.ConversionRatio));
     }
+
+    [Fact]
+    public void Hatch_lays_an_egg_output_and_has_diet_outputs()
+    {
+        var hatch = new CritterExtractor(ManagedPath).Extract()
+            .First(c => c.CritterId == "Hatch");
+
+        // Diets must be populated (Hatch eats minerals and produces Coal)
+        Assert.NotEmpty(hatch.Diets);
+
+        // Egg output must be present
+        Assert.Contains(hatch.Outputs, o => o.OutputType == "egg");
+        var egg = hatch.Outputs.First(o => o.OutputType == "egg");
+
+        // Hatch fertilityCycles = 60 → amount = 1/60 ≈ 0.0167
+        Assert.True(egg.AmountPerCycle > 0);
+    }
 }
