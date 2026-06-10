@@ -505,7 +505,8 @@ public sealed class CritterExtractor
                 if (instr.Operand is not MethodReference mr) { continue; }
 
                 var n = mr.DeclaringType.Name;
-                if (n.StartsWith("Base") && n.EndsWith("Config")) { return n[4..^6]; } // BaseHatchConfig → "Hatch"
+                // Length > 10 ensures a non-empty middle (excludes a bare "BaseConfig").
+                if (n.Length > 10 && n.StartsWith("Base") && n.EndsWith("Config")) { return n[4..^6]; } // BaseHatchConfig → "Hatch"
             }
         }
 
