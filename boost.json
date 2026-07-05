@@ -13,9 +13,15 @@
     "guidelines": true,
     "mcp": true,
     "nightwatch_mcp": false,
+    "packages": [
+        "spatie/laravel-translatable"
+    ],
     "sail": false,
     "skills": [
         "laravel-best-practices",
-        "tailwindcss-development"
+        "octane-development",
+        "inertia-vue-development",
+        "tailwindcss-development",
+        "translatable-development"
     ]
 }
