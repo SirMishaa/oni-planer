@@ -40,3 +40,4 @@ frankenphp-worker.php
 __pycache__/
 dotnet-extractor/.idea/
 /scripts/debug_crops/
+/scripts/design-audit/screenshots/
