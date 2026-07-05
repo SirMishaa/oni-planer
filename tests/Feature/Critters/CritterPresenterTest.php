@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Models\Critter;
+use App\Models\CritterMorph;
 use App\Services\Critters\CritterPresenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -55,4 +57,67 @@ it('lists families with variant counts', function (): void {
     expect($list)->toHaveCount(1)
         ->and($list[0]->slug)->toBe('hatch')
         ->and($list[0]->variant_count)->toBe(1);
+});
+
+it('uses the resolved base-morph name for the family, not the raw variant_family', function (): void {
+    $critter = Critter::factory()->create(['critter_id' => 'OilFloater', 'variant_family' => 'OilFloater']);
+    CritterMorph::factory()->create([
+        'critter_id' => $critter->id,
+        'morph_id' => 'OilFloater',
+        'is_base' => true,
+        'name' => ['en' => 'Oil Floater'],
+    ]);
+
+    $list = app(CritterPresenter::class)->familyList();
+
+    expect($list)->toHaveCount(1)
+        ->and($list[0]->name)->toBe('Oil Floater');
+});
+
+it('falls back to variant_family when no morph is present', function (): void {
+    Critter::factory()->create(['critter_id' => 'Ghost', 'variant_family' => 'Ghost']);
+
+    $list = app(CritterPresenter::class)->familyList();
+
+    expect($list)->toHaveCount(1)
+        ->and($list[0]->name)->toBe('Ghost');
+});
+
+it('falls back to critter_id when there is no variant_family and no morph', function (): void {
+    Critter::factory()->create(['critter_id' => 'Solo', 'variant_family' => null]);
+
+    $list = app(CritterPresenter::class)->familyList();
+
+    expect($list)->toHaveCount(1)
+        ->and($list[0]->name)->toBe('Solo');
+});
+
+it('resolves the variant tab name from the base morph, not the raw critter name', function (): void {
+    $critter = Critter::factory()->create(['critter_id' => 'HatchHard', 'variant_family' => 'Hatch', 'name' => ['en' => 'HatchHard']]);
+    CritterMorph::factory()->create([
+        'critter_id' => $critter->id,
+        'morph_id' => 'HatchHard',
+        'is_base' => true,
+        'name' => ['en' => 'Hatch Hard'],
+    ]);
+
+    $family = app(CritterPresenter::class)->family('hatch');
+
+    expect($family)->not->toBeNull()
+        ->and($family->variants[0]->name)->toBe(['en' => 'Hatch Hard']);
+});
+
+it('falls back to critter_id for the variant name when the base morph name is unresolved', function (): void {
+    $critter = Critter::factory()->create(['critter_id' => 'Mystery', 'variant_family' => 'Mystery']);
+    CritterMorph::factory()->create([
+        'critter_id' => $critter->id,
+        'morph_id' => 'Mystery',
+        'is_base' => true,
+        'name' => [],
+    ]);
+
+    $family = app(CritterPresenter::class)->family('mystery');
+
+    expect($family)->not->toBeNull()
+        ->and($family->variants[0]->name)->toBe(['en' => 'Mystery']);
 });

@@ -138,8 +138,14 @@ final class CritterPresenter
     {
         /** @var Critter $first */
         $first = $variants[0];
+        $baseMorph = $first->morphs->firstWhere('is_base', true) ?? $first->morphs->first();
+        $resolved = $baseMorph?->getTranslation('name', 'en');
 
-        return $first->variant_family ?? ($first->getTranslation('name', 'en') ?: $first->critter_id);
+        if ($resolved) {
+            return $resolved;
+        }
+
+        return $first->variant_family ?? $first->critter_id;
     }
 
     private function variantData(Critter $critter, bool $withBaby): CritterVariantData
@@ -149,11 +155,19 @@ final class CritterPresenter
 
         return new CritterVariantData(
             critter_id: $critter->critter_id,
-            name: $critter->getTranslations('name'),
+            name: $this->variantName($critter, $adult),
             image: $this->critterImage($critter->critter_id),
             adult: $this->morphData($adult),
             baby: $baby !== null ? $this->morphData($baby) : null,
         );
+    }
+
+    /** @return array<string, string> */
+    private function variantName(Critter $critter, ?CritterMorph $adult): array
+    {
+        $translations = $adult?->getTranslations('name') ?? [];
+
+        return $translations !== [] ? $translations : ['en' => $critter->critter_id];
     }
 
     private function morphData(CritterMorph $morph): CritterMorphData
