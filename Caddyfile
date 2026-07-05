@@ -1,0 +1,71 @@
+{
+	{$CADDY_GLOBAL_OPTIONS}
+
+	admin {$CADDY_SERVER_ADMIN_HOST}:{$CADDY_SERVER_ADMIN_PORT}
+
+	frankenphp {
+		worker {
+			file "{$APP_PUBLIC_PATH}/frankenphp-worker.php"
+			{$CADDY_SERVER_WORKER_DIRECTIVE}
+			{$CADDY_SERVER_WATCH_DIRECTIVES}
+		}
+	}
+}
+
+{$CADDY_EXTRA_CONFIG}
+
+{$CADDY_SERVER_SERVER_NAME} {
+	log {
+		level {$CADDY_SERVER_LOG_LEVEL}
+
+		# Redact the authorization query parameter that can be set by Mercure...
+		format filter {
+			wrap {$CADDY_SERVER_LOGGER}
+			fields {
+				uri query {
+					replace authorization REDACTED
+				}
+			}
+		}
+	}
+
+	route {
+		root * "{$APP_PUBLIC_PATH}"
+
+		# region static-asset caching
+		# Vite build output is content-hashed: safe to cache forever.
+		@immutable path /build/*
+		header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+		# Extracted game imagery (animated WebP) + fonts/media: stable URLs but
+		# regenerated occasionally, so cache hard yet allow background revalidation.
+		@assets path /assets/game/* *.webp *.avif *.png *.jpg *.jpeg *.gif *.svg *.ico *.woff *.woff2 *.ttf *.mp4 *.webm
+		header @assets Cache-Control "public, max-age=2592000, stale-while-revalidate=86400"
+		header @assets Vary Accept-Encoding
+		# endregion
+
+		# Only compress text-like responses; WebP/PNG/fonts are already compressed.
+		encode {
+			zstd
+			br
+			gzip
+			match {
+				header Content-Type text/*
+				header Content-Type application/json*
+				header Content-Type application/javascript*
+				header Content-Type application/xml*
+				header Content-Type image/svg+xml*
+			}
+		}
+
+		# Mercure configuration is injected here...
+		{$CADDY_SERVER_EXTRA_DIRECTIVES}
+
+		php_server {
+			index frankenphp-worker.php
+			try_files {path} frankenphp-worker.php
+			# Required for the public/storage/ directory...
+			resolve_root_symlink
+		}
+	}
+}

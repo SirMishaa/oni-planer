@@ -1,0 +1,17 @@
+{
+    "permissions": {
+        "allow": [
+            "Bash(php artisan test *)",
+            "mcp__laravel-boost__database-schema",
+            "Bash(vendor/bin/phpstan analyse *)",
+            "Bash(dotnet *)",
+            "Agent"
+        ]
+    },
+    "mcpServers": {
+        "playwright": {
+            "command": "bunx",
+            "args": ["@playwright/mcp@latest", "--browser", "chromium"]
+        }
+    }
+}

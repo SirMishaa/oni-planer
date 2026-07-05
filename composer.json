@@ -10,20 +10,23 @@
     "license": "MIT",
     "require": {
         "php": "^8.5.0",
-        "inertiajs/inertia-laravel": "^3.1",
-        "laravel/framework": "^13.11.2",
+        "inertiajs/inertia-laravel": "^3.1.1",
+        "laravel/framework": "^13.18.1",
+        "laravel/octane": "^2.17.5",
         "nunomaduro/essentials": "^1.2.0",
+        "spatie/laravel-data": "^4.23",
         "spatie/laravel-translatable": "^6.14.1",
-        "symfony/yaml": "^8.0.12"
+        "spatie/laravel-typescript-transformer": "^3.3",
+        "symfony/yaml": "^8.1.1"
     },
     "require-dev": {
-        "driftingly/rector-laravel": "^2.4.0",
+        "driftingly/rector-laravel": "^2.5.0",
         "fakerphp/faker": "^1.24.1",
-        "larastan/larastan": "^3.9.6",
-        "laravel/boost": "^2.4.8",
-        "laravel/pail": "^1.2.6",
-        "laravel/pao": "^1.0.6",
-        "laravel/pint": "^1.29.1",
+        "larastan/larastan": "^3.10.0",
+        "laravel/boost": "^2.4.11",
+        "laravel/pail": "^1.2.7",
+        "laravel/pao": "^1.1.2",
+        "laravel/pint": "^1.29.3",
         "laravel/tinker": "^3.0.2",
         "mockery/mockery": "^1.6.12",
         "nunomaduro/collision": "^8.9.4",
@@ -31,7 +34,7 @@
         "pestphp/pest-plugin-browser": "^5.0",
         "pestphp/pest-plugin-laravel": "^5.0",
         "pestphp/pest-plugin-type-coverage": "^5.0",
-        "rector/rector": "^2.4.4",
+        "rector/rector": "^2.5.3",
         "roave/security-advisories": "dev-latest"
     },
     "autoload": {
@@ -58,6 +61,10 @@
         "dev": [
             "Composer\\Config::disableProcessTimeout",
             "bunx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"bun run dev\" --names=server,queue,logs,vite --kill-others"
+        ],
+        "devWithOctane": [
+            "Composer\\Config::disableProcessTimeout",
+            "bunx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan octane:start --watch --server=frankenphp --port=8003 --caddyfile=Caddyfile\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"bun run dev\" --names=server,queue,logs,vite --kill-others"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
