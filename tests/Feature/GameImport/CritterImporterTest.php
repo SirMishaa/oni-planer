@@ -57,3 +57,21 @@ it('imports diets, outputs and variant_family', function (): void {
     expect($morph->diets)->toHaveCount(1);
     expect($morph->outputs->first()->output_type)->toBe('egg');
 });
+
+it('imports dlc_id', function (): void {
+    $path = tempnam(sys_get_temp_dir(), 'crit').'.json';
+    file_put_contents($path, json_encode([[
+        'critter_id' => 'AlgaeStego', 'is_base' => true,
+        'min_temp' => 283.15, 'max_temp' => 313.15,
+        'calories_per_cycle' => 700000, 'incubation_time' => 20, 'lifespan' => 100,
+        'overcrowding_threshold' => 8, 'name_localization_id' => null,
+        'variant_family' => 'AlgaeStego', 'dlc_id' => 'DLC5',
+        'diets' => [], 'outputs' => [],
+    ]]));
+
+    $resolver = new StringResolver(base_path('tests/Fixtures/GameImport/strings.pot'));
+    new CritterImporter($resolver)->import($path);
+
+    $critter = Critter::where('critter_id', 'AlgaeStego')->firstOrFail();
+    expect($critter->dlc_id)->toBe('DLC5');
+});

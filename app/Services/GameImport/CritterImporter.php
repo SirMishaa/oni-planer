@@ -21,7 +21,16 @@ final readonly class CritterImporter
         foreach ($critters as $raw) {
             $parentId = $raw['parent_critter_id'] ?? $raw['critter_id'];
 
-            $critter = Critter::query()->firstOrCreate(['critter_id' => $parentId], ['name' => ['en' => $parentId]]);
+            $dlcId = is_string($raw['dlc_id'] ?? null) ? $raw['dlc_id'] : null;
+
+            $critter = Critter::query()->firstOrCreate(
+                ['critter_id' => $parentId],
+                ['name' => ['en' => $parentId], 'dlc_id' => $dlcId],
+            );
+
+            if ($dlcId !== null && $critter->dlc_id !== $dlcId) {
+                $critter->update(['dlc_id' => $dlcId]);
+            }
 
             if (is_string($raw['variant_family'] ?? null) && $critter->variant_family !== $raw['variant_family']) {
                 $critter->update(['variant_family' => $raw['variant_family']]);
