@@ -143,7 +143,14 @@ returns the right name already). No template/layout changes to `Show.vue`.
   and keep existing fields. No new DTO needed for the variant preview stack —
   reuse `image` resolution already available per variant in `familyData()`;
   the list item gains a `variant_images: string[]` (up to 2, excluding the
-  primary) for the stack.
+  primary) for the stack. It also gains `min_temp: float` / `max_temp: float`
+  — the min of all variants' base-morph `min_temp` and the max of all
+  variants' base-morph `max_temp` — so the temperature chips can bucket a
+  family client-side without shipping full per-variant morph data to the
+  index page. Using the combined range implements the "matches every bucket
+  it overlaps" rule directly: a family whose variants span both a cold and a
+  hot morph will show under both chips, which is the intended inclusive-OR
+  behavior, not a bug.
 - `CritterFamilyData` / `CritterVariantData`: no shape change beyond the name
   source fix (same field, corrected value).
 - Regenerate TS types via `php artisan typescript:transform` after DTO edits.
