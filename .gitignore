@@ -39,3 +39,4 @@ frankenphp-worker.php
 .playwright-mcp/
 __pycache__/
 dotnet-extractor/.idea/
+/scripts/debug_crops/
