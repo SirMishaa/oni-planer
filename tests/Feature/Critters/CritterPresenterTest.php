@@ -121,3 +121,26 @@ it('falls back to critter_id for the variant name when the base morph name is un
     expect($family)->not->toBeNull()
         ->and($family->variants[0]->name)->toBe(['en' => 'Mystery']);
 });
+
+it('includes dlc_id, temperature range, and other-variant image previews in the family list', function (): void {
+    $tempPublic = sys_get_temp_dir().'/ony-planner-test-public';
+    @mkdir($tempPublic.'/assets/game/critters', 0777, true);
+    file_put_contents($tempPublic.'/assets/game/critters/PufferFish.webp', 'webp');
+
+    $base = Critter::factory()->create(['critter_id' => 'PacuTropical', 'variant_family' => 'Pacu', 'dlc_id' => 'DLC5']);
+    CritterMorph::factory()->create(['critter_id' => $base->id, 'morph_id' => 'PacuTropical', 'is_base' => true, 'min_temp' => 290.0, 'max_temp' => 305.0]);
+
+    $other = Critter::factory()->create(['critter_id' => 'PufferFish', 'variant_family' => 'Pacu', 'dlc_id' => 'DLC5']);
+    CritterMorph::factory()->create(['critter_id' => $other->id, 'morph_id' => 'PufferFish', 'is_base' => true, 'min_temp' => 275.0, 'max_temp' => 300.0]);
+
+    $list = app(CritterPresenter::class)->familyList();
+
+    expect($list)->toHaveCount(1);
+    $family = $list[0];
+    expect($family->dlc_id)->toBe('DLC5')
+        ->and($family->min_temp)->toBe(275.0)
+        ->and($family->max_temp)->toBe(305.0)
+        ->and($family->variant_images)->toBe(['/assets/game/critters/PufferFish.webp']);
+
+    @unlink($tempPublic.'/assets/game/critters/PufferFish.webp');
+});

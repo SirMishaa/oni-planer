@@ -72,6 +72,10 @@ image: string | null,
 variant_count: number,
 eats_summary: string | null,
 makes_summary: string | null,
+dlc_id: string | null,
+variant_images: string[],
+min_temp: number,
+max_temp: number,
 };
 export type CritterMorphData = {
 morph_id: string,

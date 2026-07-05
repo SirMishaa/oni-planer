@@ -56,6 +56,7 @@ final class CritterPresenter
         foreach ($groups as $slug => $variants) {
             /** @var Critter $first */
             $first = $variants[0];
+            [$minTemp, $maxTemp] = $this->familyTempRange($variants);
             $items[] = new CritterFamilyListItemData(
                 slug: $slug,
                 name: $this->familyName($variants),
@@ -63,6 +64,10 @@ final class CritterPresenter
                 variant_count: count($variants),
                 eats_summary: $this->eatsSummary($first),
                 makes_summary: $this->makesSummary($first),
+                dlc_id: $first->dlc_id,
+                variant_images: $this->variantPreviewImages($variants, $first),
+                min_temp: $minTemp,
+                max_temp: $maxTemp,
             );
         }
 
@@ -146,6 +151,51 @@ final class CritterPresenter
         }
 
         return $first->variant_family ?? $first->critter_id;
+    }
+
+    /**
+     * @param  list<Critter>  $variants
+     * @return array{0: float, 1: float} [min_temp, max_temp] across every variant's base morph
+     */
+    private function familyTempRange(array $variants): array
+    {
+        $min = null;
+        $max = null;
+        foreach ($variants as $variant) {
+            $morph = $variant->morphs->firstWhere('is_base', true) ?? $variant->morphs->first();
+            if ($morph === null) {
+                continue;
+            }
+            $min = $min === null ? (float) $morph->min_temp : min($min, (float) $morph->min_temp);
+            $max = $max === null ? (float) $morph->max_temp : max($max, (float) $morph->max_temp);
+        }
+
+        return [$min ?? 0.0, $max ?? 0.0];
+    }
+
+    /**
+     * Up to 2 images from the family's other variants, for the index tile's preview stack.
+     *
+     * @param  list<Critter>  $variants
+     * @return list<string>
+     */
+    private function variantPreviewImages(array $variants, Critter $primary): array
+    {
+        $images = [];
+        foreach ($variants as $variant) {
+            if ($variant->critter_id === $primary->critter_id) {
+                continue;
+            }
+            $image = $this->critterImage($variant->critter_id);
+            if ($image !== null) {
+                $images[] = $image;
+            }
+            if (count($images) === 2) {
+                break;
+            }
+        }
+
+        return $images;
     }
 
     private function variantData(Critter $critter, bool $withBaby): CritterVariantData
