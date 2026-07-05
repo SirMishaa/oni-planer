@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { Icon } from '@iconify/vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
-import type { BuildingData } from '@/types/App/Data/data';
+import type { BuildingData, BuildingShowData } from '@/types/App/Data/data';
 
 defineOptions({ layout: AppLayout });
 
@@ -27,7 +28,8 @@ const CATEGORY_ORDER: [string, string][] = [
     ['Other', 'Autre'],
 ];
 
-const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(CATEGORY_ORDER);
+const CATEGORY_LABEL: Record<string, string> =
+    Object.fromEntries(CATEGORY_ORDER);
 
 const CATEGORY_SVG: Record<string, string> = {
     Base: `<svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -134,23 +136,60 @@ const CATEGORY_SVG: Record<string, string> = {
 
 // hue, chroma
 const CATEGORY_HUES: Record<string, [number, number]> = {
-    Base:       [75,  0.10],
-    Oxygen:     [210, 0.14],
-    Power:      [85,  0.18],
-    Food:       [48,  0.16],
-    Plumbing:   [220, 0.12],
-    HVAC:       [190, 0.12],
-    Refining:   [35,  0.14],
-    Medical:    [155, 0.13],
-    Furniture:  [60,  0.09],
-    Equipment:  [270, 0.12],
-    Utilities:  [240, 0.10],
+    Base: [75, 0.1],
+    Oxygen: [210, 0.14],
+    Power: [85, 0.18],
+    Food: [48, 0.16],
+    Plumbing: [220, 0.12],
+    HVAC: [190, 0.12],
+    Refining: [35, 0.14],
+    Medical: [155, 0.13],
+    Furniture: [60, 0.09],
+    Equipment: [270, 0.12],
+    Utilities: [240, 0.1],
     Automation: [305, 0.12],
-    Conveyance: [25,  0.13],
-    Rocketry:   [250, 0.14],
-    HEP:        [130, 0.15],
-    Other:      [260, 0.06],
+    Conveyance: [25, 0.13],
+    Rocketry: [250, 0.14],
+    HEP: [130, 0.15],
+    Other: [260, 0.06],
 };
+// endregion
+
+// region Detail panel state
+const selectedId = ref<string | null>(null);
+const detailData = ref<BuildingShowData | null>(null);
+const detailLoading = ref(false);
+
+async function selectBuilding(id: string): Promise<void> {
+    if (selectedId.value === id) {
+        selectedId.value = null;
+        detailData.value = null;
+        return;
+    }
+    selectedId.value = id;
+    detailData.value = null;
+    detailLoading.value = true;
+    try {
+        const resp = await fetch(`/buildings/${id}`, {
+            headers: { Accept: 'application/json' },
+        });
+        detailData.value = (await resp.json()) as BuildingShowData;
+    } finally {
+        detailLoading.value = false;
+    }
+}
+
+function closeDetail(): void {
+    selectedId.value = null;
+    detailData.value = null;
+}
+
+function onEscape(e: KeyboardEvent): void {
+    if (e.key === 'Escape') closeDetail();
+}
+
+onMounted(() => document.addEventListener('keydown', onEscape));
+onUnmounted(() => document.removeEventListener('keydown', onEscape));
 // endregion
 
 const search = ref('');
@@ -172,7 +211,9 @@ const categoryCounts = computed<Record<string, number>>(() => {
 const filtered = computed<BuildingData[]>(() => {
     const q = search.value.toLowerCase();
     return props.buildings.filter((b) => {
-        const matchCat = activeCategory.value === 'all' || b.category === activeCategory.value;
+        const matchCat =
+            activeCategory.value === 'all' ||
+            b.category === activeCategory.value;
         const matchSearch =
             !q ||
             b.building_id.toLowerCase().includes(q) ||
@@ -187,31 +228,34 @@ type CategoryGroup = { key: string; label: string; subGroups: SubGroup[] };
 // Grouped view: only when showing all categories with no search query
 const groupedBuildings = computed<CategoryGroup[] | null>(() => {
     if (activeCategory.value !== 'all' || search.value) return null;
-    return CATEGORY_ORDER
-        .map(([key, label]) => {
-            const items = props.buildings.filter((b) => b.category === key);
-            if (items.length === 0) return null;
+    return CATEGORY_ORDER.map(([key, label]) => {
+        const items = props.buildings.filter((b) => b.category === key);
+        if (items.length === 0) return null;
 
-            // Collect named sub-groups in insertion order, ungrouped last
-            const named = new Map<string, BuildingData[]>();
-            const ungrouped: BuildingData[] = [];
-            for (const b of items) {
-                if (b.sub_group) {
-                    if (!named.has(b.sub_group)) named.set(b.sub_group, []);
-                    named.get(b.sub_group)!.push(b);
-                } else {
-                    ungrouped.push(b);
-                }
+        // Collect named sub-groups in insertion order, ungrouped last
+        const named = new Map<string, BuildingData[]>();
+        const ungrouped: BuildingData[] = [];
+        for (const b of items) {
+            if (b.sub_group) {
+                if (!named.has(b.sub_group)) named.set(b.sub_group, []);
+                named.get(b.sub_group)!.push(b);
+            } else {
+                ungrouped.push(b);
             }
+        }
 
-            const subGroups: SubGroup[] = [
-                ...[...named.entries()].map(([sg, sgItems]) => ({ label: sg, items: sgItems })),
-                ...(ungrouped.length > 0 ? [{ label: null, items: ungrouped }] : []),
-            ];
+        const subGroups: SubGroup[] = [
+            ...[...named.entries()].map(([sg, sgItems]) => ({
+                label: sg,
+                items: sgItems,
+            })),
+            ...(ungrouped.length > 0
+                ? [{ label: null, items: ungrouped }]
+                : []),
+        ];
 
-            return { key, label, subGroups };
-        })
-        .filter((g): g is CategoryGroup => g !== null);
+        return { key, label, subGroups };
+    }).filter((g): g is CategoryGroup => g !== null);
 });
 
 function categoryCssVars(cat: string): Record<string, string> {
@@ -229,8 +273,10 @@ function displayName(b: BuildingData): string {
 }
 
 function powerLabel(b: BuildingData): string | null {
-    if (b.power_generation && b.power_generation > 0) return `+${b.power_generation}W`;
-    if (b.power_consumption && b.power_consumption > 0) return `-${b.power_consumption}W`;
+    if (b.power_generation && b.power_generation > 0)
+        return `+${b.power_generation}W`;
+    if (b.power_consumption && b.power_consumption > 0)
+        return `-${b.power_consumption}W`;
     return null;
 }
 
@@ -247,7 +293,9 @@ function powerIsGen(b: BuildingData): boolean {
         >
             <div class="mx-auto max-w-5xl px-5 py-4">
                 <div class="flex items-baseline justify-between">
-                    <h1 class="text-base font-semibold tracking-tight">Bâtiments</h1>
+                    <h1 class="text-base font-semibold tracking-tight">
+                        Bâtiments
+                    </h1>
                     <span
                         class="text-xs text-[oklch(42%_0.015_250)] tabular-nums dark:text-[oklch(66%_0.012_260)]"
                     >
@@ -278,7 +326,9 @@ function powerIsGen(b: BuildingData): boolean {
                         @click="activeCategory = 'all'"
                     >
                         Tous
-                        <span class="ml-1 opacity-50">{{ buildings.length }}</span>
+                        <span class="ml-1 opacity-50">{{
+                            buildings.length
+                        }}</span>
                     </button>
 
                     <button
@@ -293,7 +343,9 @@ function powerIsGen(b: BuildingData): boolean {
                         @click="activeCategory = cat"
                     >
                         {{ CATEGORY_LABEL[cat] ?? cat }}
-                        <span class="ml-1 opacity-50">{{ categoryCounts[cat] }}</span>
+                        <span class="ml-1 opacity-50">{{
+                            categoryCounts[cat]
+                        }}</span>
                     </button>
                 </div>
             </div>
@@ -301,7 +353,10 @@ function powerIsGen(b: BuildingData): boolean {
         <!-- endregion -->
 
         <!-- region Grouped view (all categories, no search) -->
-        <main v-if="groupedBuildings" class="mx-auto max-w-5xl px-5 py-6 space-y-5">
+        <main
+            v-if="groupedBuildings"
+            class="mx-auto max-w-5xl space-y-5 px-5 py-6"
+        >
             <section
                 v-for="(group, gi) in groupedBuildings"
                 :key="group.key"
@@ -315,9 +370,9 @@ function powerIsGen(b: BuildingData): boolean {
                     v-html="CATEGORY_SVG[group.key]"
                 ></div>
 
-                <div class="flex items-center gap-2.5 mb-3">
+                <div class="mb-3 flex items-center gap-2.5">
                     <span
-                        class="h-3 w-3 rounded-full shrink-0 ring-2 ring-white/40 dark:ring-white/10"
+                        class="h-3 w-3 shrink-0 rounded-full ring-2 ring-white/40 dark:ring-white/10"
                         :style="{ background: categoryAccentColor(group.key) }"
                     ></span>
                     <h2
@@ -326,56 +381,318 @@ function powerIsGen(b: BuildingData): boolean {
                     >
                         {{ group.label }}
                     </h2>
-                    <span class="text-[11px] font-medium tabular-nums rounded-full px-1.5 py-0.5 bg-[oklch(0%_0_0/0.07)] text-[oklch(35%_0.010_260)] dark:bg-[oklch(100%_0_0/0.08)] dark:text-[oklch(65%_0.010_260)]">
-                        {{ group.subGroups.reduce((n, sg) => n + sg.items.length, 0) }}
+                    <span
+                        class="rounded-full bg-[oklch(0%_0_0/0.07)] px-1.5 py-0.5 text-[11px] font-medium text-[oklch(35%_0.010_260)] tabular-nums dark:bg-[oklch(100%_0_0/0.08)] dark:text-[oklch(65%_0.010_260)]"
+                    >
+                        {{
+                            group.subGroups.reduce(
+                                (n, sg) => n + sg.items.length,
+                                0,
+                            )
+                        }}
                     </span>
                 </div>
 
                 <div class="space-y-3">
-                    <div v-for="sg in group.subGroups" :key="sg.label ?? '__other__'">
+                    <div
+                        v-for="sg in group.subGroups"
+                        :key="sg.label ?? '__other__'"
+                    >
                         <!-- Sub-group label -->
                         <p
                             v-if="sg.label"
-                            class="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-[oklch(45%_0.010_260)] dark:text-[oklch(58%_0.010_260)]"
+                            class="mb-1.5 text-[10px] font-semibold tracking-widest text-[oklch(45%_0.010_260)] uppercase dark:text-[oklch(58%_0.010_260)]"
                         >
                             {{ sg.label }}
                         </p>
 
-                        <ul class="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7">
+                        <ul
+                            class="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7"
+                        >
                             <li
                                 v-for="(b, bi) in sg.items"
                                 :key="b.building_id"
-                                class="building-card relative flex flex-col items-center gap-1 rounded-lg px-1 pt-2 pb-1.5 cursor-default h-full"
+                                class="building-card relative flex cursor-pointer rounded-lg"
+                                :class="
+                                    selectedId === b.building_id
+                                        ? 'building-card--active col-span-2 items-start gap-3 p-2.5'
+                                        : 'h-full flex-col items-center gap-1 px-1 pt-2 pb-1.5'
+                                "
                                 :style="{ '--card-i': Math.min(bi, 12) }"
+                                @click="selectBuilding(b.building_id)"
                             >
-                                <!-- Icon -->
-                                <div class="h-16 w-16 shrink-0">
-                                    <img
-                                        :src="`/assets/game/buildings/${b.building_id}.webp`"
-                                        :alt="displayName(b)"
-                                        class="h-full w-full object-contain"
-                                        loading="lazy"
-                                    />
-                                </div>
+                                <!-- Single img — jamais détruit, évite le flash -->
+                                <img
+                                    :src="`/assets/game/buildings/${b.building_id}.webp`"
+                                    :alt="displayName(b)"
+                                    class="h-16 w-16 shrink-0 object-contain"
+                                    loading="lazy"
+                                />
 
-                                <!-- Power badge -->
-                                <span
-                                    v-if="powerLabel(b)"
-                                    class="rounded px-1 py-0.5 text-[9px] font-semibold leading-none tabular-nums"
-                                    :class="
-                                        powerIsGen(b)
-                                            ? 'bg-[oklch(88%_0.12_148)] text-[oklch(30%_0.10_148)] dark:bg-[oklch(38%_0.12_148)] dark:text-[oklch(88%_0.08_148)]'
-                                            : 'bg-[oklch(88%_0.10_60)] text-[oklch(32%_0.10_42)] dark:bg-[oklch(36%_0.10_42)] dark:text-[oklch(88%_0.08_60)]'
-                                    "
-                                >
-                                    {{ powerLabel(b) }}
-                                </span>
-                                <span v-else class="h-[17px]"></span>
+                                <!-- region Active/expanded card -->
+                                <template v-if="selectedId === b.building_id">
+                                    <!-- Close button -->
+                                    <button
+                                        class="absolute top-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full text-[9px] text-[oklch(40%_0.010_260)] transition-colors hover:bg-[oklch(0%_0_0/0.10)] dark:text-[oklch(62%_0.010_260)] dark:hover:bg-[oklch(100%_0_0/0.10)]"
+                                        @click.stop="closeDetail()"
+                                    >
+                                        ✕
+                                    </button>
 
-                                <!-- Name -->
-                                <p class="mt-auto w-full text-center text-[11px] leading-snug rounded px-1 py-0.5 bg-[oklch(100%_0_0/0.55)] text-[oklch(22%_0.010_260)] dark:bg-[oklch(0%_0_0/0.40)] dark:text-[oklch(88%_0.008_260)]">
-                                    {{ displayName(b) }}
-                                </p>
+                                    <!-- Loading: squelette côté droit uniquement -->
+                                    <div
+                                        v-if="detailLoading"
+                                        class="flex-1 space-y-1.5 pt-1 pr-4"
+                                    >
+                                        <div
+                                            class="h-2.5 w-3/4 animate-pulse rounded bg-[oklch(0%_0_0/0.10)] dark:bg-[oklch(100%_0_0/0.06)]"
+                                        ></div>
+                                        <div
+                                            class="h-2 w-1/2 animate-pulse rounded bg-[oklch(0%_0_0/0.07)] dark:bg-[oklch(100%_0_0/0.04)]"
+                                        ></div>
+                                        <div
+                                            class="mt-2 h-2 w-5/6 animate-pulse rounded bg-[oklch(0%_0_0/0.07)] dark:bg-[oklch(100%_0_0/0.04)]"
+                                        ></div>
+                                        <div
+                                            class="h-2 w-2/3 animate-pulse rounded bg-[oklch(0%_0_0/0.07)] dark:bg-[oklch(100%_0_0/0.04)]"
+                                        ></div>
+                                    </div>
+
+                                    <!-- Info slides in beside the icon -->
+                                    <Transition name="card-info" appear>
+                                        <div
+                                            v-if="!detailLoading && detailData"
+                                            class="min-w-0 flex-1 overflow-hidden pt-0.5 pr-4"
+                                        >
+                                            <!-- Name + DLC -->
+                                            <div
+                                                class="flex items-start gap-1.5"
+                                            >
+                                                <p
+                                                    class="card-title line-clamp-2 min-w-0 flex-1"
+                                                >
+                                                    {{
+                                                        detailData.name['en'] ??
+                                                        b.building_id
+                                                    }}
+                                                </p>
+                                                <span
+                                                    v-if="detailData.dlc_id"
+                                                    class="mt-0.5 shrink-0 rounded bg-[oklch(80%_0.14_80)] px-1 py-0.5 text-[8px] font-bold text-[oklch(28%_0.10_60)] dark:bg-[oklch(40%_0.12_80)] dark:text-[oklch(90%_0.08_80)]"
+                                                    >DLC</span
+                                                >
+                                            </div>
+                                            <p
+                                                class="mt-0.5 truncate font-mono text-[9px] text-[oklch(48%_0.010_260)] dark:text-[oklch(56%_0.010_260)]"
+                                            >
+                                                {{ b.building_id }}
+                                            </p>
+
+                                            <!-- Stats grid -->
+                                            <div
+                                                class="mt-2 grid grid-cols-2 gap-1 overflow-hidden"
+                                            >
+                                                <div class="stat-tile min-w-0">
+                                                    <Icon
+                                                        icon="mdi:resize"
+                                                        class="stat-tile-icon"
+                                                    />
+                                                    <span
+                                                        class="stat-tile-value truncate"
+                                                        >{{
+                                                            detailData.width
+                                                        }}&thinsp;×&thinsp;{{
+                                                            detailData.height
+                                                        }}</span
+                                                    >
+                                                    <span
+                                                        class="stat-tile-label"
+                                                        >Emprise</span
+                                                    >
+                                                </div>
+                                                <div
+                                                    v-if="
+                                                        detailData.construction_time
+                                                    "
+                                                    class="stat-tile min-w-0"
+                                                >
+                                                    <Icon
+                                                        icon="mdi:clock-outline"
+                                                        class="stat-tile-icon"
+                                                    />
+                                                    <span
+                                                        class="stat-tile-value truncate"
+                                                        >{{
+                                                            detailData.construction_time
+                                                        }}<span
+                                                            class="text-[8px] font-medium opacity-70"
+                                                            >&thinsp;s</span
+                                                        ></span
+                                                    >
+                                                    <span
+                                                        class="stat-tile-label"
+                                                        >Constr.</span
+                                                    >
+                                                </div>
+                                                <div
+                                                    v-if="
+                                                        detailData.power_consumption &&
+                                                        detailData.power_consumption >
+                                                            0
+                                                    "
+                                                    class="stat-tile min-w-0"
+                                                >
+                                                    <Icon
+                                                        icon="mdi:lightning-bolt"
+                                                        class="stat-tile-icon text-[oklch(55%_0.13_30)] dark:text-[oklch(65%_0.11_30)]"
+                                                    />
+                                                    <span
+                                                        class="stat-tile-value truncate text-[oklch(46%_0.12_30)] dark:text-[oklch(65%_0.10_30)]"
+                                                        >{{
+                                                            detailData.power_consumption
+                                                        }}<span
+                                                            class="text-[8px] font-medium opacity-70"
+                                                            >&thinsp;W</span
+                                                        ></span
+                                                    >
+                                                    <span
+                                                        class="stat-tile-label"
+                                                        >Conso.</span
+                                                    >
+                                                </div>
+                                                <div
+                                                    v-if="
+                                                        detailData.power_generation &&
+                                                        detailData.power_generation >
+                                                            0
+                                                    "
+                                                    class="stat-tile min-w-0"
+                                                >
+                                                    <Icon
+                                                        icon="mdi:lightning-bolt"
+                                                        class="stat-tile-icon text-[oklch(50%_0.15_148)] dark:text-[oklch(62%_0.13_148)]"
+                                                    />
+                                                    <span
+                                                        class="stat-tile-value truncate text-[oklch(42%_0.14_148)] dark:text-[oklch(62%_0.12_148)]"
+                                                        >+{{
+                                                            detailData.power_generation
+                                                        }}<span
+                                                            class="text-[8px] font-medium opacity-70"
+                                                            >&thinsp;W</span
+                                                        ></span
+                                                    >
+                                                    <span
+                                                        class="stat-tile-label"
+                                                        >Production</span
+                                                    >
+                                                </div>
+                                                <div
+                                                    v-if="
+                                                        detailData.heat_generation !==
+                                                            null &&
+                                                        detailData.heat_generation !==
+                                                            0
+                                                    "
+                                                    class="stat-tile min-w-0"
+                                                >
+                                                    <Icon
+                                                        icon="mdi:fire"
+                                                        class="stat-tile-icon text-[oklch(58%_0.14_42)] dark:text-[oklch(68%_0.12_42)]"
+                                                    />
+                                                    <span
+                                                        class="stat-tile-value truncate"
+                                                        >{{
+                                                            detailData.heat_generation
+                                                        }}<span
+                                                            class="text-[8px] font-medium opacity-70"
+                                                            >&thinsp;DTU/s</span
+                                                        ></span
+                                                    >
+                                                    <span
+                                                        class="stat-tile-label"
+                                                        >Chaleur</span
+                                                    >
+                                                </div>
+                                            </div>
+
+                                            <!-- Description -->
+                                            <p
+                                                v-if="
+                                                    detailData.description['en']
+                                                "
+                                                class="mt-2 line-clamp-2 text-[9px] leading-relaxed text-[oklch(40%_0.010_260)] dark:text-[oklch(60%_0.010_260)]"
+                                            >
+                                                {{
+                                                    detailData.description['en']
+                                                }}
+                                            </p>
+
+                                            <!-- Materials -->
+                                            <div
+                                                v-if="
+                                                    detailData.materials.length
+                                                "
+                                                class="mt-2"
+                                            >
+                                                <p
+                                                    class="mb-1 flex items-center gap-1 text-[8px] font-semibold tracking-widest text-[oklch(46%_0.010_260)] uppercase dark:text-[oklch(56%_0.010_260)]"
+                                                >
+                                                    <Icon
+                                                        icon="mdi:cube-outline"
+                                                        class="text-[10px]"
+                                                    />
+                                                    Matériaux
+                                                </p>
+                                                <div
+                                                    class="flex flex-wrap gap-1"
+                                                >
+                                                    <span
+                                                        v-for="m in detailData.materials"
+                                                        :key="
+                                                            m.element_id ??
+                                                            m.material_category ??
+                                                            ''
+                                                        "
+                                                        class="mat-chip"
+                                                    >
+                                                        {{
+                                                            m.element_id ??
+                                                            m.material_category
+                                                        }}
+                                                        <span
+                                                            class="ml-0.5 tabular-nums opacity-50"
+                                                            >×{{
+                                                                m.amount
+                                                            }}kg</span
+                                                        >
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Transition>
+                                </template>
+                                <!-- endregion -->
+
+                                <!-- region Normal card -->
+                                <template v-else>
+                                    <span
+                                        v-if="powerLabel(b)"
+                                        class="rounded px-1 py-0.5 text-[9px] leading-none font-semibold tabular-nums"
+                                        :class="
+                                            powerIsGen(b)
+                                                ? 'bg-[oklch(88%_0.12_148)] text-[oklch(30%_0.10_148)] dark:bg-[oklch(38%_0.12_148)] dark:text-[oklch(88%_0.08_148)]'
+                                                : 'bg-[oklch(88%_0.10_60)] text-[oklch(32%_0.10_42)] dark:bg-[oklch(36%_0.10_42)] dark:text-[oklch(88%_0.08_60)]'
+                                        "
+                                        >{{ powerLabel(b) }}</span
+                                    >
+                                    <span v-else class="h-[17px]"></span>
+                                    <p
+                                        class="mt-auto w-full rounded bg-[oklch(100%_0_0/0.55)] px-1 py-0.5 text-center text-[11px] leading-snug text-[oklch(22%_0.010_260)] dark:bg-[oklch(0%_0_0/0.40)] dark:text-[oklch(88%_0.008_260)]"
+                                    >
+                                        {{ displayName(b) }}
+                                    </p>
+                                </template>
+                                <!-- endregion -->
                             </li>
                         </ul>
                     </div>
@@ -398,7 +715,14 @@ function powerIsGen(b: BuildingData): boolean {
                 class="divide-y divide-[oklch(90%_0.008_250)] dark:divide-[oklch(30%_0.012_260)]"
             >
                 <li v-for="b in filtered" :key="b.building_id">
-                    <div class="-mx-3 flex items-center gap-3 rounded-lg px-3 py-2.5">
+                    <div
+                        class="-mx-3 flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-[oklch(0%_0_0/0.03)] dark:hover:bg-[oklch(100%_0_0/0.04)]"
+                        :class="{
+                            'bg-[oklch(0%_0_0/0.03)] dark:bg-[oklch(100%_0_0/0.04)]':
+                                selectedId === b.building_id,
+                        }"
+                        @click="selectBuilding(b.building_id)"
+                    >
                         <!-- Building icon -->
                         <div
                             class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[oklch(20%_0.025_250)] dark:bg-[oklch(16%_0.018_260)]"
@@ -413,7 +737,9 @@ function powerIsGen(b: BuildingData): boolean {
 
                         <!-- Name + id -->
                         <div class="min-w-0 flex-1">
-                            <p class="truncate text-sm leading-none font-medium">
+                            <p
+                                class="truncate text-sm leading-none font-medium"
+                            >
                                 {{ displayName(b) }}
                             </p>
                             <p
@@ -432,7 +758,7 @@ function powerIsGen(b: BuildingData): boolean {
                                 {{ CATEGORY_LABEL[b.category] ?? b.category }}
                             </span>
                             <span
-                                class="hidden text-xs tabular-nums text-[oklch(42%_0.015_250)] sm:block dark:text-[oklch(66%_0.012_260)]"
+                                class="hidden text-xs text-[oklch(42%_0.015_250)] tabular-nums sm:block dark:text-[oklch(66%_0.012_260)]"
                             >
                                 {{ b.width }}×{{ b.height }}
                             </span>
@@ -449,6 +775,148 @@ function powerIsGen(b: BuildingData): boolean {
                             </span>
                         </div>
                     </div>
+
+                    <!-- region Filtered list detail panel -->
+                    <Transition name="detail-expand">
+                        <div
+                            v-if="selectedId === b.building_id"
+                            class="px-3 pb-2.5"
+                        >
+                            <div
+                                v-if="detailLoading"
+                                class="h-10 animate-pulse rounded-lg bg-[oklch(0%_0_0/0.05)] dark:bg-[oklch(100%_0_0/0.04)]"
+                            ></div>
+                            <div v-else-if="detailData" class="relative">
+                                <button
+                                    class="absolute top-0 right-0 flex h-5 w-5 items-center justify-center rounded-full text-[9px] text-[oklch(40%_0.010_260)] transition-colors hover:bg-[oklch(0%_0_0/0.08)] dark:text-[oklch(60%_0.010_260)] dark:hover:bg-[oklch(100%_0_0/0.08)]"
+                                    @click.stop="closeDetail()"
+                                >
+                                    ✕
+                                </button>
+                                <!-- Stats row with icons, no icon duplicate -->
+                                <div
+                                    class="flex flex-wrap items-center gap-x-4 gap-y-1 pr-6"
+                                >
+                                    <span class="list-stat">
+                                        <Icon
+                                            icon="mdi:resize"
+                                            class="list-stat-icon"
+                                        />
+                                        {{ detailData.width }}×{{
+                                            detailData.height
+                                        }}
+                                        <span class="list-stat-label"
+                                            >Emprise</span
+                                        >
+                                    </span>
+                                    <span
+                                        v-if="detailData.construction_time"
+                                        class="list-stat"
+                                    >
+                                        <Icon
+                                            icon="mdi:clock-outline"
+                                            class="list-stat-icon"
+                                        />
+                                        {{
+                                            detailData.construction_time
+                                        }}&thinsp;s
+                                        <span class="list-stat-label"
+                                            >Construction</span
+                                        >
+                                    </span>
+                                    <span
+                                        v-if="
+                                            detailData.power_consumption &&
+                                            detailData.power_consumption > 0
+                                        "
+                                        class="list-stat text-[oklch(50%_0.12_30)] dark:text-[oklch(66%_0.10_30)]"
+                                    >
+                                        <Icon
+                                            icon="mdi:lightning-bolt"
+                                            class="list-stat-icon"
+                                        />
+                                        {{
+                                            detailData.power_consumption
+                                        }}&thinsp;W
+                                        <span class="list-stat-label"
+                                            >Conso.</span
+                                        >
+                                    </span>
+                                    <span
+                                        v-if="
+                                            detailData.power_generation &&
+                                            detailData.power_generation > 0
+                                        "
+                                        class="list-stat text-[oklch(46%_0.14_148)] dark:text-[oklch(63%_0.12_148)]"
+                                    >
+                                        <Icon
+                                            icon="mdi:lightning-bolt"
+                                            class="list-stat-icon"
+                                        />
+                                        +{{
+                                            detailData.power_generation
+                                        }}&thinsp;W
+                                        <span class="list-stat-label"
+                                            >Prod.</span
+                                        >
+                                    </span>
+                                    <span
+                                        v-if="
+                                            detailData.heat_generation !==
+                                                null &&
+                                            detailData.heat_generation !== 0
+                                        "
+                                        class="list-stat text-[oklch(52%_0.13_42)] dark:text-[oklch(66%_0.11_42)]"
+                                    >
+                                        <Icon
+                                            icon="mdi:fire"
+                                            class="list-stat-icon"
+                                        />
+                                        {{
+                                            detailData.heat_generation
+                                        }}&thinsp;DTU/s
+                                        <span class="list-stat-label"
+                                            >Chaleur</span
+                                        >
+                                    </span>
+                                    <span
+                                        v-if="detailData.dlc_id"
+                                        class="info-chip info-chip--dlc"
+                                        >DLC</span
+                                    >
+                                </div>
+                                <p
+                                    v-if="detailData.description['en']"
+                                    class="mt-1.5 text-[10px] leading-relaxed text-[oklch(38%_0.010_260)] dark:text-[oklch(62%_0.010_260)]"
+                                >
+                                    {{ detailData.description['en'] }}
+                                </p>
+                                <div
+                                    v-if="detailData.materials.length"
+                                    class="mt-1.5 flex flex-wrap gap-1"
+                                >
+                                    <span
+                                        v-for="m in detailData.materials"
+                                        :key="
+                                            m.element_id ??
+                                            m.material_category ??
+                                            ''
+                                        "
+                                        class="mat-chip"
+                                    >
+                                        {{
+                                            m.element_id ?? m.material_category
+                                        }}
+                                        <span
+                                            class="ml-0.5 tabular-nums opacity-50"
+                                            >×{{ m.amount }}kg</span
+                                        >
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </Transition>
+                    <!-- endregion -->
                 </li>
             </ul>
         </main>
@@ -473,19 +941,31 @@ function powerIsGen(b: BuildingData): boolean {
 }
 
 @keyframes section-in {
-    from { opacity: 0; transform: translateY(14px); }
-    to   { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 @keyframes card-in {
-    from { opacity: 0; transform: translateY(6px) scale(0.92); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
+    from {
+        opacity: 0;
+        transform: translateY(6px) scale(0.92);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 .cat-section {
     background: linear-gradient(
         135deg,
-        oklch(91% calc(var(--cat-c) * 0.40) var(--cat-h)) 0%,
+        oklch(91% calc(var(--cat-c) * 0.4) var(--cat-h)) 0%,
         oklch(96% 0.004 260) 100%
     );
     animation: section-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -495,7 +975,7 @@ function powerIsGen(b: BuildingData): boolean {
 :global(.dark) .cat-section {
     background: linear-gradient(
         135deg,
-        oklch(20% calc(var(--cat-c) * 0.70) var(--cat-h)) 0%,
+        oklch(20% calc(var(--cat-c) * 0.7) var(--cat-h)) 0%,
         oklch(17% 0.008 260) 100%
     );
 }
@@ -509,30 +989,250 @@ function powerIsGen(b: BuildingData): boolean {
     animation-delay: calc(var(--card-i, 0) * 25ms + 80ms);
 }
 
+.building-card--active {
+    background: oklch(96% calc(var(--cat-c, 0.06) * 0.32) var(--cat-h, 260));
+    border: 1px solid
+        oklch(88% calc(var(--cat-c, 0.06) * 0.45) var(--cat-h, 260));
+    box-shadow: 0 4px 18px
+        oklch(40% calc(var(--cat-c, 0.06) * 0.8) var(--cat-h, 260) / 0.14);
+}
+
+:global(.dark) .building-card--active {
+    background: oklch(18% calc(var(--cat-c, 0.06) * 0.65) var(--cat-h, 260));
+    border-color: oklch(32% calc(var(--cat-c, 0.06) * 0.55) var(--cat-h, 260));
+    box-shadow: 0 4px 18px
+        oklch(10% calc(var(--cat-c, 0.06) * 1.2) var(--cat-h, 260) / 0.45);
+}
+
+.building-card--active:hover {
+    transform: none;
+    background: oklch(96% calc(var(--cat-c, 0.06) * 0.32) var(--cat-h, 260));
+    box-shadow: 0 4px 18px
+        oklch(40% calc(var(--cat-c, 0.06) * 0.8) var(--cat-h, 260) / 0.14);
+}
+
+:global(.dark) .building-card--active:hover {
+    background: oklch(18% calc(var(--cat-c, 0.06) * 0.65) var(--cat-h, 260));
+    box-shadow: 0 4px 18px
+        oklch(10% calc(var(--cat-c, 0.06) * 1.2) var(--cat-h, 260) / 0.45);
+}
+
+.card-info-enter-active {
+    transition:
+        clip-path 340ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 280ms ease-out 40ms;
+    will-change: clip-path;
+}
+
+.card-info-leave-active {
+    transition: opacity 160ms ease-in;
+}
+
+.card-info-enter-from {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0;
+}
+
+.card-info-leave-to {
+    opacity: 0;
+}
+
+.info-chip {
+    display: inline-flex;
+    align-items: center;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: oklch(0% 0 0 / 0.07);
+    color: oklch(32% 0.01 260);
+    font-variant-numeric: tabular-nums;
+}
+
+:global(.dark) .info-chip {
+    background: oklch(100% 0 0 / 0.07);
+    color: oklch(74% 0.008 260);
+}
+
+.info-chip--neg {
+    color: oklch(50% 0.12 30);
+}
+:global(.dark) .info-chip--neg {
+    color: oklch(66% 0.1 30);
+}
+.info-chip--pos {
+    color: oklch(46% 0.14 148);
+}
+:global(.dark) .info-chip--pos {
+    color: oklch(63% 0.12 148);
+}
+.info-chip--dlc {
+    background: oklch(80% 0.14 80);
+    color: oklch(28% 0.1 60);
+}
+:global(.dark) .info-chip--dlc {
+    background: oklch(40% 0.12 80);
+    color: oklch(90% 0.08 80);
+}
+
+.mat-chip {
+    display: inline-flex;
+    align-items: center;
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: oklch(0% 0 0 / 0.06);
+    color: oklch(36% 0.01 260);
+}
+
+:global(.dark) .mat-chip {
+    background: oklch(100% 0 0 / 0.06);
+    color: oklch(68% 0.008 260);
+}
+
+/* Expanded card title */
+.card-title {
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: oklch(10% 0.02 260);
+}
+
+:global(.dark) .card-title {
+    color: oklch(97% 0.005 260);
+}
+
+/* Stat tile (2-col grid in expanded card) */
+.stat-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 4px 6px;
+    border-radius: 5px;
+    background: oklch(0% 0 0 / 0.05);
+    border: 1px solid oklch(0% 0 0 / 0.06);
+    overflow: hidden;
+}
+
+:global(.dark) .stat-tile {
+    background: oklch(100% 0 0 / 0.05);
+    border-color: oklch(100% 0 0 / 0.06);
+}
+
+.stat-tile-icon {
+    font-size: 11px;
+    color: oklch(46% 0.01 260);
+}
+
+:global(.dark) .stat-tile-icon {
+    color: oklch(60% 0.01 260);
+}
+
+.stat-tile-value {
+    font-size: 11px;
+    font-weight: 700;
+    color: oklch(20% 0.012 260);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+}
+
+:global(.dark) .stat-tile-value {
+    color: oklch(88% 0.008 260);
+}
+
+.stat-tile-label {
+    font-size: 8px;
+    font-weight: 500;
+    color: oklch(50% 0.008 260);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+:global(.dark) .stat-tile-label {
+    color: oklch(58% 0.008 260);
+}
+
+/* Inline stat row (filtered list) */
+.list-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    color: oklch(28% 0.012 260);
+    font-variant-numeric: tabular-nums;
+}
+
+:global(.dark) .list-stat {
+    color: oklch(78% 0.008 260);
+}
+
+.list-stat-icon {
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+.list-stat-label {
+    font-size: 8px;
+    font-weight: 400;
+    color: oklch(50% 0.008 260);
+    margin-left: 1px;
+}
+
+:global(.dark) .list-stat-label {
+    color: oklch(56% 0.008 260);
+}
+
+.detail-expand-enter-active {
+    transition:
+        opacity 250ms cubic-bezier(0.22, 1, 0.36, 1),
+        transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.detail-expand-leave-active {
+    transition:
+        opacity 160ms ease-in,
+        transform 160ms ease-in;
+}
+
+.detail-expand-enter-from,
+.detail-expand-leave-to {
+    opacity: 0;
+    transform: translateY(-4px);
+}
+
 .building-card img {
     transition: filter 200ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .building-card:hover {
     transform: scale(1.12) translateY(-2px);
-    background: oklch(100% 0 0 / 0.60);
+    background: oklch(100% 0 0 / 0.6);
     box-shadow:
         0 4px 14px oklch(40% calc(var(--cat-c) * 0.9) var(--cat-h) / 0.22),
         0 0 0 1px oklch(68% calc(var(--cat-c) * 0.7) var(--cat-h) / 0.35);
 }
 
 .building-card:hover img {
-    filter: drop-shadow(0 2px 7px oklch(55% calc(var(--cat-c) * 1.3) var(--cat-h) / 0.55));
+    filter: drop-shadow(
+        0 2px 7px oklch(55% calc(var(--cat-c) * 1.3) var(--cat-h) / 0.55)
+    );
 }
 
 :global(.dark) .building-card:hover {
     background: oklch(100% 0 0 / 0.08);
     box-shadow:
-        0 4px 14px oklch(20% calc(var(--cat-c) * 1.2) var(--cat-h) / 0.50),
-        0 0 0 1px oklch(55% calc(var(--cat-c) * 0.8) var(--cat-h) / 0.30);
+        0 4px 14px oklch(20% calc(var(--cat-c) * 1.2) var(--cat-h) / 0.5),
+        0 0 0 1px oklch(55% calc(var(--cat-c) * 0.8) var(--cat-h) / 0.3);
 }
 
 :global(.dark) .building-card:hover img {
-    filter: drop-shadow(0 2px 8px oklch(65% calc(var(--cat-c) * 1.5) var(--cat-h) / 0.65));
+    filter: drop-shadow(
+        0 2px 8px oklch(65% calc(var(--cat-c) * 1.5) var(--cat-h) / 0.65)
+    );
 }
 </style>
