@@ -144,3 +144,28 @@ it('includes dlc_id, temperature range, and other-variant image previews in the 
 
     @unlink($tempPublic.'/assets/game/critters/PufferFish.webp');
 });
+
+it('excludes the primary variant image and caps the preview stack at 2', function (): void {
+    $tempPublic = sys_get_temp_dir().'/ony-planner-test-public';
+    @mkdir($tempPublic.'/assets/game/critters', 0777, true);
+    foreach (['Alpha', 'Beta', 'Gamma', 'Delta'] as $id) {
+        file_put_contents($tempPublic.'/assets/game/critters/'.$id.'.webp', 'webp');
+    }
+
+    foreach (['Alpha', 'Beta', 'Gamma', 'Delta'] as $id) {
+        $critter = Critter::factory()->create(['critter_id' => $id, 'variant_family' => 'MultiVariant']);
+        CritterMorph::factory()->create(['critter_id' => $critter->id, 'morph_id' => $id, 'is_base' => true]);
+    }
+
+    $list = app(CritterPresenter::class)->familyList();
+
+    expect($list)->toHaveCount(1);
+    $family = $list[0];
+    expect($family->variant_images)->toHaveCount(2)
+        ->and($family->variant_images)->not->toContain('/assets/game/critters/Alpha.webp')
+        ->and($family->variant_images)->toBe(['/assets/game/critters/Beta.webp', '/assets/game/critters/Delta.webp']);
+
+    foreach (['Alpha', 'Beta', 'Gamma', 'Delta'] as $id) {
+        @unlink($tempPublic.'/assets/game/critters/'.$id.'.webp');
+    }
+});
