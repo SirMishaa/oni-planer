@@ -13,30 +13,38 @@
         'Noto Color Emoji';
 
     /* ONI element state accent colors */
-    --color-state-solid:   oklch(72% 0.145 52);
-    --color-state-liquid:  oklch(58% 0.185 222);
-    --color-state-gas:     oklch(68% 0.18 142);
+    --color-state-solid: oklch(72% 0.145 52);
+    --color-state-liquid: oklch(58% 0.185 222);
+    --color-state-gas: oklch(68% 0.18 142);
     --color-state-special: oklch(65% 0.21 290);
 
     /* App shell (sidebar) — ONI metallic slate */
-    --color-shell:         oklch(17%  0.028 148);
-    --color-shell-hover:   oklch(23%  0.034 148);
-    --color-shell-active:  oklch(25%  0.060 52);
-    --color-shell-border:  oklch(28%  0.036 148);
-    --color-shell-muted:   oklch(62%  0.018 95);
-    --color-shell-text:    oklch(80%  0.014 95);
-    --color-oni-amber:     oklch(72%  0.145 52);
-    --color-oni-amber-dim: oklch(52%  0.095 52);
+    --color-shell: oklch(17% 0.028 148);
+    --color-shell-hover: oklch(23% 0.034 148);
+    --color-shell-active: oklch(25% 0.06 52);
+    --color-shell-border: oklch(28% 0.036 148);
+    --color-shell-muted: oklch(62% 0.018 95);
+    --color-shell-text: oklch(80% 0.014 95);
+    --color-oni-amber: oklch(72% 0.145 52);
+    --color-oni-amber-dim: oklch(52% 0.095 52);
 }
 
 /* Content area dot grid — reduced opacity in dark mode */
 .content-grid {
-    background-image: radial-gradient(circle, oklch(55% 0.03 75 / 0.15) 1px, transparent 1px);
+    background-image: radial-gradient(
+        circle,
+        oklch(55% 0.03 75 / 0.15) 1px,
+        transparent 1px
+    );
     background-size: 24px 24px;
 }
 
 @media (prefers-color-scheme: dark) {
     .content-grid {
-        background-image: radial-gradient(circle, oklch(55% 0.03 75 / 0.05) 1px, transparent 1px);
+        background-image: radial-gradient(
+            circle,
+            oklch(55% 0.03 75 / 0.05) 1px,
+            transparent 1px
+        );
     }
 }

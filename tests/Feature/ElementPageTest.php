@@ -29,22 +29,22 @@ beforeEach(function (): void {
 it('renders the elements page via Inertia', function (): void {
     $this->get('/')
         ->assertOk()
-        ->assertInertia(fn (AssertableInertia $page) => $page
+        ->assertInertia(fn (AssertableInertia $page): AssertableInertia => $page
             ->component('Elements/Index')
         );
 });
 
 it('passes all non-disabled elements as props', function (): void {
     $this->get('/')
-        ->assertInertia(fn (AssertableInertia $page) => $page
+        ->assertInertia(fn (AssertableInertia $page): AssertableInertia => $page
             ->has('elements', 2)
         );
 });
 
 it('returns elements with expected fields', function (): void {
     $this->get('/')
-        ->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('elements.0', fn (AssertableInertia $el) => $el
+        ->assertInertia(fn (AssertableInertia $page): AssertableInertia => $page
+            ->has('elements.0', fn (AssertableInertia $el): AssertableInertia => $el
                 ->hasAll(['element_id', 'name', 'state', 'material_category'])
             )
         );

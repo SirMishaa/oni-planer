@@ -1,7 +1,5 @@
 <script setup lang="ts">
-  defineProps<{/*|*/}>()
+defineProps<{}>();
 </script>
 
-<template>
-
-</template>
+<template></template>

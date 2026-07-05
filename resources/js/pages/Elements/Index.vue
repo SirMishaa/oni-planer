@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
 import { ToggleGroupItem, ToggleGroupRoot } from 'reka-ui';
 import { computed, ref } from 'vue';
-import { Link } from '@inertiajs/vue3';
-import AppLayout from '@/layouts/AppLayout.vue';
 import Badge from '@/components/ui/Badge.vue';
+import AppLayout from '@/layouts/AppLayout.vue';
 import type { ElementData } from '@/types/App/Data/data';
 
 defineOptions({ layout: AppLayout });
@@ -67,7 +67,10 @@ function toState(state: string): ElementState {
 }
 
 function toSlug(elementId: string): string {
-    return elementId.replace(/([A-Z])/g, (c, _, i) => (i > 0 ? '-' : '') + c.toLowerCase());
+    return elementId.replace(
+        /([A-Z])/g,
+        (c, _, i) => (i > 0 ? '-' : '') + c.toLowerCase(),
+    );
 }
 
 function displayName(el: ElementData): string {
@@ -88,7 +91,12 @@ function onStateChange(val: unknown): void {
     activeState.value = val as ActiveState;
 }
 
-const ELEMENTS_WITHOUT_ICON = new Set(['COMPOSITION', 'Creature', 'Vacuum', 'Void']);
+const ELEMENTS_WITHOUT_ICON = new Set([
+    'COMPOSITION',
+    'Creature',
+    'Vacuum',
+    'Void',
+]);
 
 function hasIcon(elementId: string): boolean {
     return !ELEMENTS_WITHOUT_ICON.has(elementId);
@@ -174,56 +182,57 @@ function hasIcon(elementId: string): boolean {
                 v-else
                 class="divide-y divide-[oklch(90%_0.008_250)] dark:divide-[oklch(30%_0.012_260)]"
             >
-                <li
-                    v-for="el in filtered"
-                    :key="el.element_id"
-                >
-                <Link
-                    :href="`/elements/${toSlug(el.element_id)}`"
-                    class="-mx-3 flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-[oklch(91%_0.009_250)] dark:hover:bg-[oklch(28%_0.015_260)]"
-                >
-                    <!-- Element icon -->
-                    <div
-                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg overflow-hidden select-none"
-                        :class="[
-                            stateMonogram[toState(el.state)].bg,
-                            stateMonogram[toState(el.state)].text,
-                        ]"
+                <li v-for="el in filtered" :key="el.element_id">
+                    <Link
+                        :href="`/elements/${toSlug(el.element_id)}`"
+                        class="-mx-3 flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-[oklch(91%_0.009_250)] dark:hover:bg-[oklch(28%_0.015_260)]"
                     >
-                        <img
-                            v-if="hasIcon(el.element_id)"
-                            :src="`/assets/game/elements/${el.element_id}.webp`"
-                            :alt="displayName(el)"
-                            class="h-full w-full object-cover"
-                            loading="lazy"
-                        />
-                        <span v-else class="text-[10px] font-bold">{{ initials(displayName(el)) }}</span>
-                    </div>
-
-                    <!-- Name + id -->
-                    <div class="min-w-0 flex-1">
-                        <p class="truncate text-sm leading-none font-medium">
-                            {{ displayName(el) }}
-                        </p>
-                        <p
-                            class="mt-0.5 font-mono text-[11px] text-[oklch(42%_0.015_250)] dark:text-[oklch(66%_0.012_260)]"
+                        <!-- Element icon -->
+                        <div
+                            class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg select-none"
+                            :class="[
+                                stateMonogram[toState(el.state)].bg,
+                                stateMonogram[toState(el.state)].text,
+                            ]"
                         >
-                            {{ el.element_id }}
-                        </p>
-                    </div>
+                            <img
+                                v-if="hasIcon(el.element_id)"
+                                :src="`/assets/game/elements/${el.element_id}.webp`"
+                                :alt="displayName(el)"
+                                class="h-full w-full object-cover"
+                                loading="lazy"
+                            />
+                            <span v-else class="text-[10px] font-bold">{{
+                                initials(displayName(el))
+                            }}</span>
+                        </div>
 
-                    <!-- Category + state badge -->
-                    <div class="flex shrink-0 items-center gap-2">
-                        <span
-                            class="hidden text-xs text-[oklch(42%_0.015_250)] sm:block dark:text-[oklch(66%_0.012_260)]"
-                        >
-                            {{ el.material_category }}
-                        </span>
-                        <Badge :variant="toState(el.state)">{{
-                            el.state
-                        }}</Badge>
-                    </div>
-                </Link>
+                        <!-- Name + id -->
+                        <div class="min-w-0 flex-1">
+                            <p
+                                class="truncate text-sm leading-none font-medium"
+                            >
+                                {{ displayName(el) }}
+                            </p>
+                            <p
+                                class="mt-0.5 font-mono text-[11px] text-[oklch(42%_0.015_250)] dark:text-[oklch(66%_0.012_260)]"
+                            >
+                                {{ el.element_id }}
+                            </p>
+                        </div>
+
+                        <!-- Category + state badge -->
+                        <div class="flex shrink-0 items-center gap-2">
+                            <span
+                                class="hidden text-xs text-[oklch(42%_0.015_250)] sm:block dark:text-[oklch(66%_0.012_260)]"
+                            >
+                                {{ el.material_category }}
+                            </span>
+                            <Badge :variant="toState(el.state)">{{
+                                el.state
+                            }}</Badge>
+                        </div>
+                    </Link>
                 </li>
             </ul>
         </main>
