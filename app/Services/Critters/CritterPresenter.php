@@ -109,7 +109,7 @@ final class CritterPresenter
 
     /**
      * @param  Collection<int, Critter>  $critters
-     * @return array<string, list<Critter>> slug => variants
+     * @return array<string, list<Critter>> slug => variants, base variant first
      */
     private function groupByFamily(Collection $critters): array
     {
@@ -120,7 +120,34 @@ final class CritterPresenter
             $groups[$slug][] = $critter;
         }
 
-        return $groups;
+        return array_map($this->withBaseVariantFirst(...), $groups);
+    }
+
+    /**
+     * Move the variant whose critter_id matches the family key to index 0,
+     * falling back to the existing (alphabetical-first) order when none matches.
+     *
+     * @param  list<Critter>  $variants
+     * @return list<Critter>
+     */
+    private function withBaseVariantFirst(array $variants): array
+    {
+        $baseIndex = null;
+        foreach ($variants as $index => $variant) {
+            if ($variant->critter_id === $variant->variant_family) {
+                $baseIndex = $index;
+                break;
+            }
+        }
+
+        if ($baseIndex === null || $baseIndex === 0) {
+            return $variants;
+        }
+
+        $base = $variants[$baseIndex];
+        unset($variants[$baseIndex]);
+
+        return [$base, ...array_values($variants)];
     }
 
     /** @param list<Critter> $variants */

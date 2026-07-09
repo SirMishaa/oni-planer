@@ -74,6 +74,29 @@ it('uses the resolved base-morph name for the family, not the raw variant_family
         ->and($list[0]->name)->toBe('Oil Floater');
 });
 
+it('uses the base variant name even when it does not sort first alphabetically', function (): void {
+    $variant = Critter::factory()->create(['critter_id' => 'AaaBammoth', 'variant_family' => 'Bammoth']);
+    CritterMorph::factory()->create([
+        'critter_id' => $variant->id,
+        'morph_id' => 'AaaBammoth',
+        'is_base' => true,
+        'name' => ['en' => 'Regal Bammoth'],
+    ]);
+
+    $base = Critter::factory()->create(['critter_id' => 'Bammoth', 'variant_family' => 'Bammoth']);
+    CritterMorph::factory()->create([
+        'critter_id' => $base->id,
+        'morph_id' => 'Bammoth',
+        'is_base' => true,
+        'name' => ['en' => 'Bammoth'],
+    ]);
+
+    $list = app(CritterPresenter::class)->familyList();
+
+    expect($list)->toHaveCount(1)
+        ->and($list[0]->name)->toBe('Bammoth');
+});
+
 it('falls back to variant_family when no morph is present', function (): void {
     Critter::factory()->create(['critter_id' => 'Ghost', 'variant_family' => 'Ghost']);
 
