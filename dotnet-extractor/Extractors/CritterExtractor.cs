@@ -472,6 +472,27 @@ public sealed class CritterExtractor
         return 0;
     }
 
+    public static string? InvokeFindNameKey(TypeDefinition type) => FindNameKey(type);
+
+    /// <summary>
+    /// Find the localization key for a critter's display name.
+    ///
+    /// The game does NOT embed the full key (e.g.
+    /// "STRINGS.CREATURES.SPECIES.OILFLOATER.NAME") as a single string
+    /// literal anywhere — that string never exists in the assembly for
+    /// creatures. Instead, the name is a static field on a nested class
+    /// (e.g. STRINGS.CREATURES.SPECIES.OILFLOATER.NAME), and the critter's
+    /// own IEntityConfig type reads that field via a plain `ldsfld` in its
+    /// CreatePrefab method. The declaring type's IL FullName (Mono.Cecil
+    /// represents nested types with '/' separators) converted to dots IS
+    /// the correct dotted key StringResolver already expects.
+    ///
+    /// This also correctly handles variants whose true species id differs
+    /// from both the critter_id and this extractor's own variant_family
+    /// value (e.g. GoldBellyConfig's real species id is ICEBELLY with
+    /// suffix VARIANT_GOLD — not derivable from any string this extractor
+    /// otherwise produces).
+    /// </summary>
     private static string? FindNameKey(TypeDefinition type)
     {
         if (!type.HasMethods) return null;
@@ -479,9 +500,11 @@ public sealed class CritterExtractor
         {
             foreach (var instr in method.Body.Instructions)
             {
-                if (instr.OpCode == OpCodes.Ldstr && instr.Operand is string s &&
-                    s.StartsWith("STRINGS.CREATURES"))
-                    return s;
+                if (instr.OpCode == OpCodes.Ldsfld &&
+                    instr.Operand is FieldReference fr &&
+                    fr.Name == "NAME" &&
+                    fr.DeclaringType.FullName.StartsWith("STRINGS"))
+                    return fr.DeclaringType.FullName.Replace('/', '.') + "." + fr.Name;
             }
         }
         return null;

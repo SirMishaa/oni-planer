@@ -1,4 +1,5 @@
 using Mono.Cecil;
+using Mono.Cecil.Cil;
 
 public class CritterExtractorTests
 {
@@ -70,5 +71,53 @@ public class CritterExtractorTests
         // Baby morphs inherit the family from their parent adult config.
         var babyHatch = critters.First(c => c.CritterId == "HatchBaby");
         Assert.Equal("Hatch", babyHatch.VariantFamily);
+    }
+
+    [Fact]
+    public void FindNameKey_resolves_simple_species_config()
+    {
+        var type = Module.GetType("OilFloaterConfig");
+        var key = CritterExtractor.InvokeFindNameKey(type);
+
+        Assert.Equal("STRINGS.CREATURES.SPECIES.OILFLOATER.NAME", key);
+    }
+
+    [Fact]
+    public void FindNameKey_resolves_variant_whose_species_id_differs_from_class_name()
+    {
+        // GoldBellyConfig's true species id is ICEBELLY with variant suffix
+        // VARIANT_GOLD — neither is derivable from the class name or from
+        // this extractor's own variant_family output ("Belly"). This is the
+        // case that proves the fix works generally, not just for the easy case.
+        var type = Module.GetType("GoldBellyConfig");
+        var key = CritterExtractor.InvokeFindNameKey(type);
+
+        Assert.Equal("STRINGS.CREATURES.SPECIES.ICEBELLY.VARIANT_GOLD.NAME", key);
+    }
+
+    [Fact]
+    public void FindNameKey_resolves_baby_variant_config()
+    {
+        var type = Module.GetType("BabyIceBellyConfig");
+        var key = CritterExtractor.InvokeFindNameKey(type);
+
+        Assert.Equal("STRINGS.CREATURES.SPECIES.ICEBELLY.BABY.NAME", key);
+    }
+
+    [Fact]
+    public void FindNameKey_returns_null_when_no_matching_field_read_exists()
+    {
+        // A type with methods but no ldsfld targeting a STRINGS...::NAME field
+        // must fall back to null, exactly like today's behavior for every
+        // critter — this is the safety net the rest of the pipeline relies on.
+        var module = ModuleDefinition.CreateModule("Test", ModuleKind.Dll);
+        var type = new TypeDefinition("", "EmptyType", Mono.Cecil.TypeAttributes.Public, module.TypeSystem.Object);
+        var method = new MethodDefinition("DoNothing", Mono.Cecil.MethodAttributes.Public, module.TypeSystem.Void);
+        method.Body.Instructions.Add(Instruction.Create(OpCodes.Ret));
+        type.Methods.Add(method);
+
+        var key = CritterExtractor.InvokeFindNameKey(type);
+
+        Assert.Null(key);
     }
 }
