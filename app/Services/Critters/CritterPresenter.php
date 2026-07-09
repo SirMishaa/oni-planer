@@ -124,30 +124,26 @@ final class CritterPresenter
     }
 
     /**
-     * Move the variant whose critter_id matches the family key to index 0,
-     * falling back to the existing (alphabetical-first) order when none matches.
+     * Order variants so the base one comes first: exact critter_id/variant_family
+     * match wins, then the shortest critter_id (variant ids extend the base id,
+     * e.g. WoodDeer vs GlassDeer where neither literally equals "Deer"), then
+     * alphabetical critter_id as tiebreaker.
      *
      * @param  list<Critter>  $variants
      * @return list<Critter>
      */
     private function withBaseVariantFirst(array $variants): array
     {
-        $baseIndex = null;
-        foreach ($variants as $index => $variant) {
-            if ($variant->critter_id === $variant->variant_family) {
-                $baseIndex = $index;
-                break;
-            }
-        }
+        usort($variants, function (Critter $a, Critter $b): int {
+            $aExact = $a->critter_id === $a->variant_family ? 0 : 1;
+            $bExact = $b->critter_id === $b->variant_family ? 0 : 1;
 
-        if ($baseIndex === null || $baseIndex === 0) {
-            return $variants;
-        }
+            return $aExact <=> $bExact
+                ?: mb_strlen($a->critter_id) <=> mb_strlen($b->critter_id)
+                ?: strcmp($a->critter_id, $b->critter_id);
+        });
 
-        $base = $variants[$baseIndex];
-        unset($variants[$baseIndex]);
-
-        return [$base, ...array_values($variants)];
+        return $variants;
     }
 
     /** @param list<Critter> $variants */

@@ -97,6 +97,29 @@ it('uses the base variant name even when it does not sort first alphabetically',
         ->and($list[0]->name)->toBe('Bammoth');
 });
 
+it('uses the shortest-id variant as the base when no critter_id matches the family key', function (): void {
+    $variant = Critter::factory()->create(['critter_id' => 'GlassDeer', 'variant_family' => 'Deer']);
+    CritterMorph::factory()->create([
+        'critter_id' => $variant->id,
+        'morph_id' => 'GlassDeer',
+        'is_base' => true,
+        'name' => ['en' => 'Shatter Flox'],
+    ]);
+
+    $base = Critter::factory()->create(['critter_id' => 'WoodDeer', 'variant_family' => 'Deer']);
+    CritterMorph::factory()->create([
+        'critter_id' => $base->id,
+        'morph_id' => 'WoodDeer',
+        'is_base' => true,
+        'name' => ['en' => 'Flox'],
+    ]);
+
+    $list = app(CritterPresenter::class)->familyList();
+
+    expect($list)->toHaveCount(1)
+        ->and($list[0]->name)->toBe('Flox');
+});
+
 it('falls back to variant_family when no morph is present', function (): void {
     Critter::factory()->create(['critter_id' => 'Ghost', 'variant_family' => 'Ghost']);
 
@@ -148,13 +171,15 @@ it('falls back to critter_id for the variant name when the base morph name is un
 it('includes dlc_id, temperature range, and other-variant image previews in the family list', function (): void {
     $tempPublic = sys_get_temp_dir().'/ony-planner-test-public';
     @mkdir($tempPublic.'/assets/game/critters', 0777, true);
-    file_put_contents($tempPublic.'/assets/game/critters/PufferFish.webp', 'webp');
+    file_put_contents($tempPublic.'/assets/game/critters/PacuTropical.webp', 'webp');
 
-    $base = Critter::factory()->create(['critter_id' => 'PacuTropical', 'variant_family' => 'Pacu', 'dlc_id' => 'DLC5']);
-    CritterMorph::factory()->create(['critter_id' => $base->id, 'morph_id' => 'PacuTropical', 'is_base' => true, 'min_temp' => 290.0, 'max_temp' => 305.0]);
+    // PufferFish has the shortest critter_id, so it becomes the representative;
+    // PacuTropical supplies the other-variant preview image.
+    $variant = Critter::factory()->create(['critter_id' => 'PacuTropical', 'variant_family' => 'Pacu', 'dlc_id' => 'DLC5']);
+    CritterMorph::factory()->create(['critter_id' => $variant->id, 'morph_id' => 'PacuTropical', 'is_base' => true, 'min_temp' => 290.0, 'max_temp' => 305.0]);
 
-    $other = Critter::factory()->create(['critter_id' => 'PufferFish', 'variant_family' => 'Pacu', 'dlc_id' => 'DLC5']);
-    CritterMorph::factory()->create(['critter_id' => $other->id, 'morph_id' => 'PufferFish', 'is_base' => true, 'min_temp' => 275.0, 'max_temp' => 300.0]);
+    $base = Critter::factory()->create(['critter_id' => 'PufferFish', 'variant_family' => 'Pacu', 'dlc_id' => 'DLC5']);
+    CritterMorph::factory()->create(['critter_id' => $base->id, 'morph_id' => 'PufferFish', 'is_base' => true, 'min_temp' => 275.0, 'max_temp' => 300.0]);
 
     $list = app(CritterPresenter::class)->familyList();
 
@@ -163,9 +188,9 @@ it('includes dlc_id, temperature range, and other-variant image previews in the 
     expect($family->dlc_id)->toBe('DLC5')
         ->and($family->min_temp)->toBe(275.0)
         ->and($family->max_temp)->toBe(305.0)
-        ->and($family->variant_images)->toBe(['/assets/game/critters/PufferFish.webp']);
+        ->and($family->variant_images)->toBe(['/assets/game/critters/PacuTropical.webp']);
 
-    @unlink($tempPublic.'/assets/game/critters/PufferFish.webp');
+    @unlink($tempPublic.'/assets/game/critters/PacuTropical.webp');
 });
 
 it('excludes the primary variant image and caps the preview stack at 2', function (): void {
@@ -182,11 +207,13 @@ it('excludes the primary variant image and caps the preview stack at 2', functio
 
     $list = app(CritterPresenter::class)->familyList();
 
+    // Beta (shortest critter_id) is the representative; previews follow
+    // the base-first ordering: Alpha, then Delta, with Gamma cut by the cap.
     expect($list)->toHaveCount(1);
     $family = $list[0];
     expect($family->variant_images)->toHaveCount(2)
-        ->and($family->variant_images)->not->toContain('/assets/game/critters/Alpha.webp')
-        ->and($family->variant_images)->toBe(['/assets/game/critters/Beta.webp', '/assets/game/critters/Delta.webp']);
+        ->and($family->variant_images)->not->toContain('/assets/game/critters/Beta.webp')
+        ->and($family->variant_images)->toBe(['/assets/game/critters/Alpha.webp', '/assets/game/critters/Delta.webp']);
 
     foreach (['Alpha', 'Beta', 'Gamma', 'Delta'] as $id) {
         @unlink($tempPublic.'/assets/game/critters/'.$id.'.webp');
