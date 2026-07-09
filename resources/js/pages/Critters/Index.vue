@@ -21,7 +21,16 @@ const TEMP_BUCKETS: { key: TempBucket; label: string }[] = [
 
 const activeTemp = ref<TempBucket | null>(null);
 const activeDiet = ref<string | null>(null);
-const activeDlc = ref(false);
+const activeDlc = ref<string | null>(null);
+
+/** dlc_id => short chip label (STRINGS.UI.<id>.NAME, leading "The" dropped). */
+const DLC_LABELS: Record<string, string> = {
+    EXPANSION1_ID: 'Spaced Out!',
+    DLC2_ID: 'Frosty Planet Pack',
+    DLC3_ID: 'Bionic Booster Pack',
+    DLC4_ID: 'Prehistoric Planet Pack',
+    DLC5: 'Aquatic Planet Pack',
+};
 
 function toCelsius(kelvin: number): number {
     return kelvin - 273.15;
@@ -46,9 +55,20 @@ const dietOptions = computed<string[]>(() => {
     return [...set].sort((a, b) => a.localeCompare(b));
 });
 
-const hasDlcContent = computed<boolean>(() =>
-    props.families.some((f) => f.dlc_id !== null),
-);
+const dlcOptions = computed<{ id: string; label: string }[]>(() => {
+    const present = new Set<string>();
+    for (const f of props.families) {
+        if (f.dlc_id) present.add(f.dlc_id);
+    }
+    const known = Object.keys(DLC_LABELS).filter((id) => present.has(id));
+    const unknown = [...present]
+        .filter((id) => !(id in DLC_LABELS))
+        .sort((a, b) => a.localeCompare(b));
+    return [...known, ...unknown].map((id) => ({
+        id,
+        label: DLC_LABELS[id] ?? id,
+    }));
+});
 
 const filtered = computed<CritterFamilyListItemData[]>(() => {
     const q = search.value.toLowerCase();
@@ -59,7 +79,8 @@ const filtered = computed<CritterFamilyListItemData[]>(() => {
             activeTemp.value === null || matchesTempBucket(f, activeTemp.value);
         const matchDiet =
             activeDiet.value === null || f.eats_summary === activeDiet.value;
-        const matchDlc = !activeDlc.value || f.dlc_id !== null;
+        const matchDlc =
+            activeDlc.value === null || f.dlc_id === activeDlc.value;
         return matchSearch && matchTemp && matchDiet && matchDlc;
     });
 });
@@ -190,21 +211,25 @@ function familyHue(slug: string): number {
                         Mange {{ diet }}
                     </button>
 
-                    <template v-if="hasDlcContent">
+                    <template v-if="dlcOptions.length > 0">
                         <span
                             class="mx-1 self-center text-[oklch(70%_0.01_250)] dark:text-[oklch(45%_0.012_260)]"
                             >·</span
                         >
                         <button
+                            v-for="dlc in dlcOptions"
+                            :key="dlc.id"
                             class="rounded px-2.5 py-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-oni-amber focus-visible:outline-none"
                             :class="
-                                activeDlc
+                                activeDlc === dlc.id
                                     ? 'bg-[oklch(16%_0.012_250)] text-[oklch(97%_0.005_260)] dark:bg-[oklch(88%_0.008_260)] dark:text-[oklch(14%_0.01_260)]'
                                     : 'text-[oklch(42%_0.015_250)] hover:bg-[oklch(90%_0.01_250)] dark:text-[oklch(66%_0.012_260)] dark:hover:bg-[oklch(30%_0.015_260)]'
                             "
-                            @click="activeDlc = !activeDlc"
+                            @click="
+                                activeDlc = activeDlc === dlc.id ? null : dlc.id
+                            "
                         >
-                            Aquatic Pack
+                            {{ dlc.label }}
                         </button>
                     </template>
                 </div>
