@@ -11,7 +11,7 @@ final class GeyserController
 {
     public function index()
     {
-        $geysers = GeyserType::orderBy('element_id', 'asc')->get();
+        $geysers = GeyserType::query()->orderBy('element_id', 'asc')->get();
 
         return Inertia::render('Geysers/Index', [
             'geysers' => $geysers,

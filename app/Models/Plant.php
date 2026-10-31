@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Models\Attributes\GameData;
 use App\Models\Concerns\HasCodexEntries;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -17,6 +18,7 @@ use Spatie\Translatable\HasTranslations;
 final class Plant extends Model
 {
     use HasCodexEntries;
+    use HasFactory;
     use HasTranslations;
 
     /** @var list<string> */

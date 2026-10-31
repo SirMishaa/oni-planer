@@ -88,7 +88,7 @@ final class BuildingSubGroupResolver
         $trimmed = mb_trim($name);
 
         // Space-separated names (proper English): take words as-is
-        if (mb_strpos($trimmed, ' ') !== false) {
+        if (str_contains($trimmed, ' ')) {
             return preg_split('/\s+/', $trimmed, -1, PREG_SPLIT_NO_EMPTY) ?: [$trimmed];
         }
 

@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Models\Attributes\GameData;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Translatable\HasTranslations;
@@ -14,6 +15,7 @@ use Spatie\Translatable\HasTranslations;
 #[Fillable(['mutation_id', 'name'])]
 final class PlantMutation extends Model
 {
+    use HasFactory;
     use HasTranslations;
 
     /** @var list<string> */

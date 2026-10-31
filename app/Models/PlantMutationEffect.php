@@ -6,8 +6,12 @@ namespace App\Models;
 
 use App\Models\Attributes\GameData;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 #[GameData]
 #[Fillable(['plant_mutation_id', 'stat', 'modifier', 'modifier_type'])]
-final class PlantMutationEffect extends Model {}
+final class PlantMutationEffect extends Model
+{
+    use HasFactory;
+}

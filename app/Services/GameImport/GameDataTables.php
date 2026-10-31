@@ -34,6 +34,7 @@ final class GameDataTables
             if (! class_exists($class)) {
                 continue;
             }
+
             if (! is_subclass_of($class, Model::class)) {
                 continue;
             }

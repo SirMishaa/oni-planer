@@ -705,8 +705,18 @@ function isActive(item: NavItem): boolean {
                                 stroke="currentColor"
                                 stroke-width="1.3"
                             />
-                            <circle cx="7.2" cy="10.5" r="0.9" fill="currentColor" />
-                            <circle cx="10.8" cy="10.5" r="0.9" fill="currentColor" />
+                            <circle
+                                cx="7.2"
+                                cy="10.5"
+                                r="0.9"
+                                fill="currentColor"
+                            />
+                            <circle
+                                cx="10.8"
+                                cy="10.5"
+                                r="0.9"
+                                fill="currentColor"
+                            />
                             <path
                                 d="M4 11c-1.5.5-2.5 1.5-2 2.5"
                                 stroke="currentColor"

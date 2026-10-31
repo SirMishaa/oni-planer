@@ -36,7 +36,10 @@ final class RecipeImporter
             $recipeInputs = is_array($raw['inputs'] ?? null) ? $raw['inputs'] : [];
             foreach ($recipeInputs as $item) {
                 $elementId = $item['element_id'] ?? null;
-                if (! is_string($elementId) || ! isset($validElementIds[$elementId])) {
+                if (! is_string($elementId)) {
+                    continue;
+                }
+                if (! isset($validElementIds[$elementId])) {
                     continue;
                 }
 
@@ -52,7 +55,10 @@ final class RecipeImporter
             $recipeOutputs = is_array($raw['outputs'] ?? null) ? $raw['outputs'] : [];
             foreach ($recipeOutputs as $item) {
                 $elementId = $item['element_id'] ?? null;
-                if (! is_string($elementId) || ! isset($validElementIds[$elementId])) {
+                if (! is_string($elementId)) {
+                    continue;
+                }
+                if (! isset($validElementIds[$elementId])) {
                     continue;
                 }
 

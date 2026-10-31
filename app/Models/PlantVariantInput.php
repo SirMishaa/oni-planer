@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Models\Attributes\GameData;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -13,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['plant_variant_id', 'element_id', 'amount_per_cycle', 'input_type'])]
 final class PlantVariantInput extends Model
 {
+    use HasFactory;
+
     /** @return BelongsTo<Element, $this> */
     public function element(): BelongsTo
     {
