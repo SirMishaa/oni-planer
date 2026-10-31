@@ -11,6 +11,8 @@ public class CritterExtractorTests
 
     private static readonly Dictionary<int, string> SimHashes = IlHelper.BuildSimHashesMap(Module);
 
+    private static readonly List<CritterDto> Critters = new CritterExtractor(ManagedPath).Extract();
+
     [Fact]
     public void Hatch_has_calories_and_pen_size()
     {
@@ -27,12 +29,12 @@ public class CritterExtractorTests
         var resolver = new CritterDietResolver(Module, SimHashes, new TuningConstantResolver(Module));
         var diets = resolver.Resolve(Module.GetType("HatchConfig"));
 
-        // HatchConfig BasicRockDiet: exactly 7 entries, all producing Carbon at fixed rates.
-        Assert.Equal(7, diets.Count);
+        // HatchConfig BasicRockDiet: exactly 9 entries (SiltStone + Coquina since the 2026 update), all producing Carbon at fixed rates.
+        Assert.Equal(9, diets.Count);
 
         var consumed = diets.Select(d => d.ConsumedElementId).ToHashSet();
         Assert.Equal(
-            new HashSet<string?> { "Sand", "SandStone", "Clay", "CrushedRock", "Dirt", "SedimentaryRock", "Shale" },
+            new HashSet<string?> { "Sand", "SandStone", "Clay", "CrushedRock", "Dirt", "SedimentaryRock", "Shale", "SiltStone", "Coquina" },
             consumed);
 
         Assert.All(diets, d => Assert.Equal("Carbon", d.ProducedElementId));
@@ -48,7 +50,7 @@ public class CritterExtractorTests
 
         // Diets must be populated (Hatch eats minerals and produces Coal) at
         // 700000 cal/cycle ÷ 5000 cal/kg = 140 kg/cycle consumed per entry.
-        Assert.Equal(7, hatch.Diets.Count);
+        Assert.Equal(9, hatch.Diets.Count);
         Assert.All(hatch.Diets, d => Assert.Equal(140f, d.AmountPerCycle));
 
         // Egg output: Hatch fertilityCycles = 60 → amount = 1/60 egg/cycle.
@@ -119,5 +121,108 @@ public class CritterExtractorTests
         var key = CritterExtractor.InvokeFindNameKey(type);
 
         Assert.Null(key);
+    }
+
+    [Theory]
+    [InlineData("Hatch", 100f)]       // inline constant in HatchConfig.CreateHatch
+    [InlineData("Pacu", 25f)]         // inline constant in the shared BasePacuConfig helper
+    [InlineData("OilFloaterDecor", 150f)]
+    public void Critter_lifespan_comes_from_the_age_max_attribute_modifier(string critterId, float expected)
+    {
+        var critter = Critters.First(c => c.CritterId == critterId);
+
+        Assert.Equal(expected, critter.Lifespan);
+    }
+
+    [Theory]
+    [InlineData("Chameleon")]  // static int field ChameleonConfig.LIFESPAN
+    [InlineData("Moo")]        // static float field MooTuning.STANDARD_LIFESPAN
+    public void Critter_lifespan_resolves_static_field_values(string critterId)
+    {
+        var critter = Critters.First(c => c.CritterId == critterId);
+
+        Assert.True(critter.Lifespan > 0, $"{critterId} lifespan was {critter.Lifespan}");
+    }
+
+    [Fact]
+    public void Every_critter_has_a_lifespan_except_ageless_morbs()
+    {
+        // GlomConfig (Morb) only modifies HitPoints: Morbs never die of old age.
+        var missing = Critters.Where(c => c.Lifespan <= 0).Select(c => c.CritterId);
+
+        Assert.Equal(["Glom"], missing);
+    }
+
+    [Theory]
+    [InlineData("Hatch", "HatchSpecies")]
+    [InlineData("GlassDeer", "DeerSpecies")]
+    [InlineData("SeaHorse", "SeaHorseSpecies")]
+    [InlineData("Bee", "BeetaSpecies")]
+    [InlineData("HatchBaby", "HatchSpecies")]
+    public void Critter_exposes_its_species_tag(string critterId, string expectedTag)
+    {
+        var critter = Critters.First(c => c.CritterId == critterId);
+
+        Assert.Equal(expectedTag, critter.SpeciesTag);
+    }
+
+    [Fact]
+    public void Every_critter_has_a_species_tag()
+    {
+        var missing = Critters.Where(c => string.IsNullOrEmpty(c.SpeciesTag)).Select(c => c.CritterId);
+
+        Assert.Empty(missing);
+    }
+
+    [Theory]
+    [InlineData("LightBugBaby", "LightBug")]      // LightBugBabyConfig, not Baby*-prefixed
+    [InlineData("OilFloaterBaby", "OilFloater")]  // game passes "Oilfloater"
+    [InlineData("MosquitoLarva", "Mosquito")]
+    [InlineData("HatchBaby", "Hatch")]
+    [InlineData("CrabBaby", "Crab")]              // not "CrabShell", the item dropped on growing up
+    public void Baby_configs_are_morphs_of_their_adult(string babyId, string adultId)
+    {
+        var baby = Critters.First(c => c.CritterId == babyId);
+
+        Assert.False(baby.IsBase);
+        Assert.Equal(adultId, baby.ParentCritterId);
+    }
+
+    [Theory]
+    [InlineData("Bee")]        // via BeeConfig.CreateBee helper
+    [InlineData("Butterfly")]
+    [InlineData("SeaFairy")]
+    [InlineData("Mosquito")]   // fertile but not tameable
+    [InlineData("Glom")]
+    public void Creatures_built_through_helpers_or_without_taming_are_extracted(string critterId)
+    {
+        Assert.Contains(Critters, c => c.CritterId == critterId && c.IsBase);
+    }
+
+    [Fact]
+    public void Cut_content_without_a_species_tag_is_skipped()
+    {
+        Assert.DoesNotContain(Critters, c => c.CritterId == "Shockworm");
+    }
+
+    [Fact]
+    public void Dartle_eats_dew_drips()
+    {
+        var resolver = new CritterDietResolver(Module, SimHashes, new TuningConstantResolver(Module));
+
+        var diets = resolver.Resolve(Module.GetType("ChameleonConfig"));
+
+        Assert.Contains(diets, d => d.ConsumedElementId == "DewDrip");
+    }
+
+    [Fact]
+    public void Shove_vole_eats_the_ores_passed_to_its_simple_ore_diet_helper()
+    {
+        var resolver = new CritterDietResolver(Module, SimHashes, new TuningConstantResolver(Module));
+
+        var diets = resolver.Resolve(Module.GetType("MoleConfig"));
+
+        Assert.Contains(diets, d => d.ConsumedElementId == "Regolith");
+        Assert.All(diets, d => Assert.True(d.CaloriesPerKg > 0));
     }
 }

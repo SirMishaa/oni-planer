@@ -18,7 +18,8 @@ public record GeyserDto(
     [property: JsonPropertyName("dormancy_min_cycles")] float DormancyMinCycles,
     [property: JsonPropertyName("dormancy_max_cycles")] float DormancyMaxCycles,
     [property: JsonPropertyName("name_localization_id")] string? NameLocalizationId,
-    [property: JsonPropertyName("dlc_id")] string? DlcId
+    [property: JsonPropertyName("dlc_id")] string? DlcId,
+    [property: JsonPropertyName("kanim")] string? Kanim
 );
 
 public sealed class GeyserExtractor
@@ -71,7 +72,8 @@ public sealed class GeyserExtractor
             {
                 var args = IlHelper.ExtractCallArgs(instructions, i, ctor.Parameters.Count);
                 var dlcId = ExtractGeyserDlcId(instructions, i);
-                var dto = BuildDtoFromCtorArgs(args, ctor, simHashes, dlcId);
+                var kanim = FindKanimBefore(instructions, i, ctor.DeclaringType.FullName);
+                var dto = BuildDtoFromCtorArgs(args, ctor, simHashes, dlcId, kanim);
                 if (dto != null) results.Add(dto);
             }
         }
@@ -114,6 +116,7 @@ public sealed class GeyserExtractor
                     "DLC2" => "DLC2_ID",
                     "DLC3" => "DLC3_ID",
                     "DLC4" => "DLC4_ID",
+                    "DLC5" => "DLC5_ID",
                     _ => fr.Name
                 };
             }
@@ -121,7 +124,31 @@ public sealed class GeyserExtractor
         return null;
     }
 
-    private GeyserDto? BuildDtoFromCtorArgs(object?[] args, MethodReference ctor, Dictionary<int, string> simHashes, string? dlcId)
+    /// <summary>
+    /// The geyser's anim file: <c>new GeyserPrefabParams("geyser_..._kanim", w, h, new GeyserType(...))</c>
+    /// pushes the kanim string first, so it is the nearest <c>*_kanim</c> literal before the
+    /// GeyserType constructor, without crossing the previous geyser's constructor.
+    /// </summary>
+    private static string? FindKanimBefore(IList<Instruction> instructions, int newobjIdx, string geyserTypeFullName)
+    {
+        for (int j = newobjIdx - 1; j >= 0; j--)
+        {
+            var ins = instructions[j];
+            if (ins.OpCode == OpCodes.Newobj && ins.Operand is MethodReference mr && mr.DeclaringType.FullName == geyserTypeFullName)
+            {
+                return null;
+            }
+
+            if (ins.OpCode == OpCodes.Ldstr && ins.Operand is string s && s.EndsWith("_kanim"))
+            {
+                return s;
+            }
+        }
+
+        return null;
+    }
+
+    private GeyserDto? BuildDtoFromCtorArgs(object?[] args, MethodReference ctor, Dictionary<int, string> simHashes, string? dlcId, string? kanim)
     {
         if (args.Length < 14) return null;
         if (args[0] is not string id) return null;
@@ -141,8 +168,10 @@ public sealed class GeyserExtractor
         float minYearLen = args[13] is float mnyl ? mnyl : 0f;
         float maxYearLen = args.Length > 14 && args[14] is float mxyl ? mxyl : 0f;
 
-        string type = id.Contains("Volcano") ? "volcano"
-            : id.Contains("Vent") || id.Contains("vent") ? "vent"
+        // Ids are snake_case (small_volcano, molten_iron, ...).
+        var lowerId = id.ToLowerInvariant();
+        string type = lowerId.Contains("volcano") || lowerId.StartsWith("molten_") ? "volcano"
+            : lowerId.Contains("vent") ? "vent"
             : "geyser";
 
         return new GeyserDto(
@@ -159,8 +188,9 @@ public sealed class GeyserExtractor
             MaxEruptionPeriod: maxIterLen,
             DormancyMinCycles: minYearLen,
             DormancyMaxCycles: maxYearLen,
-            NameLocalizationId: null,
-            DlcId: dlcId
+            NameLocalizationId: $"STRINGS.CREATURES.SPECIES.GEYSER.{id.ToUpperInvariant()}.NAME",
+            DlcId: dlcId,
+            Kanim: kanim
         );
     }
 }

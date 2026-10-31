@@ -30,7 +30,8 @@ public record CritterDto(
     [property: JsonPropertyName("name_localization_id")] string? NameLocalizationId,
     [property: JsonPropertyName("dlc_id")] string? DlcId,
     [property: JsonPropertyName("diets")] List<CritterDietDto> Diets,
-    [property: JsonPropertyName("outputs")] List<CritterOutputDto> Outputs
+    [property: JsonPropertyName("outputs")] List<CritterOutputDto> Outputs,
+    [property: JsonPropertyName("species_tag")] string? SpeciesTag
 );
 
 public sealed class CritterExtractor
@@ -57,16 +58,21 @@ public sealed class CritterExtractor
         var dietResolver = new CritterDietResolver(module, simHashes, tuning);
         var results = new List<CritterDto>();
 
-        // Adult critter configs: IEntityConfig implementors that call ExtendEntityToWildCreature
-        var adultConfigs = module.GetAllTypes()
-            .Where(t => t.Interfaces.Any(i => i.InterfaceType.Name == "IEntityConfig")
-                     && !t.Name.StartsWith("Baby")
-                     && IsAdultCritterConfig(t))
+        // Baby configs call EntityTemplates.ExtendEntityToBeingABaby(prefab, "<adultId>", ...);
+        // their names vary (BabyHatchConfig, LightBugBabyConfig, MosquitoLarvaConfig).
+        var entityConfigs = module.GetAllTypes()
+            .Where(t => t.Interfaces.Any(i => i.InterfaceType.Name == "IEntityConfig"))
             .ToList();
+        var babyConfigs = entityConfigs
+            .Select(t => (Type: t, AdultId: FindBabyAdultId(t)))
+            .Where(b => b.AdultId != null)
+            .ToList();
+        var babyTypes = babyConfigs.Select(b => b.Type).ToHashSet();
 
-        // Baby critter configs: IEntityConfig implementors whose name starts with "Baby"
-        var babyConfigs = module.GetAllTypes()
-            .Where(t => t.Name.StartsWith("Baby") && t.Interfaces.Any(i => i.InterfaceType.Name == "IEntityConfig"))
+        // Adult configs build a creature body; cut content without a species tag
+        // (e.g. ShockwormConfig) is not a real creature.
+        var adultConfigs = entityConfigs
+            .Where(t => !babyTypes.Contains(t) && IsAdultCritterConfig(t) && FindSpeciesTag(t) != null)
             .ToList();
 
         foreach (var type in adultConfigs)
@@ -75,10 +81,14 @@ public sealed class CritterExtractor
             if (dto != null) results.Add(dto);
         }
 
-        foreach (var type in babyConfigs)
+        // The game's adult id may differ in case from the config-derived id (Oilfloater).
+        var adultIds = results.ToDictionary(c => c.CritterId.ToLowerInvariant(), c => c.CritterId);
+        foreach (var (type, adultId) in babyConfigs)
         {
             var dto = ExtractCritter(type, isBaby: true, tuning, dietResolver);
-            if (dto != null) results.Add(dto);
+            if (dto == null) continue;
+            var parentId = adultIds.GetValueOrDefault(adultId!.ToLowerInvariant(), adultId!);
+            results.Add(dto with { ParentCritterId = parentId });
         }
 
         // variant_family is a parent-level grouping label. Most baby configs do not
@@ -102,14 +112,19 @@ public sealed class CritterExtractor
         return results;
     }
 
+    /// <summary>
+    /// A creature config sets up a creature body through <c>EntityTemplates.ExtendEntityToBasicCreature</c>
+    /// (directly or via a helper: BeeConfig, ButterflyConfig, SeaFairyConfig...). Requiring
+    /// <c>ExtendEntityToWildCreature</c> missed non-tameable species (Beeta, Gnit, Morb).
+    /// </summary>
     private static bool IsAdultCritterConfig(TypeDefinition type)
     {
         if (!type.HasMethods) return false;
-        return type.Methods.Any(m => m.HasBody && m.Body.Instructions.Any(i =>
+        return ReachableMethods(type, maxDepth: 3).Any(m => m.Body.Instructions.Any(i =>
             (i.OpCode == OpCodes.Call || i.OpCode == OpCodes.Callvirt) &&
             i.Operand is MethodReference mr &&
             mr.DeclaringType.Name == "EntityTemplates" &&
-            mr.Name == "ExtendEntityToWildCreature"));
+            (mr.Name == "ExtendEntityToBasicCreature" || mr.Name == "ExtendEntityToWildCreature")));
     }
 
     private static CritterDto? ExtractCritter(TypeDefinition type, bool isBaby, TuningConstantResolver tuning, CritterDietResolver dietResolver)
@@ -127,11 +142,13 @@ public sealed class CritterExtractor
         float lifespan = 0f;
         int overcrowding = isBaby ? 0 : FindOvercrowdingThreshold(type);
 
+        lifespan = FindAgeMaxLifespan(type, tuning);
+
         if (!isBaby)
         {
             var tuningType = FindTuningTypeFor(type);
             calories = ResolveCaloriesPerCycle(tuning, tuningType);
-            lifespan = ResolveLifespan(tuning, tuningType);
+            if (lifespan == 0) { lifespan = ResolveLifespan(tuning, tuningType); }
 
             if (overcrowding == 0 && tuning.TryResolve(tuningType, "PEN_SIZE_PER_CREATURE", out var pen))
                 overcrowding = (int)Math.Round(pen);
@@ -189,7 +206,8 @@ public sealed class CritterExtractor
             NameLocalizationId: nameKey,
             DlcId: IlHelper.ExtractDlcId(type),
             Diets: diets,
-            Outputs: outputs
+            Outputs: outputs,
+            SpeciesTag: FindSpeciesTag(type)
         );
     }
 
@@ -276,6 +294,107 @@ public sealed class CritterExtractor
     }
 
     /// <summary>
+    /// Lifespan in cycles from the trait modifier every creature config adds:
+    /// <c>new AttributeModifier(Db.Get().Amounts.Age.maxAttribute.Id, value, ...)</c>.
+    /// The value is an inline constant or a static field (e.g. <c>MooTuning.STANDARD_LIFESPAN</c>,
+    /// <c>ChameleonConfig.LIFESPAN</c>). The modifier lives either in the config itself or in a
+    /// helper reached within a few calls (<c>BasePacuConfig.CreatePrefab</c>; a baby goes
+    /// through its adult config first).
+    /// </summary>
+    private static float FindAgeMaxLifespan(TypeDefinition config, TuningConstantResolver tuning)
+    {
+        foreach (var method in ReachableMethods(config))
+        {
+            var lifespan = ReadAgeMaxModifier(method, tuning);
+            if (lifespan > 0) { return lifespan; }
+        }
+
+        return 0f;
+    }
+
+    /// <summary>
+    /// The creature's species tag (e.g. <c>HatchSpecies</c>), read as
+    /// <c>ldsfld GameTags.Creatures.Species::XSpecies</c> in the config or its helpers. The game
+    /// names a family with <c>STRINGS.CREATURES.FAMILY_PLURAL.{tag.ToUpper()}</c>.
+    /// </summary>
+    private static string? FindSpeciesTag(TypeDefinition config)
+    {
+        foreach (var method in ReachableMethods(config))
+        {
+            var tag = method.Body.Instructions
+                .Where(i => i.OpCode == OpCodes.Ldsfld && i.Operand is FieldReference)
+                .Select(i => (FieldReference)i.Operand)
+                .FirstOrDefault(f => f.DeclaringType.Name == "Species" && f.Name.EndsWith("Species"));
+            if (tag != null) { return tag.Name; }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The config's own methods first, then methods they call, breadth-first up to a few
+    /// levels: creature data often lives in a shared Base*Config helper, and a baby config
+    /// goes through its adult config first.
+    /// </summary>
+    private static IEnumerable<MethodDefinition> ReachableMethods(TypeDefinition config, int maxDepth = 4)
+    {
+        var visited = new HashSet<MethodDefinition>();
+        var frontier = config.Methods.Where(m => m.HasBody).ToList();
+
+        for (int depth = 0; depth < maxDepth && frontier.Count > 0; depth++)
+        {
+            var next = new List<MethodDefinition>();
+            foreach (var method in frontier.Where(visited.Add))
+            {
+                yield return method;
+
+                next.AddRange(method.Body.Instructions
+                    .Where(i => (i.OpCode == OpCodes.Call || i.OpCode == OpCodes.Callvirt) && i.Operand is MethodReference)
+                    .Select(i => TryResolveMethod((MethodReference)i.Operand))
+                    .OfType<MethodDefinition>()
+                    .Where(m => m.HasBody));
+            }
+
+            frontier = next;
+        }
+    }
+
+    private static float ReadAgeMaxModifier(MethodDefinition method, TuningConstantResolver tuning)
+    {
+        var ins = method.Body.Instructions;
+        for (int i = 0; i + 3 < ins.Count; i++)
+        {
+            if (!IsFieldLoad(ins[i], "Amounts", "Age") ||
+                !IsFieldLoad(ins[i + 1], "Amount", "maxAttribute") ||
+                !IsFieldLoad(ins[i + 2], "Resource", "Id")) { continue; }
+
+            var valueInstr = ins[i + 3];
+            if (IlHelper.TryReadConstant(valueInstr, out var constant) && IlHelper.AsFloat(constant) is float f && f > 0)
+            {
+                return f;
+            }
+
+            if (valueInstr.OpCode == OpCodes.Ldsfld && valueInstr.Operand is FieldReference field &&
+                tuning.ResolveField(field) is float resolved && resolved > 0)
+            {
+                return resolved;
+            }
+        }
+
+        return 0f;
+    }
+
+    private static bool IsFieldLoad(Instruction instr, string declaringType, string fieldName) =>
+        instr.OpCode == OpCodes.Ldfld && instr.Operand is FieldReference f &&
+        f.Name == fieldName && f.DeclaringType.Name == declaringType;
+
+    private static MethodDefinition? TryResolveMethod(MethodReference reference)
+    {
+        try { return reference.Resolve(); }
+        catch (AssemblyResolutionException) { return null; }
+    }
+
+    /// <summary>
     /// Resolve a lifespan constant from the critter's tuning type.
     /// Most critter families (Hatch, Drecko, Pacu, Puft) do not encode lifespan as
     /// a tuning constant — returns 0 for those. MooTuning and a few others may have
@@ -295,6 +414,36 @@ public sealed class CritterExtractor
         if (typeName.EndsWith("Config"))
             return typeName[..^6]; // "HatchConfig" → "Hatch"
         return typeName;
+    }
+
+    /// <summary>
+    /// The adult prefab id a baby config grows into: <c>ldstr "Hatch"; call Tag::op_Implicit</c>
+    /// shortly before <c>EntityTemplates.ExtendEntityToBeingABaby</c>. Null for non-baby configs.
+    /// </summary>
+    private static string? FindBabyAdultId(TypeDefinition type)
+    {
+        foreach (var method in type.Methods.Where(m => m.HasBody))
+        {
+            var ins = method.Body.Instructions;
+            for (int i = 0; i < ins.Count; i++)
+            {
+                if (ins[i].Operand is not MethodReference mr || mr.Name != "ExtendEntityToBeingABaby") continue;
+
+                // The adult tag is the ldstr converted by Tag::op_Implicit; a later ldstr can be
+                // the item dropped on growing up (Pokeshell babies drop "CrabShell").
+                for (int j = i - 1; j >= Math.Max(1, i - 10); j--)
+                {
+                    if (ins[j].Operand is MethodReference conv && conv.Name == "op_Implicit" &&
+                        conv.DeclaringType.Name == "Tag" &&
+                        ins[j - 1].OpCode == OpCodes.Ldstr && ins[j - 1].Operand is string adultId)
+                    {
+                        return adultId;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     private static string DeriveParentId(string typeName)
@@ -335,13 +484,20 @@ public sealed class CritterExtractor
         foreach (var method in type.Methods.Where(m => m.HasBody))
         {
             var instrs = method.Body.Instructions;
+
+            // Pattern C: the new ExtendEntityToBasicCreatureData object-initializer API
+            // (e.g. BaseCrabConfig) stores temps via stfld on named fields.
+            if (FindTempsFromDataInitializer(instrs) is (float lo, float hi)) return (lo, hi);
+
             for (int i = 0; i < instrs.Count; i++)
             {
                 if (instrs[i].OpCode != OpCodes.Call && instrs[i].OpCode != OpCodes.Callvirt) continue;
                 if (instrs[i].Operand is not MethodReference mr) continue;
 
                 var typeName = mr.DeclaringType.Name;
-                bool isBaseCritterCall = typeName.StartsWith("Base") && typeName.EndsWith("Config");
+                // Some shared critter helpers drop the Config suffix (BasePufferFish,
+                // BaseCrab); the temp-param check below keeps false matches out.
+                bool isBaseCritterCall = typeName.StartsWith("Base");
                 bool isDirectCall = typeName == "EntityTemplates" && mr.Name == "ExtendEntityToBasicCreature";
 
                 if (!isBaseCritterCall && !isDirectCall) continue;
@@ -367,11 +523,38 @@ public sealed class CritterExtractor
                     try
                     {
                         var calledTypeDef = mr.DeclaringType.Resolve();
+                        // Match the exact overload: BaseCrabConfig.BaseCrab has a
+                        // delegating overload (same arity, string vs string[]) that
+                        // holds no temperature data.
                         var calledMethod = calledTypeDef?.Methods
-                            .FirstOrDefault(m2 => m2.Name == mr.Name && m2.HasBody);
+                            .FirstOrDefault(m2 => m2.Name == mr.Name && m2.HasBody &&
+                                m2.Parameters.Count == mr.Parameters.Count &&
+                                m2.Parameters.Select(p => p.ParameterType.FullName)
+                                    .SequenceEqual(mr.Parameters.Select(p => p.ParameterType.FullName)))
+                            ?? calledTypeDef?.Methods.FirstOrDefault(m2 => m2.Name == mr.Name && m2.HasBody);
                         if (calledMethod == null) continue;
 
                         var instrs2 = calledMethod.Body.Instructions;
+
+                        if (FindTempsFromDataInitializer(instrs2) is (float lo2, float hi2)) return (lo2, hi2);
+
+                        // Delegating overload (e.g. CrabFreshWater's BaseCrab(string, int)):
+                        // the data initializer lives one call deeper on the same type.
+                        foreach (var inner in instrs2)
+                        {
+                            if ((inner.OpCode != OpCodes.Call && inner.OpCode != OpCodes.Callvirt) ||
+                                inner.Operand is not MethodReference innerRef ||
+                                innerRef.DeclaringType.FullName != mr.DeclaringType.FullName) continue;
+
+                            var innerMethod = calledTypeDef?.Methods.FirstOrDefault(m3 =>
+                                m3.Name == innerRef.Name && m3.HasBody && m3 != calledMethod &&
+                                m3.Parameters.Count == innerRef.Parameters.Count);
+                            if (innerMethod == null) continue;
+
+                            if (FindTempsFromDataInitializer(innerMethod.Body.Instructions) is (float lo3, float hi3))
+                                return (lo3, hi3);
+                        }
+
                         for (int j = 0; j < instrs2.Count; j++)
                         {
                             if (instrs2[j].Operand is not MethodReference mr2 ||
@@ -391,6 +574,26 @@ public sealed class CritterExtractor
         }
 
         return (0, 0);
+    }
+
+    /// <summary>
+    /// Temps stored through the ExtendEntityToBasicCreatureData object initializer:
+    /// <c>ldc.r4 &lt;temp&gt;; stfld warningLowTemperature/warningHighTemperature</c>.
+    /// </summary>
+    private static (float MinTemp, float MaxTemp)? FindTempsFromDataInitializer(IList<Instruction> instructions)
+    {
+        float? low = null;
+        float? high = null;
+        for (int i = 1; i < instructions.Count; i++)
+        {
+            if (instructions[i].OpCode != OpCodes.Stfld || instructions[i].Operand is not FieldReference fr) continue;
+            if (instructions[i - 1].OpCode != OpCodes.Ldc_R4) continue;
+
+            if (fr.Name == "warningLowTemperature") low = (float)instructions[i - 1].Operand;
+            else if (fr.Name == "warningHighTemperature") high = (float)instructions[i - 1].Operand;
+        }
+
+        return (low is float lo && high is float hi) ? (lo, hi) : null;
     }
 
     /// <summary>

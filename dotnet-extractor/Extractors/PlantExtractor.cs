@@ -29,7 +29,8 @@ public record PlantDto(
     [property: JsonPropertyName("name_localization_id")] string? NameLocalizationId,
     [property: JsonPropertyName("dlc_id")] string? DlcId,
     [property: JsonPropertyName("inputs")] List<PlantInputDto> Inputs,
-    [property: JsonPropertyName("outputs")] List<PlantOutputDto> Outputs
+    [property: JsonPropertyName("outputs")] List<PlantOutputDto> Outputs,
+    [property: JsonPropertyName("kanim")] string? Kanim
 );
 
 public sealed class PlantExtractor
@@ -144,8 +145,23 @@ public sealed class PlantExtractor
             NameLocalizationId: string.IsNullOrEmpty(nameKey) ? null : nameKey,
             DlcId: IlHelper.ExtractDlcId(type),
             Inputs: [],
-            Outputs: []
+            Outputs: [],
+            Kanim: FindPlantKanim(type)
         );
+    }
+
+    /// <summary>
+    /// The plant's own anim file: configs load it first (<c>Assets.GetAnim("tree_kanim")</c>),
+    /// then their seed's (<c>seed_tree_kanim</c>), so take the first non-seed kanim literal.
+    /// </summary>
+    private static string? FindPlantKanim(TypeDefinition type)
+    {
+        return type.Methods
+            .Where(m => m.HasBody)
+            .SelectMany(m => m.Body.Instructions)
+            .Where(i => i.OpCode == OpCodes.Ldstr && i.Operand is string)
+            .Select(i => (string)i.Operand)
+            .FirstOrDefault(s => s.EndsWith("_kanim") && !s.StartsWith("seed_"));
     }
 
     /// <summary>

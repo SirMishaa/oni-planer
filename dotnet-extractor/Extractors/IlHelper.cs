@@ -6,7 +6,12 @@ public static class IlHelper
 {
     // Walk instructions forward, simulate a value stack tracking constants.
     // At `callIndex`, pop `paramCount` values from the simulated stack → args in order.
-    public static object?[] ExtractCallArgs(IList<Instruction> instructions, int callIndex, int paramCount)
+    // `fieldResolver` (optional) resolves static numeric fields (ldsfld) to their value so
+    // expressions like `SeaTurtleTuning.POOP_KG_PER_CYCLE / 2f / 5f` become constants;
+    // simple arithmetic (add/sub/mul/div/rem/neg) folds when both operands are known.
+    public static object?[] ExtractCallArgs(
+        IList<Instruction> instructions, int callIndex, int paramCount,
+        Func<FieldReference, float?>? fieldResolver = null)
     {
         var stack = new Stack<object?>();
 
@@ -22,6 +27,31 @@ public static class IlHelper
 
             switch (instr.OpCode.Code)
             {
+                case Code.Ldsfld when fieldResolver != null && instr.Operand is FieldReference fr:
+                    stack.Push(fieldResolver(fr));
+                    break;
+
+                case Code.Add: case Code.Sub: case Code.Mul: case Code.Div: case Code.Rem:
+                {
+                    var b = stack.Count > 0 ? stack.Pop() : null;
+                    var a = stack.Count > 0 ? stack.Pop() : null;
+                    stack.Push(ComputeArithmetic(instr.OpCode.Code, a, b));
+                    break;
+                }
+
+                case Code.Neg:
+                {
+                    var operand = stack.Count > 0 ? stack.Pop() : null;
+                    stack.Push(AsFloat(operand) is float f ? -f : null);
+                    break;
+                }
+
+                // Numeric conversions keep the constant top of stack as-is.
+                case Code.Conv_R4: case Code.Conv_R8: case Code.Conv_I4: case Code.Conv_I8:
+                case Code.Conv_U4: case Code.Conv_U8: case Code.Conv_I2: case Code.Conv_U2:
+                case Code.Conv_I1: case Code.Conv_U1:
+                    break;
+
                 // Non-constant pushes
                 case Code.Ldloc_0: case Code.Ldloc_1: case Code.Ldloc_2: case Code.Ldloc_3:
                 case Code.Ldloc_S: case Code.Ldloc:
@@ -113,6 +143,30 @@ public static class IlHelper
         }
         return args;
     }
+
+    private static object? ComputeArithmetic(Code op, object? a, object? b)
+    {
+        if (AsFloat(a) is not float x || AsFloat(b) is not float y) { return null; }
+
+        return op switch
+        {
+            Code.Add => x + y,
+            Code.Sub => x - y,
+            Code.Mul => x * y,
+            Code.Div => y != 0f ? x / y : null,
+            Code.Rem => y != 0f ? x % y : null,
+            _ => null,
+        };
+    }
+
+    public static float? AsFloat(object? value) => value switch
+    {
+        float f => f,
+        int i => i,
+        double d => (float)d,
+        long l => l,
+        _ => null,
+    };
 
     public static bool TryReadConstant(Instruction instr, out object? value)
     {

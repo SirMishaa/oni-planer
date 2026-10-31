@@ -14,7 +14,8 @@ public record BuildingDto(
     [property: JsonPropertyName("construction_time")] float ConstructionTime,
     [property: JsonPropertyName("tags")] List<string> Tags,
     [property: JsonPropertyName("name_localization_id")] string? NameLocalizationId,
-    [property: JsonPropertyName("dlc_id")] string? DlcId
+    [property: JsonPropertyName("dlc_id")] string? DlcId,
+    [property: JsonPropertyName("kanim")] string? Kanim
 );
 
 public sealed class BuildingExtractor
@@ -76,6 +77,8 @@ public sealed class BuildingExtractor
         var width = args.Length > 1 && args[1] is int w ? w : 0;
         var height = args.Length > 2 && args[2] is int h ? h : 0;
         var constructionTime = args.Length > 5 && args[5] is float ct ? ct : 0f;
+        // CreateBuildingDef(id, width, height, anim, hitpoints, constructionTime, ...)
+        var kanim = args.Length > 3 ? args[3] as string : null;
 
         float? powerGen = null;
         float? powerCon = null;
@@ -123,7 +126,8 @@ public sealed class BuildingExtractor
             ConstructionTime: constructionTime,
             Tags: tags,
             NameLocalizationId: nameKey,
-            DlcId: dlcId
+            DlcId: dlcId,
+            Kanim: kanim
         );
     }
 
