@@ -1,4 +1,5 @@
 import { computed, ref } from 'vue';
+import CodexController from '@/actions/App/Http/Controllers/CodexController';
 import type {
     CodexArticleData,
     CodexListItemData,
@@ -87,11 +88,14 @@ export type CodexMode = 'home' | 'category' | 'article';
 // region Locale
 const LOCALE_ORDER = ['fr', 'en'];
 
+// The backend now serves game text already translated (plain strings); locale maps
+// remain accepted for content stored before the switch.
 export function pickLocale(
-    map: Record<string, string> | null | undefined,
+    map: string | Record<string, string> | null | undefined,
     fallback = '',
 ): string {
     if (!map) return fallback;
+    if (typeof map === 'string') return map;
     for (const locale of LOCALE_ORDER) {
         const value = map[locale];
         if (value) return value;
@@ -163,7 +167,7 @@ async function ensureIndex(): Promise<void> {
     indexLoading.value = true;
     indexError.value = false;
     try {
-        const response = await fetch('/codex', {
+        const response = await fetch(CodexController.index.url(), {
             headers: { Accept: 'application/json' },
         });
         if (!response.ok) throw new Error(String(response.status));
@@ -183,9 +187,10 @@ async function openArticle(codexId: string): Promise<void> {
     articleLoading.value = true;
     articleError.value = false;
     try {
-        const response = await fetch(`/codex/${encodeURIComponent(codexId)}`, {
-            headers: { Accept: 'application/json' },
-        });
+        const response = await fetch(
+            CodexController.show.url(encodeURIComponent(codexId)),
+            { headers: { Accept: 'application/json' } },
+        );
         if (!response.ok) throw new Error(String(response.status));
         article.value = (await response.json()) as CodexArticleData;
     } catch {
@@ -209,7 +214,11 @@ function close(): void {
 }
 
 function toggle(): void {
-    isOpen.value ? close() : open();
+    if (isOpen.value) {
+        close();
+    } else {
+        open();
+    }
 }
 
 function togglePin(): void {
@@ -271,10 +280,62 @@ const tiles = computed<CodexTile[]>(() => {
         );
 });
 
+// Codex ids are case-inconsistent (OilfloaterSpecies vs OilFloaterSpecies),
+// so all parent/child lookups go through a lowercased key.
+const entryIds = computed<Set<string>>(() => {
+    const ids = new Set<string>();
+    for (const entry of index.value ?? []) {
+        ids.add(entry.codex_id.toLowerCase());
+    }
+    return ids;
+});
+
+const childrenByParent = computed<Map<string, CodexListItemData[]>>(() => {
+    const map = new Map<string, CodexListItemData[]>();
+    for (const entry of index.value ?? []) {
+        const parent = entry.parent_codex_id?.toLowerCase();
+        if (!parent || !entryIds.value.has(parent)) continue;
+        const bucket = map.get(parent) ?? [];
+        bucket.push(entry);
+        map.set(parent, bucket);
+    }
+    for (const bucket of map.values()) {
+        bucket.sort((a, b) => titleOf(a).localeCompare(titleOf(b)));
+    }
+    return map;
+});
+
+function childrenOf(codexId: string): CodexListItemData[] {
+    return childrenByParent.value.get(codexId.toLowerCase()) ?? [];
+}
+
+function parentOf(
+    codexId: string | null | undefined,
+): CodexListItemData | null {
+    if (!codexId || !index.value) return null;
+    const key = codexId.toLowerCase();
+    return (
+        index.value.find((entry) => entry.codex_id.toLowerCase() === key) ??
+        null
+    );
+}
+
+/**
+ * Category grid shows only top-level entries: variants/sub-entries whose
+ * parent exists in the index are grouped under it (reachable from the
+ * parent's article and via search).
+ */
 const selectedItems = computed<CodexListItemData[]>(() => {
     if (!index.value || !selectedCategory.value) return [];
     return index.value
-        .filter((entry) => entry.category === selectedCategory.value)
+        .filter(
+            (entry) =>
+                entry.category === selectedCategory.value &&
+                !(
+                    entry.parent_codex_id &&
+                    entryIds.value.has(entry.parent_codex_id.toLowerCase())
+                ),
+        )
         .sort((a, b) => titleOf(a).localeCompare(titleOf(b)));
 });
 
@@ -341,6 +402,8 @@ export function useCodex() {
         searchResults,
         resultCount,
         dockActive,
+        childrenOf,
+        parentOf,
         // commands
         open,
         close,

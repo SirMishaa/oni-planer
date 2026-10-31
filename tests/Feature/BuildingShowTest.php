@@ -59,5 +59,5 @@ it('splits camelCase names in the show response', function (): void {
 
     $this->getJson(route('buildings.show', $building->building_id))
         ->assertOk()
-        ->assertJsonPath('name.en', 'Wire Refined');
+        ->assertJsonPath('name', 'Wire Refined');
 });

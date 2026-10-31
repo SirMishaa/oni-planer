@@ -28,8 +28,16 @@ final class Building extends Model
 
     use HasTranslations;
 
+    public const string INDEX_CACHE_KEY = 'buildings.index';
+
     /** @var list<string> */
     public array $translatable = ['name', 'description', 'effect'];
+
+    /** The index is cached per locale since names are translated. */
+    public static function indexCacheKey(string $locale): string
+    {
+        return self::INDEX_CACHE_KEY.'.'.$locale;
+    }
 
     /** @return HasMany<Recipe, $this> */
     public function recipes(): HasMany

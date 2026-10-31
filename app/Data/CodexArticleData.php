@@ -12,8 +12,7 @@ final class CodexArticleData extends Data
         public string $codex_id,
         public string $category,
         public ?string $parent_codex_id,
-        /** @var array<string, string> */
-        public array $title,
+        public string $title,
         public ?string $icon_asset,
         /** @var array<int, mixed> */
         public array $content,

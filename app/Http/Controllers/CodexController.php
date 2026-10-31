@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Data\CodexArticleData;
 use App\Data\CodexListItemData;
 use App\Models\CodexEntry;
+use App\Services\GameText;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 
@@ -24,12 +25,12 @@ final class CodexController
             ])
             ->orderBy('category')
             ->orderBy('codex_id')
-            ->get(['id', 'codex_id', 'category', 'parent_codex_id', 'title'])
+            ->get(['id', 'codex_id', 'category', 'parent_codex_id', 'title', 'title_key'])
             ->map(fn (CodexEntry $entry): CodexListItemData => CodexListItemData::from([
                 'codex_id' => $entry->codex_id,
                 'category' => $entry->category,
                 'parent_codex_id' => $entry->parent_codex_id,
-                'title' => $entry->getTranslations('title'),
+                'title' => $this->title($entry),
                 'image' => $this->imageFor($entry),
             ]));
 
@@ -50,9 +51,9 @@ final class CodexController
             'codex_id' => $codexEntry->codex_id,
             'category' => $codexEntry->category,
             'parent_codex_id' => $codexEntry->parent_codex_id,
-            'title' => $codexEntry->getTranslations('title'),
+            'title' => $this->title($codexEntry),
             'icon_asset' => $codexEntry->icon_asset,
-            'content' => $codexEntry->content ?? [],
+            'content' => $this->translatedContent($codexEntry->content ?? []),
             'image' => $this->imageFor($codexEntry),
             'links' => $this->links($codexEntry),
         ]));
@@ -73,7 +74,7 @@ final class CodexController
             $links[] = [
                 'type' => 'building',
                 'key' => $building->building_id,
-                'label' => $this->enLabel($building->getTranslations('name'), $building->building_id),
+                'label' => $this->label($building->building_id, $building->getTranslations('name')),
                 'url' => route('buildings.show', $building->building_id),
             ];
         }
@@ -82,7 +83,7 @@ final class CodexController
             $links[] = [
                 'type' => 'element',
                 'key' => $element->element_id,
-                'label' => $this->enLabel($element->getTranslations('name'), $element->element_id),
+                'label' => $this->label($element->element_id, $element->getTranslations('name')),
                 'url' => route('elements.show', Str::kebab($element->element_id)),
             ];
         }
@@ -91,7 +92,7 @@ final class CodexController
             $links[] = [
                 'type' => 'critter',
                 'key' => $critter->critter_id,
-                'label' => $this->enLabel($critter->getTranslations('name'), $critter->critter_id),
+                'label' => $this->label($critter->critter_id, $critter->getTranslations('name')),
                 'url' => null,
             ];
         }
@@ -100,7 +101,7 @@ final class CodexController
             $links[] = [
                 'type' => 'plant',
                 'key' => $plant->plant_id,
-                'label' => $this->enLabel($plant->getTranslations('name'), $plant->plant_id),
+                'label' => $this->label($plant->plant_id, $plant->getTranslations('name')),
                 'url' => null,
             ];
         }
@@ -109,7 +110,7 @@ final class CodexController
             $links[] = [
                 'type' => 'geyser',
                 'key' => $geyser->geyser_id,
-                'label' => $this->enLabel($geyser->getTranslations('name'), $geyser->geyser_id),
+                'label' => $this->label($geyser->geyser_id, $geyser->getTranslations('name')),
                 'url' => null,
             ];
         }
@@ -117,17 +118,55 @@ final class CodexController
         return $links;
     }
 
+    private function title(CodexEntry $entry): string
+    {
+        $stored = $entry->getTranslation('title', 'en');
+
+        return resolve(GameText::class)->translate($entry->title_key)
+            ?? (is_string($stored) && $stored !== '' ? $stored : $entry->codex_id);
+    }
+
     /**
+     * Text blocks keep their STRINGS key; serve them in the current locale as plain
+     * strings, falling back to the English text stored at import.
+     *
+     * @param  array<int, array<string, mixed>>  $containers
+     * @return array<int, array<string, mixed>>
+     */
+    private function translatedContent(array $containers): array
+    {
+        $text = resolve(GameText::class);
+
+        return array_map(function (array $container) use ($text): array {
+            /** @var list<array<string, mixed>> $blocks */
+            $blocks = is_array($container['blocks'] ?? null) ? $container['blocks'] : [];
+            $container['blocks'] = array_map(function (array $block) use ($text): array {
+                if (($block['type'] ?? null) !== 'text') {
+                    return $block;
+                }
+
+                $key = is_string($block['key'] ?? null) ? $block['key'] : null;
+                $stored = is_array($block['text'] ?? null) ? ($block['text']['en'] ?? '') : (string) ($block['text'] ?? '');
+                unset($block['key']);
+                $block['text'] = $text->translate($key) ?? $stored;
+
+                return $block;
+            }, $blocks);
+
+            return $container;
+        }, $containers);
+    }
+
+    /**
+     * Translated entity name, else its stored English name, else the id.
+     *
      * @param  array<array-key, mixed>  $names
      */
-    private function enLabel(array $names, mixed $fallback): string
+    private function label(string $id, array $names): string
     {
-        $en = $names['en'] ?? null;
-        if (is_string($en)) {
-            return $en;
-        }
+        $stored = $names['en'] ?? null;
 
-        return is_string($fallback) ? $fallback : '';
+        return resolve(GameText::class)->name($id, is_string($stored) && $stored !== '' ? $stored : null);
     }
 
     /**
@@ -141,24 +180,31 @@ final class CodexController
                 return $url;
             }
         }
+
         foreach ($entry->elements as $element) {
             $url = $this->assetUrl('elements', $element->element_id);
             if ($url !== null) {
                 return $url;
             }
         }
-        foreach ($entry->critters as $critter) {
+
+        // Base variant first (shortest id, then alphabetical) so a family
+        // entry shows the base sprite, not a morph's.
+        $critters = $entry->critters->sortBy(fn ($critter): array => [mb_strlen((string) $critter->critter_id), $critter->critter_id]);
+        foreach ($critters as $critter) {
             $url = $this->assetUrl('critters', $critter->critter_id);
             if ($url !== null) {
                 return $url;
             }
         }
+
         foreach ($entry->plants as $plant) {
             $url = $this->assetUrl('plants', $plant->plant_id);
             if ($url !== null) {
                 return $url;
             }
         }
+
         foreach ($entry->geyserTypes as $geyser) {
             $url = $this->assetUrl('geysers', $geyser->geyser_id);
             if ($url !== null) {
@@ -171,8 +217,8 @@ final class CodexController
 
     private function assetUrl(string $category, string $key): ?string
     {
-        $relative = "assets/game/{$category}/{$key}.webp";
+        $relative = sprintf('assets/game/%s/%s.webp', $category, $key);
 
-        return file_exists(public_path($relative)) ? "/{$relative}" : null;
+        return file_exists(public_path($relative)) ? '/'.$relative : null;
     }
 }

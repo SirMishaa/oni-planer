@@ -10,10 +10,8 @@ final class ElementShowData extends Data
 {
     public function __construct(
         public string $element_id,
-        /** @var array<string, string> */
-        public array $name,
-        /** @var array<string, string>|null */
-        public ?array $description,
+        public string $name,
+        public ?string $description,
         public string $state,
         public string $material_category,
         public float $molar_mass,

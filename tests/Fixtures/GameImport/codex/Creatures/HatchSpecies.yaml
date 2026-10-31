@@ -1,0 +1,8 @@
+id: "HatchSpecies"
+title: STRINGS.CODEX.HATCH.SPECIES_TITLE
+contentContainers:
+  - contentLayout: Vertical
+    content:
+      - !CodexText
+        stringKey: STRINGS.CODEX.HATCH.SPECIES_TITLE
+        style: Title

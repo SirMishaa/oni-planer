@@ -2,6 +2,7 @@
 import { Link } from '@inertiajs/vue3';
 import { ToggleGroupItem, ToggleGroupRoot } from 'reka-ui';
 import { computed, ref } from 'vue';
+import ElementController from '@/actions/App/Http/Controllers/ElementController';
 import Badge from '@/components/ui/Badge.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { ElementData } from '@/types/App/Data/data';
@@ -74,7 +75,7 @@ function toSlug(elementId: string): string {
 }
 
 function displayName(el: ElementData): string {
-    return el.name['en'] ?? el.element_id;
+    return el.name || el.element_id;
 }
 
 function initials(name: string): string {
@@ -184,7 +185,7 @@ function hasIcon(elementId: string): boolean {
             >
                 <li v-for="el in filtered" :key="el.element_id">
                     <Link
-                        :href="`/elements/${toSlug(el.element_id)}`"
+                        :href="ElementController.show(toSlug(el.element_id))"
                         class="-mx-3 flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-[oklch(91%_0.009_250)] dark:hover:bg-[oklch(28%_0.015_260)]"
                     >
                         <!-- Element icon -->

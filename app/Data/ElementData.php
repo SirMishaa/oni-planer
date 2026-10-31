@@ -10,8 +10,7 @@ final class ElementData extends Data
 {
     public function __construct(
         public string $element_id,
-        /** @var array<string, string> */
-        public array $name,
+        public string $name,
         public string $state,
         public string $material_category,
     ) {}

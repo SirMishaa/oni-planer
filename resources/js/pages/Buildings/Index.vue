@@ -269,7 +269,7 @@ function categoryAccentColor(cat: string): string {
 }
 
 function displayName(b: BuildingData): string {
-    return b.name['en'] ?? b.building_id;
+    return b.name || b.building_id;
 }
 
 function powerLabel(b: BuildingData): string | null {
@@ -472,7 +472,7 @@ function powerIsGen(b: BuildingData): boolean {
                                                     class="card-title line-clamp-2 min-w-0 flex-1"
                                                 >
                                                     {{
-                                                        detailData.name['en'] ??
+                                                        detailData.name ||
                                                         b.building_id
                                                     }}
                                                 </p>
@@ -617,14 +617,10 @@ function powerIsGen(b: BuildingData): boolean {
 
                                             <!-- Description -->
                                             <p
-                                                v-if="
-                                                    detailData.description['en']
-                                                "
+                                                v-if="detailData.description"
                                                 class="mt-2 line-clamp-2 text-[9px] leading-relaxed text-[oklch(40%_0.010_260)] dark:text-[oklch(60%_0.010_260)]"
                                             >
-                                                {{
-                                                    detailData.description['en']
-                                                }}
+                                                {{ detailData.description }}
                                             </p>
 
                                             <!-- Materials -->
@@ -886,10 +882,10 @@ function powerIsGen(b: BuildingData): boolean {
                                     >
                                 </div>
                                 <p
-                                    v-if="detailData.description['en']"
+                                    v-if="detailData.description"
                                     class="mt-1.5 text-[10px] leading-relaxed text-[oklch(38%_0.010_260)] dark:text-[oklch(62%_0.010_260)]"
                                 >
-                                    {{ detailData.description['en'] }}
+                                    {{ detailData.description }}
                                 </p>
                                 <div
                                     v-if="detailData.materials.length"

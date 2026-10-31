@@ -32,6 +32,7 @@ final readonly class CodexImporter
             if (! is_string($codexId)) {
                 continue;
             }
+
             if ($codexId === '') {
                 continue;
             }
@@ -40,12 +41,17 @@ final readonly class CodexImporter
             $titleKey = is_string($data['title'] ?? null) ? $data['title'] : null;
             $title = ($titleKey !== null ? $this->stringResolver->resolveToJson($titleKey) : null) ?? ['en' => $codexId];
 
+            // The game yaml uses both keys: hand-written entries say parentId,
+            // generated ones (creatures, element types) say parentEntryID.
+            $parentId = $data['parentEntryID'] ?? $data['parentId'] ?? null;
+
             CodexEntry::query()->updateOrCreate(
                 ['codex_id' => $codexId],
                 [
                     'category' => $category,
-                    'parent_codex_id' => is_string($data['parentId'] ?? null) ? $data['parentId'] : null,
+                    'parent_codex_id' => is_string($parentId) ? $parentId : null,
                     'title' => $title,
+                    'title_key' => $titleKey !== null ? StringResolver::normalizeKey($titleKey) : null,
                     'icon_asset' => is_string($data['iconAssetName'] ?? null) ? $data['iconAssetName'] : null,
                     'content' => $this->buildContent($data['contentContainers'] ?? []),
                     'dlc_id' => null,
@@ -56,28 +62,80 @@ final readonly class CodexImporter
         $this->linkEntities();
     }
 
-    private function linkEntities(): void
+    /**
+     * Attach codex entries to the entities they document. Codex ids do not
+     * reliably equal entity ids (Oilfloater vs OilFloater, Bean_Plant vs
+     * BeanPlant, STATERPILLARSPECIES), so matching is done on a normalized
+     * (lowercase, alphanumeric-only) key. Creature "<X>Species" family entries
+     * additionally fall back to the critters' variant_family so e.g.
+     * HatchSpecies links every hatch morph.
+     */
+    public function linkEntities(): void
     {
-        CodexEntry::query()->each(function (CodexEntry $entry): void {
+        $buildings = $this->normalizedIdMap(Building::query()->pluck('id', 'building_id')->all());
+        $elements = $this->normalizedIdMap(Element::query()->pluck('id', 'element_id')->all());
+        $plants = $this->normalizedIdMap(Plant::query()->pluck('id', 'plant_id')->all());
+        $geysers = $this->normalizedIdMap(GeyserType::query()->pluck('id', 'geyser_id')->all());
+
+        $critterIds = [];
+        $familyIds = [];
+        foreach (Critter::query()->get(['id', 'critter_id', 'variant_family']) as $critter) {
+            $critterIds[$this->normalizeKey($critter->critter_id)][] = $critter->id;
+            if ($critter->variant_family !== null) {
+                $familyIds[$this->normalizeKey($critter->variant_family)][] = $critter->id;
+            }
+        }
+
+        CodexEntry::query()->each(function (CodexEntry $entry) use ($buildings, $elements, $plants, $geysers, $critterIds, $familyIds): void {
+            $key = $this->normalizeKey($entry->codex_id);
             match ($entry->category) {
-                'Buildings' => $entry->buildings()->attach(
-                    Building::query()->where('building_id', $entry->codex_id)->pluck('id'),
-                ),
-                'ElementTypes' => $entry->elements()->attach(
-                    Element::query()->where('element_id', $entry->codex_id)->pluck('id'),
-                ),
-                'Creatures' => $entry->critters()->attach(
-                    Critter::query()->where('critter_id', $entry->codex_id)->pluck('id'),
-                ),
-                'Plants' => $entry->plants()->attach(
-                    Plant::query()->where('plant_id', $entry->codex_id)->pluck('id'),
-                ),
-                'Geysers' => $entry->geyserTypes()->attach(
-                    GeyserType::query()->where('geyser_id', $entry->codex_id)->pluck('id'),
-                ),
+                'Buildings' => $entry->buildings()->sync($buildings[$key] ?? []),
+                'ElementTypes' => $entry->elements()->sync($elements[$key] ?? []),
+                'Creatures' => $entry->critters()->sync($this->critterIdsFor($key, $critterIds, $familyIds)),
+                'Plants' => $entry->plants()->sync($plants[$key] ?? []),
+                'Geysers' => $entry->geyserTypes()->sync($geysers[$key] ?? []),
                 default => null,
             };
         });
+    }
+
+    /**
+     * @param  array<string, list<int>>  $critterIds
+     * @param  array<string, list<int>>  $familyIds
+     * @return list<int>
+     */
+    private function critterIdsFor(string $key, array $critterIds, array $familyIds): array
+    {
+        if (isset($critterIds[$key])) {
+            return $critterIds[$key];
+        }
+
+        if (! str_ends_with($key, 'species')) {
+            return [];
+        }
+
+        $base = mb_substr($key, 0, -mb_strlen('species'));
+
+        return $familyIds[$base] ?? $critterIds[$base] ?? [];
+    }
+
+    /**
+     * @param  array<string, int>  $idsByNaturalKey
+     * @return array<string, list<int>>
+     */
+    private function normalizedIdMap(array $idsByNaturalKey): array
+    {
+        $map = [];
+        foreach ($idsByNaturalKey as $naturalKey => $id) {
+            $map[$this->normalizeKey((string) $naturalKey)][] = $id;
+        }
+
+        return $map;
+    }
+
+    private function normalizeKey(string $key): string
+    {
+        return mb_strtolower((string) preg_replace('/[^a-zA-Z0-9]/', '', $key));
     }
 
     private function categoryFor(string $relativePath): string
@@ -163,6 +221,7 @@ final readonly class CodexImporter
         return [
             'type' => 'text',
             'style' => is_string($value['style'] ?? null) ? $value['style'] : 'Body',
+            'key' => StringResolver::normalizeKey($key),
             'text' => $text,
         ];
     }

@@ -17,7 +17,11 @@ import {
 } from '@/composables/useCodex';
 
 // region Block types
-type TextBlock = { type: 'text'; style: string; text: Record<string, string> };
+type TextBlock = {
+    type: 'text';
+    style: string;
+    text: string | Record<string, string>;
+};
 type ImageBlock = {
     type: 'image';
     sprite: string | null;
@@ -109,6 +113,15 @@ const articleTitle = computed(() =>
 
 const articleMeta = computed(() =>
     article.value ? categoryMeta(article.value.category) : null,
+);
+
+// Variants/sub-entries grouped under this article, and its parent entry.
+const articleChildren = computed(() =>
+    article.value ? codex.childrenOf(article.value.codex_id) : [],
+);
+
+const articleParent = computed(() =>
+    article.value ? codex.parentOf(article.value.parent_codex_id) : null,
 );
 
 const containers = computed<Container[]>(
@@ -494,7 +507,7 @@ onBeforeUnmount(stopResize);
                                     v-for="(entry, i) in selectedItems"
                                     :key="entry.codex_id"
                                     type="button"
-                                    class="codex-thumb group flex flex-col overflow-hidden rounded-xl border border-black/5 text-left ring-1 ring-white/30 transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ring-inset hover:-translate-y-0.5 hover:shadow-md dark:border-white/5 dark:ring-white/5"
+                                    class="codex-thumb group relative flex flex-col overflow-hidden rounded-xl border border-black/5 text-left ring-1 ring-white/30 transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ring-inset hover:-translate-y-0.5 hover:shadow-md dark:border-white/5 dark:ring-white/5"
                                     :class="
                                         activeId === entry.codex_id
                                             ? 'shadow-md ring-2 ring-oni-amber/60'
@@ -503,6 +516,18 @@ onBeforeUnmount(stopResize);
                                     :style="{ animationDelay: `${i * 22}ms` }"
                                     @click="codex.openArticle(entry.codex_id)"
                                 >
+                                    <span
+                                        v-if="
+                                            codex.childrenOf(entry.codex_id)
+                                                .length > 0
+                                        "
+                                        class="absolute top-1.5 right-1.5 z-10 rounded-full bg-black/8 px-1.5 py-0.5 text-[10px] font-semibold text-[oklch(35%_0.04_var(--tile-hue))] tabular-nums dark:bg-white/10 dark:text-[oklch(85%_0.04_var(--tile-hue))]"
+                                        >{{
+                                            codex.childrenOf(entry.codex_id)
+                                                .length + 1
+                                        }}
+                                        variantes</span
+                                    >
                                     <div
                                         class="flex h-20 items-center justify-center px-3 pt-3"
                                     >
@@ -685,6 +710,38 @@ onBeforeUnmount(stopResize);
                                     >
                                         {{ articleTitle }}
                                     </h2>
+                                    <button
+                                        v-if="articleParent"
+                                        type="button"
+                                        class="flex items-center gap-1 text-[11px] font-medium text-[oklch(48%_0.02_60)] transition-colors hover:text-oni-amber dark:text-[oklch(64%_0.015_65)]"
+                                        @click="
+                                            codex.openArticle(
+                                                articleParent.codex_id,
+                                            )
+                                        "
+                                    >
+                                        <svg
+                                            width="10"
+                                            height="10"
+                                            viewBox="0 0 12 12"
+                                            fill="none"
+                                        >
+                                            <path
+                                                d="M7.5 2.5L4 6l3.5 3.5"
+                                                stroke="currentColor"
+                                                stroke-width="1.4"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            />
+                                        </svg>
+                                        Variante de
+                                        {{
+                                            pickLocale(
+                                                articleParent.title,
+                                                articleParent.codex_id,
+                                            )
+                                        }}
+                                    </button>
                                 </div>
 
                                 <div
@@ -699,7 +756,7 @@ onBeforeUnmount(stopResize);
                                         <p
                                             v-if="isText(block)"
                                             :class="textClasses(block.style)"
-                                            style="white-space: pre-line"
+                                            class="prose whitespace-pre-line dark:prose-invert"
                                         >
                                             {{ pickLocale(block.text) }}
                                         </p>
@@ -745,6 +802,44 @@ onBeforeUnmount(stopResize);
                                             class="border-t border-[oklch(86%_0.015_60)] dark:border-[oklch(30%_0.014_250)]"
                                         />
                                     </template>
+                                </div>
+
+                                <div
+                                    v-if="articleChildren.length"
+                                    class="space-y-2 border-t border-[oklch(88%_0.012_60)] pt-3 dark:border-[oklch(28%_0.014_250)]"
+                                >
+                                    <h3
+                                        class="text-[10px] font-bold tracking-[0.14em] text-[oklch(48%_0.02_60)] uppercase dark:text-[oklch(64%_0.015_65)]"
+                                    >
+                                        Variantes
+                                    </h3>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <button
+                                            v-for="child in articleChildren"
+                                            :key="child.codex_id"
+                                            type="button"
+                                            class="flex items-center gap-2 rounded-lg border border-[oklch(88%_0.012_60)] bg-[oklch(97%_0.008_75)] px-2 py-1.5 text-left text-[12px] font-medium text-[oklch(28%_0.02_60)] transition-colors hover:border-oni-amber-dim hover:bg-[oklch(94%_0.02_75)] dark:border-[oklch(30%_0.014_250)] dark:bg-[oklch(24%_0.012_250)] dark:text-[oklch(86%_0.012_65)] dark:hover:bg-[oklch(27%_0.016_250)]"
+                                            @click="
+                                                codex.openArticle(
+                                                    child.codex_id,
+                                                )
+                                            "
+                                        >
+                                            <img
+                                                v-if="child.image"
+                                                :src="child.image"
+                                                alt=""
+                                                loading="lazy"
+                                                class="h-8 w-8 shrink-0 object-contain"
+                                            />
+                                            <span class="truncate">{{
+                                                pickLocale(
+                                                    child.title,
+                                                    child.codex_id,
+                                                )
+                                            }}</span>
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div

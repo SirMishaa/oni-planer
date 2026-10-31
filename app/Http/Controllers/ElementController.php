@@ -8,12 +8,13 @@ use App\Data\ElementData;
 use App\Data\ElementShowData;
 use App\Data\ThermalPropertyData;
 use App\Models\Element;
+use App\Services\GameText;
 use Inertia\Inertia;
 use Inertia\Response;
 
 final class ElementController
 {
-    public function show(Element $element): Response
+    public function show(Element $element, GameText $text): Response
     {
         $element->load('thermalProperties');
 
@@ -24,8 +25,8 @@ final class ElementController
         return Inertia::render('Elements/Show', [
             'element' => ElementShowData::from([
                 'element_id' => $element->element_id,
-                'name' => $element->getTranslations('name'),
-                'description' => $element->getTranslations('description') ?: null,
+                'name' => $text->name($element->element_id, $element->getTranslation('name', 'en') ?: null),
+                'description' => $text->description($element->element_id) ?? ($element->getTranslation('description', 'en') ?: null),
                 'state' => $element->state,
                 'material_category' => $element->material_category,
                 'molar_mass' => $element->molar_mass,
@@ -38,7 +39,7 @@ final class ElementController
         ]);
     }
 
-    public function index(): Response
+    public function index(GameText $text): Response
     {
         $elements = Element::query()
             ->where('is_disabled', false)
@@ -47,7 +48,7 @@ final class ElementController
             ->get(['element_id', 'name', 'state', 'material_category'])
             ->map(fn (Element $el): ElementData => ElementData::from([
                 'element_id' => $el->element_id,
-                'name' => $el->getTranslations('name'),
+                'name' => $text->name($el->element_id, $el->getTranslation('name', 'en') ?: null),
                 'state' => $el->state,
                 'material_category' => $el->material_category,
             ]));

@@ -10,8 +10,7 @@ final class BuildingData extends Data
 {
     public function __construct(
         public string $building_id,
-        /** @var array<string, string> */
-        public array $name,
+        public string $name,
         public string $category,
         public ?string $sub_group,
         public int $width,

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
+import ElementController from '@/actions/App/Http/Controllers/ElementController';
 import Badge from '@/components/ui/Badge.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type {
@@ -38,8 +39,8 @@ function toState(state: string): ElementState {
         : 'special';
 }
 
-function displayName(name: Record<string, string>, fallback: string): string {
-    return name['en'] ?? fallback;
+function displayName(name: string, fallback: string): string {
+    return name || fallback;
 }
 
 function toSlug(elementId: string): string {
@@ -92,7 +93,7 @@ function thermalRows(t: ThermalPropertyData): PropRow[] {
         >
             <div class="mx-auto flex max-w-3xl items-center gap-3 px-5 py-4">
                 <Link
-                    href="/"
+                    :href="ElementController.index()"
                     class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[oklch(42%_0.015_250)] transition-colors hover:bg-[oklch(88%_0.01_250)] hover:text-[oklch(16%_0.012_250)] dark:text-[oklch(66%_0.012_260)] dark:hover:bg-[oklch(30%_0.015_260)] dark:hover:text-[oklch(90%_0.008_260)]"
                     aria-label="Retour aux éléments"
                 >
@@ -161,10 +162,10 @@ function thermalRows(t: ThermalPropertyData): PropRow[] {
 
             <!-- Description -->
             <p
-                v-if="element.description?.['en']"
+                v-if="element.description"
                 class="mt-5 text-sm leading-relaxed text-[oklch(38%_0.015_250)] dark:text-[oklch(68%_0.010_260)]"
             >
-                {{ element.description['en'] }}
+                {{ element.description }}
             </p>
 
             <!-- Basic properties -->
@@ -257,7 +258,11 @@ function thermalRows(t: ThermalPropertyData): PropRow[] {
                 <div class="flex items-center gap-2 text-sm">
                     <Link
                         v-if="element.low_temp_transition_target"
-                        :href="`/elements/${toSlug(element.low_temp_transition_target)}`"
+                        :href="
+                            ElementController.show(
+                                toSlug(element.low_temp_transition_target),
+                            )
+                        "
                         class="rounded-lg border border-[oklch(88%_0.01_250)] px-3 py-2 font-mono text-xs transition-colors hover:border-state-liquid hover:text-state-liquid dark:border-[oklch(35%_0.015_260)] dark:hover:border-state-liquid dark:hover:text-state-liquid"
                     >
                         {{ element.low_temp_transition_target }}
@@ -286,7 +291,11 @@ function thermalRows(t: ThermalPropertyData): PropRow[] {
                     >
                     <Link
                         v-if="element.high_temp_transition_target"
-                        :href="`/elements/${toSlug(element.high_temp_transition_target)}`"
+                        :href="
+                            ElementController.show(
+                                toSlug(element.high_temp_transition_target),
+                            )
+                        "
                         class="rounded-lg border border-[oklch(88%_0.01_250)] px-3 py-2 font-mono text-xs transition-colors hover:border-state-solid hover:text-state-solid dark:border-[oklch(35%_0.015_260)] dark:hover:border-state-solid dark:hover:text-state-solid"
                     >
                         {{ element.high_temp_transition_target }}

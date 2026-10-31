@@ -9,6 +9,7 @@ use App\Data\BuildingMaterialData;
 use App\Data\BuildingShowData;
 use App\Models\Building;
 use App\Services\BuildingSubGroupResolver;
+use App\Services\GameText;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -17,19 +18,17 @@ use Inertia\Response;
 
 final class BuildingController
 {
-    public const string CACHE_KEY = 'buildings.index';
-
-    public function index(): Response
+    public function index(GameText $text): Response
     {
         /** @var list<array<string, mixed>> $buildings */
-        $buildings = Cache::rememberForever(self::CACHE_KEY, fn (): array => $this->buildArray());
+        $buildings = Cache::rememberForever(Building::indexCacheKey(app()->getLocale()), fn (): array => $this->buildArray($text));
 
         return Inertia::render('Buildings/Index', [
             'buildings' => $buildings,
         ]);
     }
 
-    public function show(Building $building): JsonResponse
+    public function show(Building $building, GameText $text): JsonResponse
     {
         $building->load('constructionMaterials');
 
@@ -44,7 +43,7 @@ final class BuildingController
 
         $data = BuildingShowData::from([
             'building_id' => $building->building_id,
-            'name' => array_map(fn (mixed $value): string => $this->splitCamelCase(is_string($value) ? $value : ''), $building->getTranslations('name')),
+            'name' => $this->displayName($text, $building),
             'category' => $building->category,
             'sub_group' => null,
             'width' => $building->width,
@@ -53,7 +52,8 @@ final class BuildingController
             'power_generation' => $building->power_generation,
             'heat_generation' => $building->heat_generation,
             'construction_time' => $building->construction_time,
-            'description' => $building->getTranslations('description'),
+            'description' => $text->description($building->building_id) ?? ($building->getTranslation('description', 'en') ?: null),
+            'effect' => $text->effect($building->building_id) ?? ($building->getTranslation('effect', 'en') ?: null),
             'dlc_id' => $building->dlc_id ?: null,
             'materials' => $materials,
         ]);
@@ -61,9 +61,16 @@ final class BuildingController
         return response()->json($data);
     }
 
+    private function displayName(GameText $text, Building $building): string
+    {
+        $stored = $this->splitCamelCase((string) $building->getTranslation('name', 'en'));
+
+        return $text->name($building->building_id, $stored !== '' ? $stored : null);
+    }
+
     private function splitCamelCase(string $name): string
     {
-        if (mb_strpos($name, ' ') !== false) {
+        if (str_contains($name, ' ')) {
             return $name;
         }
 
@@ -75,7 +82,7 @@ final class BuildingController
     }
 
     /** @return list<array<string, mixed>> */
-    private function buildArray(): array
+    private function buildArray(GameText $text): array
     {
         $categoryOrder = ['Base', 'Oxygen', 'Power', 'Food', 'Plumbing', 'HVAC', 'Refining', 'Medical', 'Furniture', 'Equipment', 'Utilities', 'Automation', 'Conveyance', 'Rocketry', 'HEP', 'Other'];
         $caseExpr = 'CASE category '.implode(' ', array_map(
@@ -97,7 +104,7 @@ final class BuildingController
         /** @var list<array<string, mixed>> $result */
         $result = $buildings->map(fn (Building $b): BuildingData => BuildingData::from([
             'building_id' => $b->building_id,
-            'name' => array_map(fn (mixed $value): string => $this->splitCamelCase(is_string($value) ? $value : ''), $b->getTranslations('name')),
+            'name' => $this->displayName($text, $b),
             'category' => $b->category,
             'sub_group' => $subGroups[$b->building_id] ?? null,
             'width' => $b->width,

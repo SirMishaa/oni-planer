@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\Building;
 use App\Models\CodexEntry;
 use App\Models\Element;
+use Illuminate\Support\Facades\File;
 
 it('lists codex entries with their natural key, category, parent and title', function (): void {
     CodexEntry::factory()->create([
@@ -20,7 +21,7 @@ it('lists codex entries with their natural key, category, parent and title', fun
             'codex_id' => 'Electrolyzer',
             'category' => 'Buildings',
             'parent_codex_id' => 'OXYGEN',
-            'title' => ['en' => 'Electrolyzer'],
+            'title' => 'Electrolyzer',
         ]);
 });
 
@@ -46,7 +47,36 @@ it('returns an article with its content blocks', function (): void {
     $this->getJson(route('codex.show', 'Electrolyzer'))
         ->assertOk()
         ->assertJsonPath('codex_id', 'Electrolyzer')
-        ->assertJsonPath('content', $content);
+        ->assertJsonPath('title', 'Electrolyzer')
+        ->assertJsonPath('content.0.blocks.0', ['type' => 'text', 'style' => 'Body', 'text' => 'Splits water into oxygen and hydrogen.'])
+        ->assertJsonPath('content.0.blocks.1', ['type' => 'divider']);
+});
+
+it('translates the article title and text blocks from their STRINGS keys', function (): void {
+    $catalogDir = sys_get_temp_dir().'/oni-codex-'.uniqid();
+    File::ensureDirectoryExists($catalogDir);
+    File::put($catalogDir.'/fr.json', json_encode([
+        'STRINGS.CODEX.ELECTROLYZER.TITLE' => 'Électrolyseur',
+        'STRINGS.CODEX.ELECTROLYZER.BODY' => "Sépare l'eau en oxygène et hydrogène.",
+    ]));
+    app('translator')->addJsonPath($catalogDir);
+    app()->setLocale('fr');
+    CodexEntry::factory()->create([
+        'codex_id' => 'Electrolyzer',
+        'category' => 'Buildings',
+        'title' => ['en' => 'Electrolyzer'],
+        'title_key' => 'STRINGS.CODEX.ELECTROLYZER.TITLE',
+        'content' => [['layout' => 'Vertical', 'lock_id' => null, 'blocks' => [
+            ['type' => 'text', 'style' => 'Body', 'key' => 'STRINGS.CODEX.ELECTROLYZER.BODY', 'text' => ['en' => 'Splits water.']],
+        ]]],
+    ]);
+
+    $this->getJson(route('codex.show', 'Electrolyzer'))
+        ->assertOk()
+        ->assertJsonPath('title', 'Électrolyseur')
+        ->assertJsonPath('content.0.blocks.0.text', "Sépare l'eau en oxygène et hydrogène.");
+
+    File::deleteDirectory($catalogDir);
 });
 
 it('exposes linked buildings as navigable deep-links and elements via their kebab slug', function (): void {

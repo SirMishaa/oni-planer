@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Spatie\Translatable\HasTranslations;
 
 #[GameData]
-#[Fillable(['codex_id', 'category', 'parent_codex_id', 'title', 'icon_asset', 'content', 'dlc_id'])]
+#[Fillable(['codex_id', 'category', 'parent_codex_id', 'title', 'title_key', 'icon_asset', 'content', 'dlc_id'])]
 final class CodexEntry extends Model
 {
     /** @use HasFactory<CodexEntryFactory> */

@@ -1,0 +1,9 @@
+id: "Oilfloater"
+title: STRINGS.CODEX.OILFLOATER.TITLE
+parentEntryID: "OilFloaterSpecies"
+contentContainers:
+  - contentLayout: Vertical
+    content:
+      - !CodexText
+        stringKey: STRINGS.CODEX.OILFLOATER.TITLE
+        style: Title

@@ -1,0 +1,10 @@
+id: "HatchHard"
+title: STRINGS.CODEX.HATCHHARD.TITLE
+parentEntryID: "HatchSpecies"
+layoutPriority: 1
+contentContainers:
+  - contentLayout: Vertical
+    content:
+      - !CodexText
+        stringKey: STRINGS.CODEX.HATCHHARD.TITLE
+        style: Title

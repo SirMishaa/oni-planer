@@ -10,8 +10,7 @@ final class BuildingShowData extends Data
 {
     public function __construct(
         public string $building_id,
-        /** @var array<string, string> */
-        public array $name,
+        public string $name,
         public string $category,
         public ?string $sub_group,
         public int $width,
@@ -20,8 +19,8 @@ final class BuildingShowData extends Data
         public ?float $power_generation,
         public ?float $heat_generation,
         public ?float $construction_time,
-        /** @var array<string, string> */
-        public array $description,
+        public ?string $description,
+        public ?string $effect,
         public ?string $dlc_id,
         /** @var list<BuildingMaterialData> */
         public array $materials,
