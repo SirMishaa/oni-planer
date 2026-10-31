@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-it('has welcome page', function (): void {
+it('renders the elements index as home page', function (): void {
     $page = visit('/');
 
-    $page->assertSee("Let's get started");
+    $page->assertSee('Éléments')->assertNoJavaScriptErrors();
 });

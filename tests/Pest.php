@@ -24,9 +24,13 @@ pest()->extend(TestCase::class)
         Sleep::fake();
 
         $this->freezeTime();
-        $this->withoutVite();
     })
     ->in('Browser', 'Feature', 'Unit');
+
+// Browser tests need the real Vite assets to mount the Vue app.
+pest()->beforeEach(function (): void {
+    $this->withoutVite();
+})->in('Feature', 'Unit');
 
 expect()->extend('toBeOne', fn () => $this->toBe(1));
 
