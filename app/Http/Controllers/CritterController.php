@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Data\CritterFamilyData;
 use App\Services\Critters\CritterPresenter;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
-final class CritterController
+final readonly class CritterController
 {
-    public function __construct(private readonly CritterPresenter $presenter) {}
+    public function __construct(private CritterPresenter $presenter) {}
 
     public function index(): Response
     {
@@ -20,15 +22,14 @@ final class CritterController
         ]);
     }
 
-    public function show(string $family): Response
+    public function show(Request $request, string $family): Response
     {
         $data = $this->presenter->family($family);
-        if ($data === null) {
-            throw new NotFoundHttpException();
-        }
+        throw_if(! $data instanceof CritterFamilyData, NotFoundHttpException::class);
 
         return Inertia::render('Critters/Show', [
             'family' => $data,
+            'selected' => $request->query('variant'),
         ]);
     }
 }

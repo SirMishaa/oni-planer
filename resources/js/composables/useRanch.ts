@@ -1,10 +1,10 @@
+import { computed, ref, type Ref } from 'vue';
 import type {
     CritterFamilyData,
     CritterVariantData,
     ElementRefData,
     RanchCatalogData,
 } from '@/types/App/Data/data';
-import { computed, ref, type Ref } from 'vue';
 
 // region Types
 export type RanchCatalog = RanchCatalogData;
@@ -56,7 +56,11 @@ export function chosenDiet(
     const diets = variant.adult.diets;
     if (diets.length === 0) return null;
     if (foodElementId === null) return diets[0] ?? null;
-    return diets.find((d) => d.consumed.element_id === foodElementId) ?? diets[0] ?? null;
+    return (
+        diets.find((d) => d.consumed.element_id === foodElementId) ??
+        diets[0] ??
+        null
+    );
 }
 
 export function computeBalance(
@@ -88,10 +92,7 @@ export function computeBalance(
             bump(diet.consumed, -diet.amount_per_cycle * row.count);
             if (diet.produced) {
                 const ratio = diet.conversion_ratio ?? 0;
-                bump(
-                    diet.produced,
-                    diet.amount_per_cycle * ratio * row.count,
-                );
+                bump(diet.produced, diet.amount_per_cycle * ratio * row.count);
             }
         }
 
@@ -142,11 +143,9 @@ export function decodeRows(value: string): RanchRow[] {
         .map((token) => {
             const colonIdx = token.lastIndexOf(':');
             const idPart = colonIdx >= 0 ? token.slice(0, colonIdx) : token;
-            const countPart =
-                colonIdx >= 0 ? token.slice(colonIdx + 1) : '0';
+            const countPart = colonIdx >= 0 ? token.slice(colonIdx + 1) : '0';
             const dotIdx = idPart.indexOf('.');
-            const critterId =
-                dotIdx >= 0 ? idPart.slice(0, dotIdx) : idPart;
+            const critterId = dotIdx >= 0 ? idPart.slice(0, dotIdx) : idPart;
             const foodRaw = dotIdx >= 0 ? idPart.slice(dotIdx + 1) : '';
             const count = Number.parseInt(countPart, 10);
             return {
@@ -187,8 +186,7 @@ export function useRanch(catalog: RanchCatalog, initialQuery: string) {
         if (!variant) return;
         rows.value.push({
             critterId,
-            foodElementId:
-                variant.adult.diets[0]?.consumed.element_id ?? null,
+            foodElementId: variant.adult.diets[0]?.consumed.element_id ?? null,
             count: 1,
         });
         syncUrl();

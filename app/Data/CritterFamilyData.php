@@ -11,8 +11,9 @@ final class CritterFamilyData extends Data
     public function __construct(
         public string $slug,
         public string $name,
-        /** @var array<string, string>|null */
-        public ?array $description,
+        /** Official family label in the current locale (e.g. "Gloutons"). */
+        public ?string $plural_name,
+        public ?string $description,
         public ?string $image,
         /** @var list<CritterVariantData> */
         public array $variants,

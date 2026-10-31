@@ -10,6 +10,7 @@ use App\Data\CritterFamilyListItemData;
 use App\Data\CritterMorphData;
 use App\Data\CritterOutputData;
 use App\Data\CritterVariantData;
+use App\Data\CritterVariantPreviewData;
 use App\Data\ElementRefData;
 use App\Data\RanchCatalogData;
 use App\Models\Critter;
@@ -17,6 +18,7 @@ use App\Models\CritterMorph;
 use App\Models\CritterMorphDiet;
 use App\Models\CritterMorphOutput;
 use App\Models\Element;
+use App\Services\GameText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -31,6 +33,8 @@ final class CritterPresenter
 
     /** @var array<string, string>|null critter_id => family slug */
     private ?array $critterFamilySlugs = null;
+
+    public function __construct(private readonly GameText $text) {}
 
     /** Build a single family by slug, or null if not found. */
     public function family(string $slug): ?CritterFamilyData
@@ -60,12 +64,14 @@ final class CritterPresenter
             $items[] = new CritterFamilyListItemData(
                 slug: $slug,
                 name: $this->familyName($variants),
+                plural_name: $this->familyPluralName($first),
                 image: $this->critterImage($first->critter_id),
+                image_idle: $this->critterIdleImage($first->critter_id),
                 variant_count: count($variants),
                 eats_summary: $this->eatsSummary($first),
                 makes_summary: $this->makesSummary($first),
                 dlc_id: $first->dlc_id,
-                variant_images: $this->variantPreviewImages($variants, $first),
+                variant_previews: $this->variantPreviews($variants, $first),
                 min_temp: $minTemp,
                 max_temp: $maxTemp,
             );
@@ -155,25 +161,49 @@ final class CritterPresenter
         return new CritterFamilyData(
             slug: $slug,
             name: $this->familyName($variants),
-            description: $first->getTranslations('description') ?: null,
+            plural_name: $this->familyPluralName($first),
+            description: $this->familyDescription($variants),
             image: $this->critterImage($first->critter_id),
             variants: array_map(fn (Critter $c): CritterVariantData => $this->variantData($c, $withBaby), $variants),
         );
     }
 
-    /** @param list<Critter> $variants */
+    /**
+     * Singular display name of the family: its base variant's adult morph name.
+     *
+     * @param  list<Critter>  $variants
+     */
     private function familyName(array $variants): string
     {
         /** @var Critter $first */
         $first = $variants[0];
         $baseMorph = $first->morphs->firstWhere('is_base', true) ?? $first->morphs->first();
-        $resolved = $baseMorph?->getTranslation('name', 'en');
-
-        if ($resolved) {
-            return $resolved;
+        if ($baseMorph === null) {
+            return $first->variant_family ?? $first->critter_id;
         }
 
-        return $first->variant_family ?? $first->critter_id;
+        $stored = $baseMorph->getTranslation('name', 'en') ?: null;
+
+        return $this->text->name($baseMorph->morph_id, $stored ?? $first->variant_family ?? $first->critter_id);
+    }
+
+    /** The game's family label: STRINGS.CREATURES.FAMILY_PLURAL.{species tag in upper case}. */
+    private function familyPluralName(Critter $critter): ?string
+    {
+        return $critter->species_tag !== null
+            ? $this->text->translate('STRINGS.CREATURES.FAMILY_PLURAL.'.mb_strtoupper($critter->species_tag))
+            : null;
+    }
+
+    /** @param list<Critter> $variants */
+    private function familyDescription(array $variants): ?string
+    {
+        /** @var Critter $first */
+        $first = $variants[0];
+        $baseMorph = $first->morphs->firstWhere('is_base', true) ?? $first->morphs->first();
+        $translated = $baseMorph !== null ? $this->text->description($baseMorph->morph_id) : null;
+
+        return $translated ?? ($first->getTranslation('description', 'en') ?: null);
     }
 
     /**
@@ -189,6 +219,7 @@ final class CritterPresenter
             if ($morph === null) {
                 continue;
             }
+
             $min = $min === null ? (float) $morph->min_temp : min($min, (float) $morph->min_temp);
             $max = $max === null ? (float) $morph->max_temp : max($max, (float) $morph->max_temp);
         }
@@ -197,28 +228,37 @@ final class CritterPresenter
     }
 
     /**
-     * Up to 2 images from the family's other variants, for the index tile's preview stack.
+     * Up to 2 previews from the family's other variants, for the index tile's clickable stack.
      *
      * @param  list<Critter>  $variants
-     * @return list<string>
+     * @return list<CritterVariantPreviewData>
      */
-    private function variantPreviewImages(array $variants, Critter $primary): array
+    private function variantPreviews(array $variants, Critter $primary): array
     {
-        $images = [];
+        $previews = [];
         foreach ($variants as $variant) {
             if ($variant->critter_id === $primary->critter_id) {
                 continue;
             }
+
             $image = $this->critterImage($variant->critter_id);
-            if ($image !== null) {
-                $images[] = $image;
+            if ($image === null) {
+                continue;
             }
-            if (count($images) === 2) {
+
+            $adult = $variant->morphs->firstWhere('is_base', true) ?? $variant->morphs->first();
+            $previews[] = new CritterVariantPreviewData(
+                critter_id: $variant->critter_id,
+                name: $this->variantName($variant, $adult),
+                image: $image,
+            );
+
+            if (count($previews) === 2) {
                 break;
             }
         }
 
-        return $images;
+        return $previews;
     }
 
     private function variantData(Critter $critter, bool $withBaby): CritterVariantData
@@ -230,17 +270,28 @@ final class CritterPresenter
             critter_id: $critter->critter_id,
             name: $this->variantName($critter, $adult),
             image: $this->critterImage($critter->critter_id),
+            image_idle: $this->critterIdleImage($critter->critter_id),
             adult: $this->morphData($adult),
             baby: $baby !== null ? $this->morphData($baby) : null,
         );
     }
 
-    /** @return array<string, string> */
-    private function variantName(Critter $critter, ?CritterMorph $adult): array
+    private function variantName(Critter $critter, ?CritterMorph $adult): string
     {
-        $translations = $adult?->getTranslations('name') ?? [];
+        if ($adult === null) {
+            return $critter->critter_id;
+        }
 
-        return $translations !== [] ? $translations : ['en' => $critter->critter_id];
+        return $this->morphName($adult) ?? $critter->critter_id;
+    }
+
+    /** Translated morph name, else the stored English one, else null. */
+    private function morphName(CritterMorph $morph): ?string
+    {
+        $stored = $morph->getTranslation('name', 'en') ?: null;
+        $name = $this->text->name($morph->morph_id, $stored ?? '');
+
+        return $name !== '' ? $name : null;
     }
 
     private function morphData(CritterMorph $morph): CritterMorphData
@@ -248,7 +299,7 @@ final class CritterPresenter
         return new CritterMorphData(
             morph_id: $morph->morph_id,
             is_base: (bool) $morph->is_base,
-            name: $morph->getTranslations('name'),
+            name: $this->morphName($morph) ?? $morph->morph_id,
             min_temp: (float) $morph->min_temp,
             max_temp: (float) $morph->max_temp,
             calories_per_cycle: (float) $morph->calories_per_cycle,
@@ -271,12 +322,10 @@ final class CritterPresenter
         return new CritterOutputData(
             kind: $output->output_type,
             element_id: $output->element_id,
-            label: $output->output_type === 'egg'
-                ? $output->element_id
-                : $this->elementName($output->element_id),
+            label: $this->displayName($output->element_id),
             icon: $output->output_type === 'egg'
                 ? $this->critterImageForEgg($output->element_id)
-                : $this->assetIfExists("assets/game/elements/{$output->element_id}.webp"),
+                : $this->assetIfExists(sprintf('assets/game/elements/%s.webp', $output->element_id)),
             url: $output->output_type === 'egg'
                 ? $this->familyUrlForEgg($output->element_id)
                 : $this->elementUrl($output->element_id),
@@ -288,14 +337,17 @@ final class CritterPresenter
     {
         return new ElementRefData(
             element_id: $elementId,
-            name: $this->elementName($elementId),
-            icon: $this->assetIfExists("assets/game/elements/{$elementId}.webp"),
+            name: $this->displayName($elementId),
+            icon: $this->assetIfExists(sprintf('assets/game/elements/%s.webp', $elementId)),
             url: $this->elementUrl($elementId),
         );
     }
 
-    /** Display name from the elements table, falling back to the id. */
-    private function elementName(string $elementId): string
+    /**
+     * Display name of any prefab id (element, egg, food item...): its STRINGS key
+     * translated in the current locale, else the element's stored name, else the id.
+     */
+    private function displayName(string $prefabId): string
     {
         if ($this->elementNames === null) {
             $this->elementNames = Element::query()
@@ -304,13 +356,13 @@ final class CritterPresenter
                 ->all();
         }
 
-        $name = $this->elementNames[$elementId] ?? '';
+        $stored = $this->elementNames[$prefabId] ?? '';
 
-        return $name !== '' ? $name : $elementId;
+        return $this->text->name($prefabId, $stored !== '' ? $stored : null);
     }
 
     /** Codex entry preferred, else element page. Returns a root-relative path. */
-    private function elementUrl(string $elementId): ?string
+    private function elementUrl(string $elementId): string
     {
         if ($this->elementUrls === null) {
             $this->elementUrls = [];
@@ -331,7 +383,13 @@ final class CritterPresenter
 
     private function critterImage(string $critterId): ?string
     {
-        return $this->assetIfExists("assets/game/critters/{$critterId}.webp");
+        return $this->assetIfExists(sprintf('assets/game/critters/%s.webp', $critterId));
+    }
+
+    /** Animated side-view idle loop shown on critter tiles; the main image is a static portrait. */
+    private function critterIdleImage(string $critterId): ?string
+    {
+        return $this->assetIfExists(sprintf('assets/game/critters/%s_idle.webp', $critterId));
     }
 
     /** Map an egg prefab id back to its critter image, e.g. HatchEgg -> Hatch. */
@@ -362,7 +420,7 @@ final class CritterPresenter
 
     private function assetIfExists(string $relative): ?string
     {
-        return file_exists(public_path($relative)) ? "/{$relative}" : null;
+        return file_exists(public_path($relative)) ? '/'.$relative : null;
     }
 
     /** Generate a root-relative URL path from a named route. */
@@ -376,7 +434,7 @@ final class CritterPresenter
         $adult = $critter->morphs->firstWhere('is_base', true) ?? $critter->morphs->first();
         $first = $adult?->diets->first();
 
-        return $first !== null ? $this->elementName($first->consumed_element_id) : null;
+        return $first !== null ? $this->displayName($first->consumed_element_id) : null;
     }
 
     private function makesSummary(Critter $critter): ?string
@@ -385,7 +443,7 @@ final class CritterPresenter
         $first = $adult?->diets->first();
 
         return ($first !== null && $first->produced_element_id !== null)
-            ? $this->elementName($first->produced_element_id)
+            ? $this->displayName($first->produced_element_id)
             : null;
     }
 }

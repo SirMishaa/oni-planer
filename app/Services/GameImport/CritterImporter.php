@@ -36,6 +36,10 @@ final readonly class CritterImporter
                 $critter->update(['variant_family' => $raw['variant_family']]);
             }
 
+            if (is_string($raw['species_tag'] ?? null) && $critter->species_tag !== $raw['species_tag']) {
+                $critter->update(['species_tag' => $raw['species_tag']]);
+            }
+
             $nameJson = is_string($raw['name_localization_id'] ?? null)
                 ? ($this->stringResolver->resolveToJson($raw['name_localization_id']) ?? ['en' => $raw['critter_id']])
                 : ['en' => $raw['critter_id']];

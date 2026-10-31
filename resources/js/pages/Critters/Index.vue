@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import CritterController from '@/actions/App/Http/Controllers/CritterController';
+import RanchController from '@/actions/App/Http/Controllers/RanchController';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { CritterFamilyListItemData } from '@/types/App/Data/data.d';
 
@@ -86,6 +88,33 @@ const filtered = computed<CritterFamilyListItemData[]>(() => {
 });
 // endregion
 
+// region Tile animation
+// Cards play the animated side-view idle loop; the front-facing portrait is a
+// single static frame in the game, so it is only a fallback.
+function tileImage(family: CritterFamilyListItemData): string | null {
+    return family.image_idle ?? family.image;
+}
+// endregion
+
+// region Card subtitle & variant navigation
+function subtitle(family: CritterFamilyListItemData): string {
+    const parts: string[] = [];
+    if (family.variant_count > 1) {
+        parts.push(`${family.variant_count} variantes`);
+    }
+    if (family.eats_summary) {
+        parts.push(`mange ${family.eats_summary}`);
+    }
+    return parts.join(' · ');
+}
+
+function openVariant(slug: string, critterId: string): void {
+    router.visit(
+        CritterController.show(slug, { query: { variant: critterId } }),
+    );
+}
+// endregion
+
 // region Tinting
 function familyHue(slug: string): number {
     let hash = 0;
@@ -118,7 +147,7 @@ function familyHue(slug: string): number {
                             >
                         </span>
                         <Link
-                            href="/ranch"
+                            :href="RanchController.index()"
                             class="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-all hover:-translate-y-px hover:bg-emerald-500 hover:shadow-md focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none active:scale-[0.97]"
                         >
                             <svg
@@ -253,7 +282,7 @@ function familyHue(slug: string): number {
                 <Link
                     v-for="(family, i) in filtered"
                     :key="family.slug"
-                    :href="`/critters/${family.slug}`"
+                    :href="CritterController.show(family.slug)"
                     class="critter-tile group relative flex flex-col overflow-hidden rounded-xl border border-black/5 text-left ring-1 ring-white/30 transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ring-inset hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-oni-amber focus-visible:outline-none dark:border-white/5 dark:ring-white/5"
                     :style="{
                         '--tile-hue': String(familyHue(family.slug)),
@@ -262,9 +291,11 @@ function familyHue(slug: string): number {
                 >
                     <div class="relative flex h-28 items-center justify-center">
                         <img
-                            v-if="family.image"
-                            :src="family.image"
+                            v-if="tileImage(family)"
+                            :src="tileImage(family) ?? undefined"
                             :alt="family.name"
+                            loading="lazy"
+                            decoding="async"
                             class="h-24 w-24 object-contain drop-shadow-sm transition-transform duration-300 group-hover:scale-110"
                         />
                         <svg
@@ -322,17 +353,26 @@ function familyHue(slug: string): number {
 
                         <!-- Other-variant preview stack -->
                         <div
-                            v-if="family.variant_images.length > 0"
-                            class="absolute right-1.5 bottom-1.5 flex -space-x-2"
+                            v-if="family.variant_previews.length > 0"
+                            class="absolute right-1.5 bottom-1.5 flex -space-x-2.5"
                         >
-                            <img
-                                v-for="(img, vi) in family.variant_images"
-                                :key="img"
-                                :src="img"
-                                alt=""
-                                class="h-6 w-6 rounded-full border-2 border-[oklch(98%_0.01_260)] bg-[oklch(98%_0.01_260)] object-contain shadow-sm dark:border-[oklch(24%_0.02_260)] dark:bg-[oklch(24%_0.02_260)]"
+                            <button
+                                v-for="(vp, vi) in family.variant_previews"
+                                :key="vp.critter_id"
+                                type="button"
+                                :title="vp.name"
+                                class="h-10 w-10 rounded-full border-2 border-[oklch(98%_0.01_260)] bg-[oklch(98%_0.01_260)] p-0.5 shadow-sm transition-transform duration-150 hover:z-20 hover:scale-110 focus-visible:z-20 focus-visible:ring-2 focus-visible:ring-oni-amber focus-visible:outline-none dark:border-[oklch(24%_0.02_260)] dark:bg-[oklch(24%_0.02_260)]"
                                 :style="{ zIndex: 10 - vi }"
-                            />
+                                @click.stop.prevent="
+                                    openVariant(family.slug, vp.critter_id)
+                                "
+                            >
+                                <img
+                                    :src="vp.image"
+                                    :alt="vp.name"
+                                    class="h-full w-full object-contain"
+                                />
+                            </button>
                         </div>
 
                         <span
@@ -350,14 +390,10 @@ function familyHue(slug: string): number {
                             {{ family.name }}
                         </div>
                         <div
+                            v-if="subtitle(family)"
                             class="mt-0.5 truncate text-xs text-[oklch(50%_0.015_250)] dark:text-[oklch(60%_0.012_260)]"
                         >
-                            {{ family.variant_count }} variant{{
-                                family.variant_count > 1 ? 's' : ''
-                            }}
-                            <template v-if="family.eats_summary">
-                                · mange {{ family.eats_summary }}</template
-                            >
+                            {{ subtitle(family) }}
                         </div>
                     </div>
                 </Link>

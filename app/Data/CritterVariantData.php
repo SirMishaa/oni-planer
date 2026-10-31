@@ -10,9 +10,9 @@ final class CritterVariantData extends Data
 {
     public function __construct(
         public string $critter_id,
-        /** @var array<string, string> */
-        public array $name,
+        public string $name,
         public ?string $image,
+        public ?string $image_idle,
         public CritterMorphData $adult,
         public ?CritterMorphData $baby,
     ) {}

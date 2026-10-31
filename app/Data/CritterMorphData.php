@@ -11,8 +11,7 @@ final class CritterMorphData extends Data
     public function __construct(
         public string $morph_id,
         public bool $is_base,
-        /** @var array<string, string> */
-        public array $name,
+        public string $name,
         public float $min_temp,
         public float $max_temp,
         public float $calories_per_cycle,

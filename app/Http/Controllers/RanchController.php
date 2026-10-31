@@ -8,9 +8,9 @@ use App\Services\Critters\CritterPresenter;
 use Inertia\Inertia;
 use Inertia\Response;
 
-final class RanchController
+final readonly class RanchController
 {
-    public function __construct(private readonly CritterPresenter $presenter) {}
+    public function __construct(private CritterPresenter $presenter) {}
 
     public function index(): Response
     {

@@ -51,7 +51,7 @@ it('imports diets, outputs and variant_family', function (): void {
     $resolver = new StringResolver(base_path('tests/Fixtures/GameImport/strings.pot'));
     new CritterImporter($resolver)->import($path);
 
-    $critter = Critter::where('critter_id', 'Hatch')->firstOrFail();
+    $critter = Critter::query()->where('critter_id', 'Hatch')->firstOrFail();
     expect($critter->variant_family)->toBe('Hatch');
     $morph = $critter->baseMorph;
     expect($morph->diets)->toHaveCount(1);
@@ -72,7 +72,7 @@ it('imports dlc_id', function (): void {
     $resolver = new StringResolver(base_path('tests/Fixtures/GameImport/strings.pot'));
     new CritterImporter($resolver)->import($path);
 
-    $critter = Critter::where('critter_id', 'AlgaeStego')->firstOrFail();
+    $critter = Critter::query()->where('critter_id', 'AlgaeStego')->firstOrFail();
     expect($critter->dlc_id)->toBe('DLC5');
 });
 
@@ -100,6 +100,21 @@ it('backfills dlc_id when a later entry for the same parent supplies one', funct
     $resolver = new StringResolver(base_path('tests/Fixtures/GameImport/strings.pot'));
     new CritterImporter($resolver)->import($path);
 
-    $critter = Critter::where('critter_id', 'Hatch')->firstOrFail();
+    $critter = Critter::query()->where('critter_id', 'Hatch')->firstOrFail();
     expect($critter->dlc_id)->toBe('DLC5');
+});
+
+it('stores the species tag on the critter', function (): void {
+    $path = tempnam(sys_get_temp_dir(), 'crit').'.json';
+    file_put_contents($path, json_encode([[
+        'critter_id' => 'Hatch', 'is_base' => true, 'min_temp' => 283.15, 'max_temp' => 313.15,
+        'calories_per_cycle' => 700000, 'incubation_time' => 20, 'lifespan' => 100,
+        'overcrowding_threshold' => 8, 'name_localization_id' => null, 'variant_family' => 'Hatch',
+        'species_tag' => 'HatchSpecies', 'diets' => [], 'outputs' => [],
+    ]]));
+    $resolver = new StringResolver(base_path('tests/Fixtures/GameImport/strings.pot'));
+
+    new CritterImporter($resolver)->import($path);
+
+    expect(Critter::query()->where('critter_id', 'Hatch')->value('species_tag'))->toBe('HatchSpecies');
 });

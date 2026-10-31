@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 use App\Models\Critter;
 use App\Models\CritterMorph;
+use App\Models\CritterMorphDiet;
+use App\Models\PrefabName;
 use App\Services\Critters\CritterPresenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
 
@@ -17,7 +20,7 @@ beforeEach(function (): void {
 it('presents a family with resolved diet element refs and egg outputs', function (): void {
     makeHatch();
 
-    $family = app(CritterPresenter::class)->family('hatch');
+    $family = resolve(CritterPresenter::class)->family('hatch');
 
     expect($family)->not->toBeNull()
         ->and($family->slug)->toBe('hatch')
@@ -35,13 +38,13 @@ it('presents a family with resolved diet element refs and egg outputs', function
 });
 
 it('returns null for an unknown family slug', function (): void {
-    expect(app(CritterPresenter::class)->family('nope'))->toBeNull();
+    expect(resolve(CritterPresenter::class)->family('nope'))->toBeNull();
 });
 
 it('builds a ranch catalog with adult-only variants and an elements map', function (): void {
     makeHatch();
 
-    $catalog = app(CritterPresenter::class)->catalog();
+    $catalog = resolve(CritterPresenter::class)->catalog();
 
     expect($catalog->families)->toHaveCount(1)
         ->and($catalog->families[0]->variants[0]->baby)->toBeNull()
@@ -52,7 +55,7 @@ it('builds a ranch catalog with adult-only variants and an elements map', functi
 it('lists families with variant counts', function (): void {
     makeHatch();
 
-    $list = app(CritterPresenter::class)->familyList();
+    $list = resolve(CritterPresenter::class)->familyList();
 
     expect($list)->toHaveCount(1)
         ->and($list[0]->slug)->toBe('hatch')
@@ -68,7 +71,7 @@ it('uses the resolved base-morph name for the family, not the raw variant_family
         'name' => ['en' => 'Oil Floater'],
     ]);
 
-    $list = app(CritterPresenter::class)->familyList();
+    $list = resolve(CritterPresenter::class)->familyList();
 
     expect($list)->toHaveCount(1)
         ->and($list[0]->name)->toBe('Oil Floater');
@@ -91,7 +94,7 @@ it('uses the base variant name even when it does not sort first alphabetically',
         'name' => ['en' => 'Bammoth'],
     ]);
 
-    $list = app(CritterPresenter::class)->familyList();
+    $list = resolve(CritterPresenter::class)->familyList();
 
     expect($list)->toHaveCount(1)
         ->and($list[0]->name)->toBe('Bammoth');
@@ -114,7 +117,7 @@ it('uses the shortest-id variant as the base when no critter_id matches the fami
         'name' => ['en' => 'Flox'],
     ]);
 
-    $list = app(CritterPresenter::class)->familyList();
+    $list = resolve(CritterPresenter::class)->familyList();
 
     expect($list)->toHaveCount(1)
         ->and($list[0]->name)->toBe('Flox');
@@ -123,7 +126,7 @@ it('uses the shortest-id variant as the base when no critter_id matches the fami
 it('falls back to variant_family when no morph is present', function (): void {
     Critter::factory()->create(['critter_id' => 'Ghost', 'variant_family' => 'Ghost']);
 
-    $list = app(CritterPresenter::class)->familyList();
+    $list = resolve(CritterPresenter::class)->familyList();
 
     expect($list)->toHaveCount(1)
         ->and($list[0]->name)->toBe('Ghost');
@@ -132,7 +135,7 @@ it('falls back to variant_family when no morph is present', function (): void {
 it('falls back to critter_id when there is no variant_family and no morph', function (): void {
     Critter::factory()->create(['critter_id' => 'Solo', 'variant_family' => null]);
 
-    $list = app(CritterPresenter::class)->familyList();
+    $list = resolve(CritterPresenter::class)->familyList();
 
     expect($list)->toHaveCount(1)
         ->and($list[0]->name)->toBe('Solo');
@@ -147,10 +150,10 @@ it('resolves the variant tab name from the base morph, not the raw critter name'
         'name' => ['en' => 'Hatch Hard'],
     ]);
 
-    $family = app(CritterPresenter::class)->family('hatch');
+    $family = resolve(CritterPresenter::class)->family('hatch');
 
     expect($family)->not->toBeNull()
-        ->and($family->variants[0]->name)->toBe(['en' => 'Hatch Hard']);
+        ->and($family->variants[0]->name)->toBe('Hatch Hard');
 });
 
 it('falls back to critter_id for the variant name when the base morph name is unresolved', function (): void {
@@ -162,10 +165,10 @@ it('falls back to critter_id for the variant name when the base morph name is un
         'name' => [],
     ]);
 
-    $family = app(CritterPresenter::class)->family('mystery');
+    $family = resolve(CritterPresenter::class)->family('mystery');
 
     expect($family)->not->toBeNull()
-        ->and($family->variants[0]->name)->toBe(['en' => 'Mystery']);
+        ->and($family->variants[0]->name)->toBe('Mystery');
 });
 
 it('includes dlc_id, temperature range, and other-variant image previews in the family list', function (): void {
@@ -176,19 +179,22 @@ it('includes dlc_id, temperature range, and other-variant image previews in the 
     // PufferFish has the shortest critter_id, so it becomes the representative;
     // PacuTropical supplies the other-variant preview image.
     $variant = Critter::factory()->create(['critter_id' => 'PacuTropical', 'variant_family' => 'Pacu', 'dlc_id' => 'DLC5']);
-    CritterMorph::factory()->create(['critter_id' => $variant->id, 'morph_id' => 'PacuTropical', 'is_base' => true, 'min_temp' => 290.0, 'max_temp' => 305.0]);
+    CritterMorph::factory()->create(['critter_id' => $variant->id, 'morph_id' => 'PacuTropical', 'is_base' => true, 'name' => ['en' => 'Tropical Pacu'], 'min_temp' => 290.0, 'max_temp' => 305.0]);
 
     $base = Critter::factory()->create(['critter_id' => 'PufferFish', 'variant_family' => 'Pacu', 'dlc_id' => 'DLC5']);
     CritterMorph::factory()->create(['critter_id' => $base->id, 'morph_id' => 'PufferFish', 'is_base' => true, 'min_temp' => 275.0, 'max_temp' => 300.0]);
 
-    $list = app(CritterPresenter::class)->familyList();
+    $list = resolve(CritterPresenter::class)->familyList();
 
     expect($list)->toHaveCount(1);
     $family = $list[0];
     expect($family->dlc_id)->toBe('DLC5')
         ->and($family->min_temp)->toBe(275.0)
         ->and($family->max_temp)->toBe(305.0)
-        ->and($family->variant_images)->toBe(['/assets/game/critters/PacuTropical.webp']);
+        ->and($family->variant_previews)->toHaveCount(1)
+        ->and($family->variant_previews[0]->critter_id)->toBe('PacuTropical')
+        ->and($family->variant_previews[0]->name)->toBe('Tropical Pacu')
+        ->and($family->variant_previews[0]->image)->toBe('/assets/game/critters/PacuTropical.webp');
 
     @unlink($tempPublic.'/assets/game/critters/PacuTropical.webp');
 });
@@ -205,17 +211,61 @@ it('excludes the primary variant image and caps the preview stack at 2', functio
         CritterMorph::factory()->create(['critter_id' => $critter->id, 'morph_id' => $id, 'is_base' => true]);
     }
 
-    $list = app(CritterPresenter::class)->familyList();
+    $list = resolve(CritterPresenter::class)->familyList();
 
     // Beta (shortest critter_id) is the representative; previews follow
     // the base-first ordering: Alpha, then Delta, with Gamma cut by the cap.
     expect($list)->toHaveCount(1);
     $family = $list[0];
-    expect($family->variant_images)->toHaveCount(2)
-        ->and($family->variant_images)->not->toContain('/assets/game/critters/Beta.webp')
-        ->and($family->variant_images)->toBe(['/assets/game/critters/Alpha.webp', '/assets/game/critters/Delta.webp']);
+    $previewIds = array_map(fn ($p): string => $p->critter_id, $family->variant_previews);
+    expect($family->variant_previews)->toHaveCount(2)
+        ->and($previewIds)->toBe(['Alpha', 'Delta'])
+        ->and(array_map(fn ($p): string => $p->image, $family->variant_previews))
+        ->toBe(['/assets/game/critters/Alpha.webp', '/assets/game/critters/Delta.webp']);
 
     foreach (['Alpha', 'Beta', 'Gamma', 'Delta'] as $id) {
         @unlink($tempPublic.'/assets/game/critters/'.$id.'.webp');
     }
+});
+
+it('names eggs and diet items from their translated STRINGS key in the current locale', function (): void {
+    $critter = makeHatch();
+    CritterMorphDiet::factory()->create([
+        'critter_morph_id' => $critter->baseMorph->id,
+        'consumed_element_id' => 'DinosaurMeat',
+        'produced_element_id' => 'Carbon',
+    ]);
+    PrefabName::factory()->create(['prefab_id' => 'HatchEgg', 'name_key' => 'STRINGS.CREATURES.SPECIES.HATCH.EGG_NAME']);
+    PrefabName::factory()->create(['prefab_id' => 'DinosaurMeat', 'name_key' => 'STRINGS.ITEMS.FOOD.DINOSAURMEAT.NAME']);
+    $catalogDir = sys_get_temp_dir().'/oni-presenter-lang-'.uniqid();
+    File::ensureDirectoryExists($catalogDir);
+    File::put($catalogDir.'/fr.json', json_encode([
+        'STRINGS.CREATURES.SPECIES.HATCH.EGG_NAME' => 'Œuf de Glouton',
+        'STRINGS.ITEMS.FOOD.DINOSAURMEAT.NAME' => 'Viande Dure',
+    ]));
+    app('translator')->addJsonPath($catalogDir);
+    app()->setLocale('fr');
+
+    $adult = resolve(CritterPresenter::class)->family('hatch')->variants[0]->adult;
+
+    expect($adult->outputs[0]->label)->toBe('Œuf de Glouton')
+        ->and(collect($adult->diets)->pluck('consumed.name')->all())->toContain('Viande Dure', 'Sand');
+
+    File::deleteDirectory($catalogDir);
+});
+
+it('exposes the game family label from the species tag in the current locale', function (): void {
+    $critter = makeHatch();
+    $critter->update(['species_tag' => 'HatchSpecies']);
+    $catalogDir = sys_get_temp_dir().'/oni-presenter-family-'.uniqid();
+    File::ensureDirectoryExists($catalogDir);
+    File::put($catalogDir.'/fr.json', json_encode(['STRINGS.CREATURES.FAMILY_PLURAL.HATCHSPECIES' => 'Gloutons']));
+    app('translator')->addJsonPath($catalogDir);
+    app()->setLocale('fr');
+
+    $family = resolve(CritterPresenter::class)->family('hatch');
+
+    expect($family->plural_name)->toBe('Gloutons');
+
+    File::deleteDirectory($catalogDir);
 });
