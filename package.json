@@ -9,27 +9,30 @@
         "typecheck": "vue-tsc --noEmit"
     },
     "devDependencies": {
-        "@tailwindcss/vite": "^4.3.2",
-        "@vitejs/plugin-vue": "^6.0.7",
-        "@vue/devtools-api": "^8.1.5",
-        "concurrently": "^10.0.3",
-        "laravel-vite-plugin": "^3.1.0",
-        "npm-check-updates": "^22.2.9",
-        "playwright": "^1.61.1",
-        "tailwindcss": "^4.3.2",
-        "typescript": "^6.0.3",
-        "vite": "npm:@voidzero-dev/vite-plus-core@0.2.2",
-        "vite-plus": "0.2.2",
-        "vue-tsc": "^3.3.6"
+        "@laravel/vite-plugin-wayfinder": "^0.1.11",
+        "@tailwindcss/typography": "^0.5.20",
+        "@tailwindcss/vite": "^4.3.3",
+        "@vitejs/plugin-vue": "^6.0.10",
+        "@vue/devtools-api": "^8.2.1",
+        "concurrently": "^10.0.6",
+        "laravel-vite-plugin": "^3.2.0",
+        "npm-check-updates": "^23.1.1",
+        "playwright": "^1.64.1",
+        "tailwindcss": "^4.3.3",
+        "typescript": "^6",
+        "vite": "npm:@voidzero-dev/vite-plus-core@1.4.0",
+        "vite-plugin-devtools-json": "^1.1.2",
+        "vite-plugin-vue-devtools": "^8.2.1",
+        "vite-plus": "1.4.0",
+        "vue-tsc": "^3.3.14"
     },
     "overrides": {
-        "vite": "npm:@voidzero-dev/vite-plus-core@latest",
-        "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
+        "vite": "npm:@voidzero-dev/vite-plus-core@latest"
     },
     "dependencies": {
-        "@iconify/vue": "^5.0.1",
-        "@inertiajs/vue3": "^3.6.0",
-        "reka-ui": "^2.10.1",
-        "vue": "^3.5.39"
+        "@iconify/vue": "^5.0.4",
+        "@inertiajs/vue3": "^3.10.0",
+        "reka-ui": "^2.11.0",
+        "vue": "^3.5.44"
     }
 }

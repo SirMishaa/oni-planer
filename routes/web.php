@@ -9,8 +9,16 @@ use App\Http\Controllers\ElementController;
 use App\Http\Controllers\RanchController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/.well-known/appspecific/com.chrome.devtools.json', function () {
+    if (app()->environment('local')) {
+        return redirect()->away('http://localhost:5173/.well-known/appspecific/com.chrome.devtools.json', 307);
+    }
+
+    abort(404);
+})->name('devtools');
+
 Route::get('/', [ElementController::class, 'index'])->name('elements.index');
-Route::get('/elements/{element}', [ElementController::class, 'show'])->name('elements.show');
+Route::get('/elements/{element:element_id}', [ElementController::class, 'show'])->name('elements.show');
 
 Route::get('/buildings', [BuildingController::class, 'index'])->name('buildings.index');
 Route::get('/buildings/{building:building_id}', [BuildingController::class, 'show'])->name('buildings.show');
