@@ -5,6 +5,7 @@ Reads each building's kanim BILD file to find the "ui" symbol UV coordinates,
 then crops that region from the texture atlas.
 Outputs webp files to public/assets/game/buildings/{BuildingId}.webp
 """
+import json
 import os
 import sys
 import struct
@@ -103,15 +104,13 @@ BUILDING_KANIM: dict[str, str] = {}
 
 
 def load_building_kanim_map() -> None:
-    """Load mapping from the pre-extracted DLL data."""
-    map_file = Path(__file__).parent / "building_kanim_map.txt"
-    if map_file.exists():
-        with open(map_file) as f:
-            for line in f:
-                line = line.strip()
-                if "|" in line:
-                    building_id, kanim = line.split("|", 1)
-                    BUILDING_KANIM[building_id] = kanim.removesuffix("_kanim")
+    """Load building ID -> kanim from the dotnet-extractor output (json-cache/buildings.json)."""
+    cache_file = Path(__file__).parent.parent / "json-cache" / "buildings.json"
+    if not cache_file.exists():
+        return
+    for row in json.loads(cache_file.read_text(encoding="utf-8")):
+        if row.get("kanim"):
+            BUILDING_KANIM[row["building_id"]] = row["kanim"].removesuffix("_kanim")
 
 
 def main() -> None:
@@ -121,8 +120,8 @@ def main() -> None:
 
     load_building_kanim_map()
     if not BUILDING_KANIM:
-        print("ERROR: building_kanim_map.txt not found or empty", file=sys.stderr)
-        print("Run: python3 scripts/extract-building-kanim-map.py", file=sys.stderr)
+        print("ERROR: json-cache/buildings.json not found or has no kanim", file=sys.stderr)
+        print("Run the dotnet-extractor first (see dotnet-extractor/)", file=sys.stderr)
         sys.exit(1)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -136,6 +135,7 @@ def main() -> None:
         str(STREAMING / "dlc2_bundle"),
         str(STREAMING / "dlc3_bundle"),
         str(STREAMING / "dlc4_bundle"),
+        str(STREAMING / "dlc5_bundle"),
     ]
 
     texture_map: dict[str, Image.Image] = {}   # lower-name → image

@@ -16,6 +16,9 @@ class AnimElement:
     matrix: tuple[float, float, float, float]  # m1, m2, m3, m4
     translation: tuple[float, float]
     order: float
+    # Multiplicative tint (r, g, b, a). The game hides layers with alpha 0 (e.g. the
+    # Pokeshell's alternate shells), so they must not be drawn.
+    color: tuple[float, float, float, float] = (1.0, 1.0, 1.0, 1.0)
 
 
 @dataclass
@@ -64,11 +67,11 @@ def parse_anim(data: bytes) -> AnimData:
                 frame_index = r.int32()
                 r.int32()  # folder hash (unused)
                 r.int32()  # flags (unused)
-                r.float32(); r.float32(); r.float32(); r.float32()  # a, b, g, r (unused)
+                ca, cb, cg, cr = r.float32(), r.float32(), r.float32(), r.float32()
                 m1, m2, m3, m4 = r.float32(), r.float32(), r.float32(), r.float32()
                 tx, ty = r.float32(), r.float32()
                 order = r.float32()
-                elements.append(AnimElement(symbol_hash, frame_index, (m1, m2, m3, m4), (tx, ty), order))
+                elements.append(AnimElement(symbol_hash, frame_index, (m1, m2, m3, m4), (tx, ty), order, (cr, cg, cb, ca)))
             frames.append(AnimFrame(x, y, w, h, elements))
         anims.append(Anim(name=name, rate=rate, frames=frames))
 
