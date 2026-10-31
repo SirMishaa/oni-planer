@@ -18,8 +18,11 @@
     ],
     "sail": false,
     "skills": [
+        "infer-conventions",
         "laravel-best-practices",
+        "testing-best-practices",
         "octane-development",
+        "wayfinder-development",
         "inertia-vue-development",
         "tailwindcss-development",
         "translatable-development"
