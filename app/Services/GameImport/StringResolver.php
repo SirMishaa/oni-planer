@@ -6,19 +6,43 @@ namespace App\Services\GameImport;
 
 final class StringResolver
 {
+    /**
+     * STRINGS sections searched (in priority order) when looking up a prefab
+     * id: food items first, then other items, then creatures/plants. Seeds and
+     * creature modifiers share segment names and are deliberately skipped.
+     *
+     * @var list<string>
+     */
+    private const array PREFAB_NAME_SECTIONS = [
+        'STRINGS.ITEMS.FOOD.',
+        'STRINGS.ITEMS.INDUSTRIAL_PRODUCTS.',
+        'STRINGS.ITEMS.INGREDIENTS.',
+        'STRINGS.CREATURES.SPECIES.',
+    ];
+
     /** @var array<string, string> */
-    private array $strings = [];
+    private array $strings;
+
+    /** @var array<string, string>|null normalized prefab segment → name key */
+    private ?array $prefabNameKeys = null;
 
     public function __construct(string $potFilePath)
     {
-        $this->strings = $this->parsePot($potFilePath);
+        $this->strings = PoFile::read($potFilePath)->sources();
+    }
+
+    /**
+     * Canonical STRINGS key: the extractor may emit nested-type notation
+     * (STRINGS.CREATURES/SPECIES/X::NAME) for STRINGS.CREATURES.SPECIES.X.NAME.
+     */
+    public static function normalizeKey(string $localizationId): string
+    {
+        return str_replace(['::', '/'], '.', $localizationId);
     }
 
     public function resolve(string $localizationId): ?string
     {
-        $value = $this->strings[$localizationId] ?? null;
-
-        return $value !== null ? $this->stripMarkup($value) : null;
+        return $this->strings[self::normalizeKey($localizationId)] ?? null;
     }
 
     /** @return array<string, string>|null */
@@ -29,80 +53,44 @@ final class StringResolver
         return $value !== null ? ['en' => $value] : null;
     }
 
-    private function stripMarkup(string $value): string
+    public function has(string $localizationId): bool
     {
-        // Strip ONI link markup: <link="...">text</link> → text
-        $value = (string) preg_replace('/<link=["\'][^"\']*["\']>(.*?)<\/link>/i', '$1', $value);
+        return isset($this->strings[self::normalizeKey($localizationId)]);
+    }
 
-        // Strip remaining HTML-like tags (<b>, <i>, <color=#...>, etc.)
-        return strip_tags($value);
+    /** Name key of a prefab id (e.g. DinosaurMeat → STRINGS.ITEMS.FOOD.DINOSAURMEAT.NAME). */
+    public function findNameKey(string $prefabId): ?string
+    {
+        if ($this->prefabNameKeys === null) {
+            $this->prefabNameKeys = $this->buildPrefabNameIndex();
+        }
+
+        return $this->prefabNameKeys[self::normalizeSegment($prefabId)] ?? null;
+    }
+
+    private static function normalizeSegment(string $value): string
+    {
+        return mb_strtolower(str_replace('_', '', $value));
     }
 
     /** @return array<string, string> */
-    private function parsePot(string $path): array
+    private function buildPrefabNameIndex(): array
     {
-        $content = (string) file_get_contents($path);
-        $strings = [];
-        $currentCtxt = null;
-        $capturing = false;
-        $buffer = '';
-
-        foreach (explode("\n", $content) as $rawLine) {
-            $line = mb_rtrim($rawLine, "\r");
-
-            if (str_starts_with($line, 'msgctxt "')) {
-                if ($capturing && $currentCtxt !== null && $buffer !== '') {
-                    $strings[$currentCtxt] = $buffer;
+        $index = [];
+        foreach (self::PREFAB_NAME_SECTIONS as $section) {
+            foreach (array_keys($this->strings) as $key) {
+                if (! str_starts_with($key, $section)) {
+                    continue;
                 }
 
-                $currentCtxt = $this->unquote(mb_substr($line, 8));
-                $capturing = false;
-                $buffer = '';
-
-                continue;
-            }
-
-            if (str_starts_with($line, 'msgid "')) {
-                $capturing = true;
-                $buffer = $this->unquote(mb_substr($line, 6));
-
-                continue;
-            }
-
-            if ($capturing && str_starts_with($line, '"')) {
-                $buffer .= $this->unquote($line);
-
-                continue;
-            }
-
-            if ($capturing) {
-                if ($currentCtxt !== null && $buffer !== '') {
-                    $strings[$currentCtxt] = $buffer;
+                if (preg_match('/^([A-Z0-9_]+)\.NAME$/', mb_substr($key, mb_strlen($section)), $match) !== 1) {
+                    continue;
                 }
 
-                $capturing = false;
-                $buffer = '';
+                $index[self::normalizeSegment($match[1])] ??= $key;
             }
         }
 
-        if ($capturing && $currentCtxt !== null && $buffer !== '') {
-            $strings[$currentCtxt] = $buffer;
-        }
-
-        return $strings;
-    }
-
-    private function unquote(string $token): string
-    {
-        $token = mb_trim($token);
-        if (str_starts_with($token, '"')) {
-            $token = mb_substr($token, 1);
-        }
-
-        if (str_ends_with($token, '"')) {
-            $token = mb_substr($token, 0, -1);
-        }
-
-        return str_replace(['\\"', '\\\\'], ['"', '\\'], $token);
+        return $index;
     }
 }

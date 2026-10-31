@@ -1,0 +1,23 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: test\n"
+"Language: fr\n"
+
+#. STRINGS.ELEMENTS.OXYGEN.NAME
+msgctxt "STRINGS.ELEMENTS.OXYGEN.NAME"
+msgid "Oxygen"
+msgstr "<link=\"OXYGEN\">Oxygène</link>"
+
+#. STRINGS.CODEX.TEST.MULTILINE
+msgctxt "STRINGS.CODEX.TEST.MULTILINE"
+msgid ""
+"First part of the body. "
+"Second part with a <link=\"OXYGEN\">link</link>."
+msgstr ""
+"Première partie. "
+"Seconde partie avec un <link=\"OXYGEN\">lien</link>."
+
+#. STRINGS.ELEMENTS.CARBONDIOXIDE.NAME
+msgctxt "STRINGS.ELEMENTS.CARBONDIOXIDE.NAME"
+msgid "Carbon Dioxide"
+msgstr ""

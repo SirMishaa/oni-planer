@@ -105,3 +105,30 @@ it('imports the species description for a base plant variant', function (): void
     expect(Plant::query()->where('plant_id', 'TestMealwood')->sole()->getTranslation('description', 'en'))
         ->toBe('A test crop.');
 });
+
+it('resolves plant variant name and species description from a nested-type name key', function (): void {
+    $json = [[
+        'plant_id' => 'TestMealwood',
+        'variant_id' => 'TestMealwood',
+        'is_base' => true,
+        'min_temp' => 243.0,
+        'max_temp' => 343.0,
+        'min_pressure' => 0.0,
+        'max_pressure' => 2.0,
+        'atmosphere_element_id' => null,
+        'light_required' => false,
+        'growth_time' => 1200.0,
+        'name_localization_id' => 'STRINGS.CREATURES/SPECIES/TESTMEALWOOD::NAME',
+        'inputs' => [],
+        'outputs' => [],
+    ]];
+    $path = sys_get_temp_dir().'/test_plants_nested.json';
+    file_put_contents($path, json_encode($json));
+
+    $resolver = new StringResolver(base_path('tests/Fixtures/GameImport/strings.pot'));
+    new PlantImporter($resolver)->import($path);
+
+    $plant = Plant::query()->where('plant_id', 'TestMealwood')->sole();
+    expect($plant->variants->sole()->getTranslation('name', 'en'))->toBe('Test Mealwood')
+        ->and($plant->getTranslation('description', 'en'))->toBe('A test crop.');
+});

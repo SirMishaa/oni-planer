@@ -19,8 +19,10 @@ use App\Services\GameImport\CritterImporter;
 use App\Services\GameImport\DuplicantImporter;
 use App\Services\GameImport\ElementImporter;
 use App\Services\GameImport\GameDataTables;
+use App\Services\GameImport\GameTranslationWriter;
 use App\Services\GameImport\GeyserImporter;
 use App\Services\GameImport\PlantImporter;
+use App\Services\GameImport\PrefabNameImporter;
 use App\Services\GameImport\RecipeImporter;
 use App\Services\GameImport\RocketImporter;
 use App\Services\GameImport\StringResolver;
@@ -34,7 +36,9 @@ use Illuminate\Support\Facades\Process;
 #[Signature('game:import
         {--game-path=game-data/OxygenNotIncluded_Data : Path to OxygenNotIncluded_Data directory}
         {--cache-path=json-cache : Path to json-cache directory (extractor output)}
-        {--skip-extractor : Skip running the dotnet-extractor binary}')]
+        {--skip-extractor : Skip running the dotnet-extractor binary}
+        {--translations-path=game-data/translations : Directory of <locale>.po translation files}
+        {--lang-path=lang/game : Output directory of the generated JSON translation catalogs}')]
 final class GameImportCommand extends Command
 {
     public function handle(): int
@@ -60,6 +64,9 @@ final class GameImportCommand extends Command
 
         $stringsPath = $gamePath.'/StreamingAssets/strings/strings_template.pot';
         $resolver = new StringResolver($stringsPath);
+
+        $this->info('Writing translation catalogs...');
+        new GameTranslationWriter()->write($stringsPath, $this->option('translations-path'), $this->option('lang-path'));
 
         $this->info('Importing elements...');
         $elementImporter = new ElementImporter($resolver);
@@ -94,6 +101,9 @@ final class GameImportCommand extends Command
         if (file_exists($plantsJson)) {
             new PlantImporter($resolver)->import($plantsJson);
         }
+
+        $this->info('Indexing prefab names...');
+        new PrefabNameImporter($resolver)->import($cachePath);
 
         $this->info('Importing geysers...');
         $geysersJson = $cachePath.'/geyser_types.json';

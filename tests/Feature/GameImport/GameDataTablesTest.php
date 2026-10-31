@@ -18,8 +18,8 @@ it('excludes non-game tables such as users', function (): void {
     expect(GameDataTables::all())->not->toContain('users');
 });
 
-it('returns exactly the expected number of game tables (28 models + 2 pivots)', function (): void {
-    // 27 entity models + CodexEntry = 28 #[GameData] models, plus 2 model-less pivots.
+it('returns exactly the expected number of game tables (29 models + 2 pivots)', function (): void {
+    // 27 entity models + CodexEntry + PrefabName = 29 #[GameData] models, plus 2 model-less pivots.
     // A new game model added without #[GameData] would drop this count and fail here.
-    expect(GameDataTables::all())->toHaveCount(30);
+    expect(GameDataTables::all())->toHaveCount(31);
 });

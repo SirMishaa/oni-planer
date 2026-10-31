@@ -74,6 +74,7 @@ final readonly class PlantImporter
     /** @return array<string, string>|null */
     private function resolveSibling(?string $nameKey, string $suffix): ?array
     {
+        $nameKey = $nameKey !== null ? StringResolver::normalizeKey($nameKey) : null;
         if ($nameKey === null || ! str_ends_with($nameKey, '.NAME')) {
             return null;
         }
