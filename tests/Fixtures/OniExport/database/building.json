@@ -506,6 +506,73 @@
           "isSecondary": false
         }
       ]
+    },
+    {
+      "name": "CO2Engine",
+      "tags": [
+        {
+          "Name": "RoomProberBuilding",
+          "IsValid": true
+        },
+        {
+          "Name": "IndustrialMachinery",
+          "IsValid": true
+        },
+        {
+          "Name": "RocketModule",
+          "IsValid": true
+        },
+        {
+          "Name": "Submergible",
+          "IsValid": true
+        }
+      ],
+      "kPrefabID": {
+        "requiredDlcIds": [
+          "EXPANSION1_ID"
+        ]
+      },
+      "uiImageRect": {
+        "x": -0.335,
+        "y": -0.21,
+        "w": 3.61,
+        "h": 2.285
+      },
+      "widthInCells": 3,
+      "heightInCells": 2,
+      "materialCategory": [
+        "Metal"
+      ],
+      "materialMass": [
+        500.0
+      ],
+      "isFoundation": false,
+      "isKAnimTile": false,
+      "isUtility": false,
+      "dragBuild": false,
+      "deprecated": false,
+      "debugOnly": false,
+      "showInBuildMenu": false,
+      "buildLocationRule": 0,
+      "permittedRotations": 0,
+      "sceneLayer": 19,
+      "objectLayer": 1,
+      "replaceable": true,
+      "viewMode": null,
+      "energyGenerator": null,
+      "energyConsumer": null,
+      "powerInputOffset": null,
+      "powerOutputOffset": null,
+      "utilities": [
+        {
+          "offset": {
+            "x": 0.0,
+            "y": 1.0
+          },
+          "type": "GasInput",
+          "isSecondary": false
+        }
+      ]
     }
   ],
   "buildingAndSubcategoryDataPairs": {
@@ -606,5 +673,8 @@
       ]
     }
   ],
-  "buildVersion": "U59-744825-SCRPAN"
+  "buildVersion": "U59-744825-SCRPAN",
+  "rocketModuleMenu": [
+    "CO2Engine"
+  ]
 }

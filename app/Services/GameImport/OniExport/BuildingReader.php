@@ -11,8 +11,9 @@ use App\Enums\PermittedRotations;
  * Turns `building.json` (and the `planner_extras.json` building section) into
  * building records for {@see \App\Services\GameImport\BuildingImporter::importRecords()}.
  *
- * Only buildings a player can place are kept: shown in the build menu, not
- * deprecated, not debug-only, and not owned by an unsupported mod.
+ * Only buildings a player can place are kept: shown in the build menu or in
+ * the rocket module menu, not deprecated, not debug-only, and not owned by an
+ * unsupported mod.
  *
  * @phpstan-type Port array{type: string, x: int, y: int, secondary: bool}
  * @phpstan-type BuildingRecord array{
@@ -69,6 +70,13 @@ final readonly class BuildingReader
     /** Export build menu category name → stored category label (the Buildings page keys). */
     private const array CATEGORY_LABELS = ['hvac' => 'HVAC', 'hep' => 'HEP'];
 
+    /**
+     * Placement of rocket modules, which the export lists in the flat root
+     * `rocketModuleMenu` (no subcategories) instead of the build menu pairs.
+     * `module` resolves to `STRINGS.UI.NEWBUILDCATEGORIES.MODULE.BUILDMENUTITLE`.
+     */
+    private const array ROCKET_MODULE_PLACEMENT = ['category' => 'rocketry', 'subcategory' => 'module'];
+
     public function __construct(private OniExport $export, private ModCatalog $mods) {}
 
     /** @return list<BuildingRecord> */
@@ -76,7 +84,7 @@ final readonly class BuildingReader
     {
         $file = $this->export->json('building.json');
         $extras = $this->export->json('planner_extras.json')['buildings'] ?? [];
-        $menuPlacement = $this->menuPlacement($file['buildingAndSubcategoryDataPairs'] ?? []);
+        $menuPlacement = $this->menuPlacement($file['buildingAndSubcategoryDataPairs'] ?? [], $file['rocketModuleMenu'] ?? []);
         /** @var list<string> $objectLayerNames */
         $objectLayerNames = $file['objectLayerNames'] ?? [];
 
@@ -85,7 +93,7 @@ final readonly class BuildingReader
         foreach ($file['bBuildingDefList'] as $def) {
             $buildingId = (string) $def['name'];
 
-            if (! $this->isBuildable($def) || $this->mods->isSkipped($buildingId)) {
+            if (! $this->isBuildable($def, isset($menuPlacement[$buildingId])) || $this->mods->isSkipped($buildingId)) {
                 continue;
             }
 
@@ -95,10 +103,14 @@ final readonly class BuildingReader
         return $records;
     }
 
-    /** @param array<string, mixed> $def */
-    private function isBuildable(array $def): bool
+    /**
+     * Rocket modules are buildable although the export flags them `showInBuildMenu = false`.
+     *
+     * @param  array<string, mixed>  $def
+     */
+    private function isBuildable(array $def, bool $isInAMenu): bool
     {
-        return ($def['showInBuildMenu'] ?? false) && ! ($def['deprecated'] ?? false) && ! ($def['debugOnly'] ?? false);
+        return (($def['showInBuildMenu'] ?? false) || $isInAMenu) && ! ($def['deprecated'] ?? false) && ! ($def['debugOnly'] ?? false);
     }
 
     /**
@@ -145,11 +157,12 @@ final readonly class BuildingReader
 
     /**
      * @param  array<string, list<array{Key: string, Value: string}>>  $pairs
+     * @param  list<string>  $rocketModules
      * @return array<string, array{category: string, subcategory: string}>
      */
-    private function menuPlacement(array $pairs): array
+    private function menuPlacement(array $pairs, array $rocketModules): array
     {
-        $placement = [];
+        $placement = array_fill_keys($rocketModules, self::ROCKET_MODULE_PLACEMENT);
 
         foreach ($pairs as $category => $entries) {
             foreach ($entries as $entry) {

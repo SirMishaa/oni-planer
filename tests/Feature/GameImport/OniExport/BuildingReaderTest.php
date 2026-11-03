@@ -82,3 +82,14 @@ it('takes construction time and heat from planner extras', function (): void {
         ->and($buildings['Generator']['power_generation'])->toBe(600.0)
         ->and($buildings['Generator']['heat_generation'])->toBe(9.0);
 });
+
+it('imports rocket modules listed in the rocket module menu', function (): void {
+    $engine = readFixtureBuildings()['CO2Engine'];
+
+    expect($engine['category'])->toBe('Rocketry')
+        ->and($engine['subcategory'])->toBe('module')
+        ->and($engine['width'])->toBe(3)
+        ->and($engine['height'])->toBe(2)
+        ->and($engine['construction_time'])->toBe(30.0)
+        ->and($engine['dlc_id'])->toBe('EXPANSION1_ID');
+});
