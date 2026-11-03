@@ -1,5 +1,593 @@
 {
-  "bBuildingDefList": [],
+  "bBuildingDefList": [
+    {
+      "name": "AtomicGarden",
+      "tags": [
+        {
+          "Name": "RoomProberBuilding",
+          "IsValid": true
+        },
+        {
+          "Name": "DeprecatedContent",
+          "IsValid": true
+        }
+      ],
+      "kPrefabID": {
+        "requiredDlcIds": null
+      },
+      "uiImageRect": {
+        "x": -0.07,
+        "y": -0.155,
+        "w": 4.085,
+        "h": 3.16
+      },
+      "widthInCells": 4,
+      "heightInCells": 3,
+      "materialCategory": [
+        "Metal"
+      ],
+      "materialMass": [
+        200.0
+      ],
+      "isFoundation": false,
+      "isKAnimTile": false,
+      "isUtility": false,
+      "dragBuild": false,
+      "deprecated": true,
+      "debugOnly": false,
+      "showInBuildMenu": true,
+      "buildLocationRule": 1,
+      "permittedRotations": 0,
+      "sceneLayer": 19,
+      "objectLayer": 1,
+      "replaceable": true,
+      "viewMode": "LiquidConduit",
+      "energyGenerator": null,
+      "energyConsumer": {
+        "baseWattageRating": 120.0,
+        "powerSortOrder": 0
+      },
+      "powerInputOffset": {
+        "x": 1,
+        "y": 0
+      },
+      "powerOutputOffset": null,
+      "utilities": [
+        {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0
+          },
+          "type": "LiquidInput",
+          "isSecondary": false
+        },
+        {
+          "offset": {
+            "x": 1.0,
+            "y": 0.0
+          },
+          "type": "PowerInput",
+          "isSecondary": false
+        },
+        {
+          "offset": {
+            "x": -1.0,
+            "y": 0.0
+          },
+          "type": "LogicInput",
+          "isSecondary": false
+        }
+      ]
+    },
+    {
+      "name": "Electrolyzer",
+      "tags": [
+        {
+          "Name": "RoomProberBuilding",
+          "IsValid": true
+        },
+        {
+          "Name": "IndustrialMachinery",
+          "IsValid": true
+        }
+      ],
+      "kPrefabID": {
+        "requiredDlcIds": null
+      },
+      "uiImageRect": {
+        "x": -0.015,
+        "y": -0.11,
+        "w": 2.135,
+        "h": 1.83
+      },
+      "widthInCells": 2,
+      "heightInCells": 2,
+      "materialCategory": [
+        "Metal"
+      ],
+      "materialMass": [
+        200.0
+      ],
+      "isFoundation": false,
+      "isKAnimTile": false,
+      "isUtility": false,
+      "dragBuild": false,
+      "deprecated": false,
+      "debugOnly": false,
+      "showInBuildMenu": true,
+      "buildLocationRule": 1,
+      "permittedRotations": 0,
+      "sceneLayer": 19,
+      "objectLayer": 1,
+      "replaceable": true,
+      "viewMode": "Oxygen",
+      "energyGenerator": null,
+      "energyConsumer": {
+        "baseWattageRating": 120.0,
+        "powerSortOrder": 0
+      },
+      "powerInputOffset": {
+        "x": 1,
+        "y": 0
+      },
+      "powerOutputOffset": null,
+      "utilities": [
+        {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0
+          },
+          "type": "LiquidInput",
+          "isSecondary": false
+        },
+        {
+          "offset": {
+            "x": 1.0,
+            "y": 0.0
+          },
+          "type": "PowerInput",
+          "isSecondary": false
+        },
+        {
+          "offset": {
+            "x": 1.0,
+            "y": 1.0
+          },
+          "type": "LogicInput",
+          "isSecondary": false
+        }
+      ]
+    },
+    {
+      "name": "FlushToilet",
+      "tags": [
+        {
+          "Name": "RoomProberBuilding",
+          "IsValid": true
+        },
+        {
+          "Name": "ToiletType",
+          "IsValid": true
+        },
+        {
+          "Name": "FlushToiletType",
+          "IsValid": true
+        },
+        {
+          "Name": "NotRoomAssignable",
+          "IsValid": true
+        }
+      ],
+      "kPrefabID": {
+        "requiredDlcIds": null
+      },
+      "uiImageRect": {
+        "x": 0.18,
+        "y": -0.265,
+        "w": 1.92,
+        "h": 3.535
+      },
+      "widthInCells": 2,
+      "heightInCells": 3,
+      "materialCategory": [
+        "Metal"
+      ],
+      "materialMass": [
+        400.0
+      ],
+      "isFoundation": false,
+      "isKAnimTile": false,
+      "isUtility": false,
+      "dragBuild": false,
+      "deprecated": false,
+      "debugOnly": false,
+      "showInBuildMenu": true,
+      "buildLocationRule": 1,
+      "permittedRotations": 3,
+      "sceneLayer": 19,
+      "objectLayer": 1,
+      "replaceable": true,
+      "viewMode": "LiquidConduit",
+      "energyGenerator": null,
+      "energyConsumer": null,
+      "powerInputOffset": null,
+      "powerOutputOffset": null,
+      "utilities": [
+        {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0
+          },
+          "type": "LiquidInput",
+          "isSecondary": false
+        },
+        {
+          "offset": {
+            "x": 1.0,
+            "y": 1.0
+          },
+          "type": "LiquidOutput",
+          "isSecondary": false
+        }
+      ]
+    },
+    {
+      "name": "Generator",
+      "tags": [
+        {
+          "Name": "RoomProberBuilding",
+          "IsValid": true
+        },
+        {
+          "Name": "IndustrialMachinery",
+          "IsValid": true
+        },
+        {
+          "Name": "PowerBuilding",
+          "IsValid": true
+        },
+        {
+          "Name": "GeneratorType",
+          "IsValid": true
+        },
+        {
+          "Name": "HeavyDutyGeneratorType",
+          "IsValid": true
+        }
+      ],
+      "kPrefabID": {
+        "requiredDlcIds": null
+      },
+      "uiImageRect": {
+        "x": -0.05,
+        "y": -0.195,
+        "w": 3.105,
+        "h": 3.145
+      },
+      "widthInCells": 3,
+      "heightInCells": 3,
+      "materialCategory": [
+        "Metal"
+      ],
+      "materialMass": [
+        800.0
+      ],
+      "isFoundation": false,
+      "isKAnimTile": false,
+      "isUtility": false,
+      "dragBuild": false,
+      "deprecated": false,
+      "debugOnly": false,
+      "showInBuildMenu": true,
+      "buildLocationRule": 1,
+      "permittedRotations": 0,
+      "sceneLayer": 19,
+      "objectLayer": 1,
+      "replaceable": true,
+      "viewMode": "Power",
+      "energyGenerator": {
+        "hasMeter": true
+      },
+      "energyConsumer": null,
+      "powerInputOffset": null,
+      "powerOutputOffset": {
+        "x": 0,
+        "y": 0
+      },
+      "utilities": [
+        {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0
+          },
+          "type": "PowerOutput",
+          "isSecondary": false
+        },
+        {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0
+          },
+          "type": "LogicInput",
+          "isSecondary": false
+        }
+      ]
+    },
+    {
+      "name": "GravitasDoor",
+      "tags": [
+        {
+          "Name": "RoomProberBuilding",
+          "IsValid": true
+        },
+        {
+          "Name": "Gravitas",
+          "IsValid": true
+        },
+        {
+          "Name": "Submergible",
+          "IsValid": true
+        }
+      ],
+      "kPrefabID": {
+        "requiredDlcIds": null
+      },
+      "uiImageRect": {
+        "x": -0.095,
+        "y": -0.11,
+        "w": 1.155,
+        "h": 3.13
+      },
+      "widthInCells": 1,
+      "heightInCells": 3,
+      "materialCategory": [
+        "Metal"
+      ],
+      "materialMass": [
+        100.0
+      ],
+      "isFoundation": false,
+      "isKAnimTile": false,
+      "isUtility": false,
+      "dragBuild": false,
+      "deprecated": false,
+      "debugOnly": false,
+      "showInBuildMenu": false,
+      "buildLocationRule": 6,
+      "permittedRotations": 1,
+      "sceneLayer": 19,
+      "objectLayer": 1,
+      "replaceable": true,
+      "viewMode": null,
+      "energyGenerator": null,
+      "energyConsumer": null,
+      "powerInputOffset": null,
+      "powerOutputOffset": null,
+      "utilities": [
+        {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0
+          },
+          "type": "LogicInput",
+          "isSecondary": false
+        }
+      ]
+    },
+    {
+      "name": "Stairs",
+      "tags": [
+        {
+          "Name": "RoomProberBuilding",
+          "IsValid": true
+        },
+        {
+          "Name": "Stairs",
+          "IsValid": true
+        }
+      ],
+      "kPrefabID": {
+        "requiredDlcIds": null
+      },
+      "uiImageRect": {
+        "x": -0.535,
+        "y": -0.025,
+        "w": 1.545,
+        "h": 1.055
+      },
+      "widthInCells": 1,
+      "heightInCells": 1,
+      "materialCategory": [
+        "BuildableRaw&BuildingWood",
+        "Metal"
+      ],
+      "materialMass": [
+        100.0,
+        25.0
+      ],
+      "isFoundation": false,
+      "isKAnimTile": false,
+      "isUtility": false,
+      "dragBuild": true,
+      "deprecated": false,
+      "debugOnly": false,
+      "showInBuildMenu": true,
+      "buildLocationRule": 0,
+      "permittedRotations": 3,
+      "sceneLayer": 19,
+      "objectLayer": 1,
+      "replaceable": true,
+      "viewMode": null,
+      "energyGenerator": null,
+      "energyConsumer": null,
+      "powerInputOffset": null,
+      "powerOutputOffset": null,
+      "utilities": []
+    },
+    {
+      "name": "Mining_MineralDrill",
+      "tags": [
+        {
+          "Name": "RoomProberBuilding",
+          "IsValid": true
+        },
+        {
+          "Name": "IndustrialMachinery",
+          "IsValid": true
+        },
+        {
+          "Name": "NotRocketInteriorBuilding",
+          "IsValid": true
+        }
+      ],
+      "kPrefabID": {
+        "requiredDlcIds": null
+      },
+      "uiImageRect": {
+        "x": -0.04,
+        "y": -0.58,
+        "w": 4.155,
+        "h": 5.72
+      },
+      "widthInCells": 4,
+      "heightInCells": 5,
+      "materialCategory": [
+        "Steel&AIO_HardenedAlloy"
+      ],
+      "materialMass": [
+        1200.0
+      ],
+      "isFoundation": false,
+      "isKAnimTile": false,
+      "isUtility": false,
+      "dragBuild": false,
+      "deprecated": false,
+      "debugOnly": false,
+      "showInBuildMenu": true,
+      "buildLocationRule": 1,
+      "permittedRotations": 0,
+      "sceneLayer": 21,
+      "objectLayer": 1,
+      "replaceable": true,
+      "viewMode": "Power",
+      "energyGenerator": null,
+      "energyConsumer": {
+        "baseWattageRating": 1200.0,
+        "powerSortOrder": 0
+      },
+      "powerInputOffset": {
+        "x": 1,
+        "y": 1
+      },
+      "powerOutputOffset": null,
+      "utilities": [
+        {
+          "offset": {
+            "x": 1.0,
+            "y": 1.0
+          },
+          "type": "PowerInput",
+          "isSecondary": false
+        },
+        {
+          "offset": {
+            "x": 0.0,
+            "y": 0.0
+          },
+          "type": "LogicInput",
+          "isSecondary": false
+        },
+        {
+          "offset": {
+            "x": 2.0,
+            "y": 1.0
+          },
+          "type": "LogicOutput",
+          "isSecondary": false
+        }
+      ]
+    }
+  ],
+  "buildingAndSubcategoryDataPairs": {
+    "base": [
+      {
+        "Key": "Stairs",
+        "Value": "ladders"
+      }
+    ],
+    "oxygen": [
+      {
+        "Key": "Electrolyzer",
+        "Value": "producers"
+      }
+    ],
+    "power": [
+      {
+        "Key": "Generator",
+        "Value": "generators"
+      }
+    ],
+    "plumbing": [
+      {
+        "Key": "FlushToilet",
+        "Value": "washroom"
+      }
+    ],
+    "utilities": [
+      {
+        "Key": "Mining_MineralDrill",
+        "Value": "oil"
+      }
+    ]
+  },
+  "objectLayerNames": [
+    "Minion",
+    "Building",
+    "Backwall",
+    "Pickupables",
+    "Canvases",
+    "Plants",
+    "FillPlacer",
+    "DigPlacer",
+    "MopPlacer",
+    "FoundationTile",
+    "PlasticTile",
+    "ReplacementTile",
+    "GasConduit",
+    "GasConduitTile",
+    "ReplacementGasConduit",
+    "GasConduitConnection",
+    "LiquidConduit",
+    "LiquidConduitTile",
+    "ReplacementLiquidConduit",
+    "LiquidConduitConnection",
+    "SolidConduit",
+    "SolidConduitTile",
+    "ReplacementSolidConduit",
+    "SolidConduitConnection",
+    "LadderTile",
+    "ReplacementLadder",
+    "Wire",
+    "WireTile",
+    "ReplacementWire",
+    "WireConnectors",
+    "LogicGate",
+    "LogicWire",
+    "LogicWireTile",
+    "ReplacementLogicWire",
+    "TravelTube",
+    "TravelTubeTile",
+    "ReplacementTravelTube",
+    "TravelTubeConnection",
+    "AttachableBuilding",
+    "Gantry",
+    "Mover",
+    "Rover",
+    "Critter",
+    "ReplacementBackwall",
+    "MovePlacer",
+    "NumLayers"
+  ],
   "mods": [
     {
       "id": "2012810337",

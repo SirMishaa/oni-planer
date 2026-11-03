@@ -1,9 +1,45 @@
 {
   "buildings": {
+    "AtomicGarden": {
+      "constructionTime": 30.0,
+      "selfHeatKilowattsWhenActive": 2.0,
+      "exhaustKilowattsWhenActive": 1.0,
+      "generatorWattageRating": 0.0
+    },
     "Electrolyzer": {
       "constructionTime": 30.0,
       "selfHeatKilowattsWhenActive": 1.0,
       "exhaustKilowattsWhenActive": 0.25,
+      "generatorWattageRating": 0.0
+    },
+    "FlushToilet": {
+      "constructionTime": 30.0,
+      "selfHeatKilowattsWhenActive": 0.0,
+      "exhaustKilowattsWhenActive": 0.25,
+      "generatorWattageRating": 0.0
+    },
+    "Generator": {
+      "constructionTime": 120.0,
+      "selfHeatKilowattsWhenActive": 1.0,
+      "exhaustKilowattsWhenActive": 8.0,
+      "generatorWattageRating": 600.0
+    },
+    "GravitasDoor": {
+      "constructionTime": 10.0,
+      "selfHeatKilowattsWhenActive": 0.0,
+      "exhaustKilowattsWhenActive": 0.0,
+      "generatorWattageRating": 0.0
+    },
+    "Mining_MineralDrill": {
+      "constructionTime": 120.0,
+      "selfHeatKilowattsWhenActive": 20.0,
+      "exhaustKilowattsWhenActive": 0.0,
+      "generatorWattageRating": 0.0
+    },
+    "Stairs": {
+      "constructionTime": 10.0,
+      "selfHeatKilowattsWhenActive": 0.0,
+      "exhaustKilowattsWhenActive": 0.0,
       "generatorWattageRating": 0.0
     }
   },

@@ -8,10 +8,8 @@ use App\Data\BuildingData;
 use App\Data\BuildingMaterialData;
 use App\Data\BuildingShowData;
 use App\Models\Building;
-use App\Services\BuildingSubGroupResolver;
 use App\Services\GameText;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -45,7 +43,7 @@ final class BuildingController
             'building_id' => $building->building_id,
             'name' => $this->displayName($text, $building),
             'category' => $building->category,
-            'sub_group' => null,
+            'sub_group' => $this->subcategoryLabel($text, $building->subcategory),
             'width' => $building->width,
             'height' => $building->height,
             'power_consumption' => $building->power_consumption,
@@ -66,6 +64,16 @@ final class BuildingController
         $stored = $this->splitCamelCase((string) $building->getTranslation('name', 'en'));
 
         return $text->name($building->building_id, $stored !== '' ? $stored : null);
+    }
+
+    /** Build menu subcategory title (e.g. `generators` → "Generators"), the raw key when untranslated. */
+    private function subcategoryLabel(GameText $text, ?string $subcategory): ?string
+    {
+        if ($subcategory === null) {
+            return null;
+        }
+
+        return $text->translate('STRINGS.UI.NEWBUILDCATEGORIES.'.mb_strtoupper($subcategory).'.BUILDMENUTITLE') ?? $subcategory;
     }
 
     private function splitCamelCase(string $name): string
@@ -94,19 +102,14 @@ final class BuildingController
         $buildings = Building::query()
             ->orderByRaw($caseExpr) // @phpstan-ignore argument.type (CASE expression built from a hardcoded category whitelist, no user input)
             ->orderBy('building_id')
-            ->get(['building_id', 'name', 'category', 'width', 'height', 'power_consumption', 'power_generation', 'dlc_id']);
-
-        $resolver = new BuildingSubGroupResolver;
-        $subGroups = $buildings
-            ->groupBy('category')
-            ->flatMap(fn (Collection $group): array => $resolver->resolve($group));
+            ->get(['building_id', 'name', 'category', 'subcategory', 'width', 'height', 'power_consumption', 'power_generation', 'dlc_id']);
 
         /** @var list<array<string, mixed>> $result */
         $result = $buildings->map(fn (Building $b): BuildingData => BuildingData::from([
             'building_id' => $b->building_id,
             'name' => $this->displayName($text, $b),
             'category' => $b->category,
-            'sub_group' => $subGroups[$b->building_id] ?? null,
+            'sub_group' => $this->subcategoryLabel($text, $b->subcategory),
             'width' => $b->width,
             'height' => $b->height,
             'power_consumption' => $b->power_consumption,
