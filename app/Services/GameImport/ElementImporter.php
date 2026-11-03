@@ -10,8 +10,12 @@ use App\Models\ElementLiquidProperty;
 use App\Models\ElementSolidProperty;
 use App\Models\ElementSpecialProperty;
 use App\Models\ElementThermalProperty;
+use App\Services\GameImport\OniExport\ElementReader;
 use Symfony\Component\Yaml\Yaml;
 
+/**
+ * @phpstan-import-type ElementRecord from ElementReader
+ */
 final readonly class ElementImporter
 {
     public function __construct(private StringResolver $stringResolver) {}
@@ -21,32 +25,27 @@ final readonly class ElementImporter
         /** @var array{elements: list<array<string, mixed>>} $data */
         $data = Yaml::parseFile($yamlPath);
 
+        $records = [];
+
         foreach ($data['elements'] as $raw) {
             if ($raw['isDisabled'] ?? false) {
                 continue;
             }
 
-            $nameJson = is_string($raw['localizationID'] ?? null)
-                ? ($this->stringResolver->resolveToJson($raw['localizationID']) ?? ['en' => $raw['elementId']])
-                : ['en' => $raw['elementId']];
+            $tags = (array) ($raw['tags'] ?? []);
 
-            $element = Element::query()->create([
+            $records[] = [
                 'element_id' => $raw['elementId'],
                 'state' => $state,
+                'mod_id' => null,
+                'localization_key' => is_string($raw['localizationID'] ?? null) ? $raw['localizationID'] : null,
                 'molar_mass' => $raw['molarMass'],
                 'toxicity' => $raw['toxicity'] ?? 0,
                 'material_category' => $raw['materialCategory'] ?? '',
-                'tags' => $raw['tags'] ?? [],
+                'tags' => $tags,
                 'low_temp_transition_target' => $raw['lowTempTransitionTarget'] ?? null,
                 'high_temp_transition_target' => $raw['highTempTransitionTarget'] ?? null,
-                'name' => $nameJson,
-                'description' => $this->resolveSibling(is_string($raw['localizationID'] ?? null) ? $raw['localizationID'] : null, 'DESC'),
                 'dlc_id' => ($raw['dlcId'] ?? '') ?: null,
-                'is_disabled' => false,
-            ]);
-
-            ElementThermalProperty::query()->create([
-                'element_id' => $element->element_id,
                 'specific_heat_capacity' => $raw['specificHeatCapacity'],
                 'thermal_conductivity' => $raw['thermalConductivity'],
                 'low_temp' => $raw['lowTemp'] ?? null,
@@ -55,9 +54,59 @@ final readonly class ElementImporter
                 'light_absorption_factor' => $raw['lightAbsorptionFactor'] ?? 0,
                 'radiation_absorption_factor' => $raw['radiationAbsorptionFactor'] ?? 0,
                 'radiation_per_1000_mass' => $raw['radiationPer1000Mass'] ?? 0,
+                'flow' => $raw['flow'] ?? 0,
+                'default_pressure' => $raw['defaultPressure'] ?? 0,
+                'gas_surface_area_multiplier' => $raw['gasSurfaceAreaMultiplier'] ?? 1,
+                'liquid_surface_area_multiplier' => $raw['liquidSurfaceAreaMultiplier'] ?? 1,
+                'solid_surface_area_multiplier' => $raw['solidSurfaceAreaMultiplier'] ?? 1,
+                'hardness' => $raw['hardness'] ?? null,
+                'is_breathable' => in_array('Breathable', $tags, true),
+                'is_ore' => in_array('Ore', $tags, true),
+                'is_metal' => in_array('Metal', $tags, true),
+                'is_refined_metal' => in_array('RefinedMetal', $tags, true),
+            ];
+        }
+
+        $this->importRecords($records);
+    }
+
+    /**
+     * @param  list<ElementRecord>  $records
+     */
+    public function importRecords(array $records): void
+    {
+        foreach ($records as $record) {
+            $localizationKey = $record['localization_key'];
+
+            $element = Element::query()->create([
+                'element_id' => $record['element_id'],
+                'state' => $record['state'],
+                'mod_id' => $record['mod_id'],
+                'molar_mass' => $record['molar_mass'],
+                'toxicity' => $record['toxicity'],
+                'material_category' => $record['material_category'],
+                'tags' => $record['tags'],
+                'low_temp_transition_target' => $record['low_temp_transition_target'],
+                'high_temp_transition_target' => $record['high_temp_transition_target'],
+                'name' => ($localizationKey !== null ? $this->stringResolver->resolveToJson($localizationKey) : null) ?? ['en' => $record['element_id']],
+                'description' => $this->resolveSibling($localizationKey, 'DESC'),
+                'dlc_id' => $record['dlc_id'],
+                'is_disabled' => false,
             ]);
 
-            $this->createStateProperties($element->element_id, $state, $raw);
+            ElementThermalProperty::query()->create([
+                'element_id' => $element->element_id,
+                'specific_heat_capacity' => $record['specific_heat_capacity'],
+                'thermal_conductivity' => $record['thermal_conductivity'],
+                'low_temp' => $record['low_temp'],
+                'high_temp' => $record['high_temp'],
+                'default_temperature' => $record['default_temperature'],
+                'light_absorption_factor' => $record['light_absorption_factor'],
+                'radiation_absorption_factor' => $record['radiation_absorption_factor'],
+                'radiation_per_1000_mass' => $record['radiation_per_1000_mass'],
+            ]);
+
+            $this->createStateProperties($element->element_id, $record);
         }
     }
 
@@ -73,35 +122,32 @@ final readonly class ElementImporter
         return $this->stringResolver->resolveToJson($key);
     }
 
-    /** @param array<string, mixed> $raw */
-    private function createStateProperties(string $elementId, string $state, array $raw): void
+    /** @param ElementRecord $record */
+    private function createStateProperties(string $elementId, array $record): void
     {
-        $tags = (array) ($raw['tags'] ?? []);
-
-        match ($state) {
+        match ($record['state']) {
             'gas' => ElementGasProperty::query()->create([
                 'element_id' => $elementId,
-                'flow' => $raw['flow'] ?? 0,
-                'default_pressure' => $raw['defaultPressure'] ?? 0,
-                'gas_surface_area_multiplier' => $raw['gasSurfaceAreaMultiplier'] ?? 1,
-                'is_breathable' => in_array('Breathable', $tags, true),
-                'is_toxic' => ($raw['toxicity'] ?? 0) > 0,
+                'flow' => $record['flow'],
+                'default_pressure' => $record['default_pressure'] ?? 0,
+                'gas_surface_area_multiplier' => $record['gas_surface_area_multiplier'],
+                'is_breathable' => $record['is_breathable'],
+                'is_toxic' => $record['toxicity'] > 0,
             ]),
             'liquid' => ElementLiquidProperty::query()->create([
                 'element_id' => $elementId,
-                'flow' => $raw['flow'] ?? 0,
-                'liquid_surface_area_multiplier' => $raw['liquidSurfaceAreaMultiplier'] ?? 1,
+                'flow' => $record['flow'],
+                'liquid_surface_area_multiplier' => $record['liquid_surface_area_multiplier'],
             ]),
             'solid' => ElementSolidProperty::query()->create([
                 'element_id' => $elementId,
-                'solid_surface_area_multiplier' => $raw['solidSurfaceAreaMultiplier'] ?? 1,
-                'hardness' => $raw['hardness'] ?? null,
-                'is_ore' => in_array('Ore', $tags, true),
-                'is_metal' => in_array('Metal', $tags, true),
-                'is_refined_metal' => in_array('RefinedMetal', $tags, true),
+                'solid_surface_area_multiplier' => $record['solid_surface_area_multiplier'],
+                'hardness' => $record['hardness'],
+                'is_ore' => $record['is_ore'],
+                'is_metal' => $record['is_metal'],
+                'is_refined_metal' => $record['is_refined_metal'],
             ]),
             'special' => ElementSpecialProperty::query()->create(['element_id' => $elementId]),
-            default => null,
         };
     }
 }

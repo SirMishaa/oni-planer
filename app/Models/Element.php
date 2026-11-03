@@ -18,7 +18,7 @@ use Spatie\Translatable\HasTranslations;
 #[Fillable([
     'element_id', 'state', 'molar_mass', 'toxicity', 'material_category',
     'tags', 'low_temp_transition_target', 'high_temp_transition_target',
-    'name', 'description', 'dlc_id', 'is_disabled',
+    'name', 'description', 'dlc_id', 'is_disabled', 'mod_id',
 ])]
 final class Element extends Model
 {

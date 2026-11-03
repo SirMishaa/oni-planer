@@ -22,3 +22,8 @@ msgstr ""
 msgctxt "RonivansLegacy_ChemicalProcessing.STRINGS.ELEMENTS.OXYGEN.NAME"
 msgid "Modded Oxygen"
 msgstr ""
+
+#. STRINGS.ELEMENTS.PHOSPHORBRONZE.NAME
+msgctxt "STRINGS.ELEMENTS.PHOSPHORBRONZE.NAME"
+msgid "Phosphor Bronze"
+msgstr ""
