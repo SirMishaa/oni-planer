@@ -1,0 +1,661 @@
+{
+  "DatabaseDirName": "database",
+  "ExportFileName": "recipe",
+  "buildVersion": "U59-744825-SCRPAN",
+  "dlcs": [
+    "COSMETIC1_ID",
+    "DLC5_ID",
+    "DLC4_ID",
+    "DLC3_ID",
+    "DLC2_ID",
+    "EXPANSION1_ID",
+    ""
+  ],
+  "recipes": [
+    {
+      "id": "AdvancedCraftingTable_I_Katairite_O_EmptyElectrobank",
+      "recipeCategoryID": "AdvancedCraftingTable_I_Katairite_O_EmptyElectrobank_Default_EmptyElectrobank",
+      "ingredients": [
+        {
+          "material": {
+            "Name": "Katairite",
+            "IsValid": true
+          },
+          "possibleMaterials": [
+            {
+              "Name": "Katairite",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": [
+            200.0
+          ],
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": true,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 200.0
+        }
+      ],
+      "results": [
+        {
+          "material": {
+            "Name": "EmptyElectrobank",
+            "IsValid": true
+          },
+          "possibleMaterials": [
+            {
+              "Name": "EmptyElectrobank",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": null,
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 1.0
+        }
+      ],
+      "time": 60.0,
+      "consumedHEP": 0,
+      "producedHEP": 0,
+      "nameDisplay": 6,
+      "customName": "<link=\"ELECTROBANK\">Pile Économique</link>",
+      "customSpritePrefabID": "Electrobank",
+      "description": "Convertit: <link=\"KATAIRITE\">Abyssalite</link> en <link=\"ELECTROBANK\">Pile Économique</link>",
+      "runTimeDescription": null,
+      "fabricators": [
+        {
+          "Name": "AdvancedCraftingTable",
+          "IsValid": true
+        }
+      ],
+      "sortOrder": 0,
+      "requiredTech": "Acoustics",
+      "ProductHasFacade": false,
+      "RequiresAllIngredientsDiscovered": false,
+      "FirstResult": {
+        "Name": "EmptyElectrobank",
+        "IsValid": true
+      }
+    },
+    {
+      "id": "Kiln_I_Clay_0_O_Brick",
+      "recipeCategoryID": "Kiln_I_Clay_0_O_Brick_Default_Brick",
+      "ingredients": [
+        {
+          "material": {
+            "Name": "Clay",
+            "IsValid": true
+          },
+          "possibleMaterials": [
+            {
+              "Name": "Clay",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": [
+            100.0
+          ],
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 100.0
+        },
+        {
+          "material": {
+            "Name": null,
+            "IsValid": false
+          },
+          "possibleMaterials": [
+            {
+              "Name": "Carbon",
+              "IsValid": true
+            },
+            {
+              "Name": "Peat",
+              "IsValid": true
+            },
+            {
+              "Name": "RefinedCarbon",
+              "IsValid": true
+            },
+            {
+              "Name": "PalmWood",
+              "IsValid": true
+            },
+            {
+              "Name": "WoodLog",
+              "IsValid": true
+            },
+            {
+              "Name": "FabricatedWood",
+              "IsValid": true
+            },
+            {
+              "Name": "SolidBiomass",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": [
+            25.0,
+            25.0,
+            25.0,
+            25.0,
+            25.0,
+            25.0,
+            25.0
+          ],
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 25.0
+        }
+      ],
+      "results": [
+        {
+          "material": {
+            "Name": "Brick",
+            "IsValid": true
+          },
+          "possibleMaterials": [
+            {
+              "Name": "Brick",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": null,
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 50.0
+        }
+      ],
+      "time": 40.0,
+      "consumedHEP": 0,
+      "producedHEP": 0,
+      "nameDisplay": 2,
+      "customName": null,
+      "customSpritePrefabID": null,
+      "description": "Affiner <link=\"CLAY\">Argile</link> avec une chaleur intense, produisant <link=\"BRICK\">Brique</link>.",
+      "runTimeDescription": null,
+      "fabricators": [
+        {
+          "Name": "Kiln",
+          "IsValid": true
+        }
+      ],
+      "sortOrder": 0,
+      "requiredTech": null,
+      "ProductHasFacade": false,
+      "RequiresAllIngredientsDiscovered": false,
+      "FirstResult": {
+        "Name": "Brick",
+        "IsValid": true
+      }
+    },
+    {
+      "id": "MissileFabricator_I_0_0_0_O_MissileLongRange",
+      "recipeCategoryID": "MissileFabricator_I_0_0_0_O_MissileLongRange_Default_MissileLongRange",
+      "ingredients": [
+        {
+          "material": {
+            "Name": null,
+            "IsValid": false
+          },
+          "possibleMaterials": [
+            {
+              "Name": "Nickel",
+              "IsValid": true
+            },
+            {
+              "Name": "Copper",
+              "IsValid": true
+            },
+            {
+              "Name": "SolidZinc",
+              "IsValid": true
+            },
+            {
+              "Name": "Cobalt",
+              "IsValid": true
+            },
+            {
+              "Name": "SolidSilver",
+              "IsValid": true
+            },
+            {
+              "Name": "Zinc",
+              "IsValid": true
+            },
+            {
+              "Name": "Aluminum",
+              "IsValid": true
+            },
+            {
+              "Name": "Iron",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": [
+            50.0,
+            50.0,
+            50.0,
+            50.0,
+            50.0,
+            50.0,
+            50.0,
+            50.0
+          ],
+          "temperatureOperation": 1,
+          "storeElement": false,
+          "inheritElement": true,
+          "facadeID": "",
+          "doNotConsume": false,
+          "amount": 50.0
+        },
+        {
+          "material": {
+            "Name": null,
+            "IsValid": false
+          },
+          "possibleMaterials": [
+            {
+              "Name": "Fertilizer",
+              "IsValid": true
+            },
+            {
+              "Name": "Peat",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": [
+            100.0,
+            100.0
+          ],
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 100.0
+        },
+        {
+          "material": {
+            "Name": null,
+            "IsValid": false
+          },
+          "possibleMaterials": [
+            {
+              "Name": "Petroleum",
+              "IsValid": true
+            },
+            {
+              "Name": "RefinedLipid",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": [
+            200.0,
+            200.0
+          ],
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 200.0
+        }
+      ],
+      "results": [
+        {
+          "material": {
+            "Name": "MissileLongRange",
+            "IsValid": true
+          },
+          "possibleMaterials": [
+            {
+              "Name": "MissileLongRange",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": null,
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 1.0
+        }
+      ],
+      "time": 80.0,
+      "consumedHEP": 0,
+      "producedHEP": 0,
+      "nameDisplay": 1,
+      "customName": null,
+      "customSpritePrefabID": null,
+      "description": "Produit <link=\"MISSILELONGRANGE\">Missile Intracosmique</link> à partir de <link=\"REFINEDMETAL\">Métal Raffiné</link>, <link=\"FERTILIZER\">Engrais</link> et <link=\"PETROLEUM\">Pétrole</link>.",
+      "runTimeDescription": null,
+      "fabricators": [
+        {
+          "Name": "MissileFabricator",
+          "IsValid": true
+        }
+      ],
+      "sortOrder": 0,
+      "requiredTech": null,
+      "ProductHasFacade": false,
+      "RequiresAllIngredientsDiscovered": false,
+      "FirstResult": {
+        "Name": "MissileLongRange",
+        "IsValid": true
+      }
+    },
+    {
+      "id": "MissileFabricator_I_0_0_0_O_MissileLongRange",
+      "recipeCategoryID": "MissileFabricator_I_0_0_0_O_MissileLongRange_Default_MissileLongRange",
+      "ingredients": [
+        {
+          "material": {
+            "Name": null,
+            "IsValid": false
+          },
+          "possibleMaterials": [
+            {
+              "Name": "Nickel",
+              "IsValid": true
+            },
+            {
+              "Name": "Copper",
+              "IsValid": true
+            },
+            {
+              "Name": "SolidZinc",
+              "IsValid": true
+            },
+            {
+              "Name": "Cobalt",
+              "IsValid": true
+            },
+            {
+              "Name": "SolidSilver",
+              "IsValid": true
+            },
+            {
+              "Name": "Zinc",
+              "IsValid": true
+            },
+            {
+              "Name": "Aluminum",
+              "IsValid": true
+            },
+            {
+              "Name": "Iron",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": [
+            50.0,
+            50.0,
+            50.0,
+            50.0,
+            50.0,
+            50.0,
+            50.0,
+            50.0
+          ],
+          "temperatureOperation": 1,
+          "storeElement": false,
+          "inheritElement": true,
+          "facadeID": "",
+          "doNotConsume": false,
+          "amount": 50.0
+        },
+        {
+          "material": {
+            "Name": null,
+            "IsValid": false
+          },
+          "possibleMaterials": [
+            {
+              "Name": "Fertilizer",
+              "IsValid": true
+            },
+            {
+              "Name": "Peat",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": [
+            100.0,
+            100.0
+          ],
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 100.0
+        },
+        {
+          "material": {
+            "Name": null,
+            "IsValid": false
+          },
+          "possibleMaterials": [
+            {
+              "Name": "Petroleum",
+              "IsValid": true
+            },
+            {
+              "Name": "RefinedLipid",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": [
+            200.0,
+            200.0
+          ],
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 200.0
+        }
+      ],
+      "results": [
+        {
+          "material": {
+            "Name": "MissileLongRange",
+            "IsValid": true
+          },
+          "possibleMaterials": [
+            {
+              "Name": "MissileLongRange",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": null,
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 1.0
+        }
+      ],
+      "time": 80.0,
+      "consumedHEP": 0,
+      "producedHEP": 0,
+      "nameDisplay": 1,
+      "customName": null,
+      "customSpritePrefabID": null,
+      "description": "Produit <link=\"MISSILELONGRANGE\">Missile Intracosmique</link> à partir de <link=\"REFINEDMETAL\">Métal Raffiné</link>, <link=\"FERTILIZER\">Engrais</link> et <link=\"PETROLEUM\">Pétrole</link>.",
+      "runTimeDescription": null,
+      "fabricators": [
+        {
+          "Name": "MissileFabricator",
+          "IsValid": true
+        }
+      ],
+      "sortOrder": 0,
+      "requiredTech": null,
+      "ProductHasFacade": false,
+      "RequiresAllIngredientsDiscovered": false,
+      "FirstResult": {
+        "Name": "MissileLongRange",
+        "IsValid": true
+      }
+    },
+    {
+      "id": "Mining_CNCMachine_I_Bioplastic_O_AIO_BioplasticGasket",
+      "recipeCategoryID": "Mining_CNCMachine_I_Bioplastic_O_AIO_BioplasticGasket_Default_AIO_BioplasticGasket",
+      "ingredients": [
+        {
+          "material": {
+            "Name": "Bioplastic",
+            "IsValid": true
+          },
+          "possibleMaterials": [
+            {
+              "Name": "Bioplastic",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": [
+            50.0
+          ],
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": true,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 50.0
+        }
+      ],
+      "results": [
+        {
+          "material": {
+            "Name": "AIO_BioplasticGasket",
+            "IsValid": true
+          },
+          "possibleMaterials": [
+            {
+              "Name": "AIO_BioplasticGasket",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": null,
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 1.0
+        }
+      ],
+      "time": 20.0,
+      "consumedHEP": 0,
+      "producedHEP": 0,
+      "nameDisplay": 1,
+      "customName": null,
+      "customSpritePrefabID": null,
+      "description": "Convertit: <link=\"BIOPLASTIC\">Bioplastique</link> en <link=\"AIOBIOPLASTICGASKET\">Bioplastic Gasket</link>",
+      "runTimeDescription": null,
+      "fabricators": [
+        {
+          "Name": "Mining_CNCMachine",
+          "IsValid": true
+        }
+      ],
+      "sortOrder": 2,
+      "requiredTech": "ImprovedLiquidPiping",
+      "ProductHasFacade": false,
+      "RequiresAllIngredientsDiscovered": false,
+      "FirstResult": {
+        "Name": "AIO_BioplasticGasket",
+        "IsValid": true
+      }
+    },
+    {
+      "id": "CraftingTable_I_Bioplastic_O_AIO_BioplasticGasket",
+      "recipeCategoryID": "CraftingTable_I_Bioplastic_O_AIO_BioplasticGasket_Default_AIO_BioplasticGasket",
+      "ingredients": [
+        {
+          "material": {
+            "Name": "Bioplastic",
+            "IsValid": true
+          },
+          "possibleMaterials": [
+            {
+              "Name": "Bioplastic",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": [
+            50.0
+          ],
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": true,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 50.0
+        }
+      ],
+      "results": [
+        {
+          "material": {
+            "Name": "AIO_BioplasticGasket",
+            "IsValid": true
+          },
+          "possibleMaterials": [
+            {
+              "Name": "AIO_BioplasticGasket",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": null,
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 1.0
+        }
+      ],
+      "time": 30.0,
+      "consumedHEP": 0,
+      "producedHEP": 0,
+      "nameDisplay": 1,
+      "customName": null,
+      "customSpritePrefabID": null,
+      "description": "Convertit: <link=\"BIOPLASTIC\">Bioplastique</link> en <link=\"AIOBIOPLASTICGASKET\">Bioplastic Gasket</link>",
+      "runTimeDescription": null,
+      "fabricators": [
+        {
+          "Name": "CraftingTable",
+          "IsValid": true
+        }
+      ],
+      "sortOrder": 4,
+      "requiredTech": "ImprovedLiquidPiping",
+      "ProductHasFacade": false,
+      "RequiresAllIngredientsDiscovered": false,
+      "FirstResult": {
+        "Name": "AIO_BioplasticGasket",
+        "IsValid": true
+      }
+    }
+  ]
+}

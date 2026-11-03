@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Translatable\HasTranslations;
 
 #[GameData]
-#[Fillable(['building_id', 'duration', 'fabricators', 'name'])]
+#[Fillable(['building_id', 'duration', 'fabricators', 'name', 'mod_id'])]
 final class Recipe extends Model
 {
     use HasFactory;
