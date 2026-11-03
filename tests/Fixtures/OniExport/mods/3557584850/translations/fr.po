@@ -1,0 +1,9 @@
+msgid ""
+msgstr ""
+"Language: fr\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+#. STRINGS.ELEMENTS.AIO_CHROMITEORE_SOLID.NAME
+msgctxt "STRINGS.ELEMENTS.AIO_CHROMITEORE_SOLID.NAME"
+msgid "Chromite Ore"
+msgstr "Minerai de chromite"

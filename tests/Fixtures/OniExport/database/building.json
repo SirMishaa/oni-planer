@@ -1,0 +1,22 @@
+{
+  "bBuildingDefList": [],
+  "mods": [
+    {
+      "id": "2012810337",
+      "title": "Stairs",
+      "buildings": [
+        "Stairs",
+        "urfScaffolding"
+      ]
+    },
+    {
+      "id": "3557584850",
+      "title": "L'héritage de Ronivan - Révolution industrielle",
+      "buildings": [
+        "Mining_MineralDrill",
+        "Mining_CNCMachine"
+      ]
+    }
+  ],
+  "buildVersion": "U59-744825-SCRPAN"
+}

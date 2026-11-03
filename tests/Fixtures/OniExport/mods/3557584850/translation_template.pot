@@ -1,0 +1,9 @@
+msgid ""
+msgstr ""
+"Application: Oxygen Not Included"
+"POT Version: 2.0"
+
+#. STRINGS.ELEMENTS.AIO_CHROMITEORE_SOLID.NAME
+msgctxt "STRINGS.ELEMENTS.AIO_CHROMITEORE_SOLID.NAME"
+msgid "Chromite Ore"
+msgstr ""

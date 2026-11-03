@@ -1,0 +1,61 @@
+---
+elements:
+  - elementId: SolidZinc
+    specificHeatCapacity: 0.387
+    thermalConductivity: 60
+    solidSurfaceAreaMultiplier: 1
+    liquidSurfaceAreaMultiplier: 1
+    gasSurfaceAreaMultiplier: 1
+    strength: 0.3
+    highTemp: 693.15
+    highTempTransitionTarget: MoltenZinc
+    defaultTemperature: 296
+    defaultMass: 870
+    maxMass: 970
+    hardness: 2
+    molarMass: 107.86
+    lightAbsorptionFactor: 1
+    radiationAbsorptionFactor: 0.5
+    radiationPer1000Mass: 0
+    materialCategory: RefinedMetal
+    tags:
+    - RefinedMetal
+    - BuildableAny
+    - Conductor #gigawatt wire
+    - StartingRefinedMetal
+    - HideFromSpawnTool
+    buildMenuSort: 2
+    isDisabled: false
+    state: Solid
+    localizationID: STRINGS.ELEMENTS.SOLIDZINC.NAME
+    dlcId: ""
+
+  - elementId: SolidSilver
+    specificHeatCapacity: 0.223
+    thermalConductivity: 220
+    solidSurfaceAreaMultiplier: 1
+    liquidSurfaceAreaMultiplier: 1
+    gasSurfaceAreaMultiplier: 1
+    strength: 0.7
+    highTemp: 1234.15
+    highTempTransitionTarget: MoltenSilver
+    defaultTemperature: 296
+    defaultMass: 870
+    maxMass: 1000
+    hardness: 2
+    molarMass: 107.86
+    lightAbsorptionFactor: 1
+    radiationAbsorptionFactor: 0.5
+    radiationPer1000Mass: 0
+    materialCategory: RefinedMetal
+    tags:
+    - RefinedMetal
+    - BuildableAny
+    - Antiseptic
+    - Conductor #gigawatt wire
+    - StartingRefinedMetal 
+    buildMenuSort: 3
+    isDisabled: false
+    state: Solid
+    localizationID: STRINGS.ELEMENTS.SOLIDSILVER.NAME
+    dlcId: ""

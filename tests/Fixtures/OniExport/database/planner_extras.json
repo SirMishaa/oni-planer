@@ -1,0 +1,60 @@
+{
+  "buildings": {
+    "Electrolyzer": {
+      "constructionTime": 30.0,
+      "selfHeatKilowattsWhenActive": 1.0,
+      "exhaustKilowattsWhenActive": 0.25,
+      "generatorWattageRating": 0.0
+    }
+  },
+  "entities": {
+    "AIO_BioplasticGasket": {
+      "kanim": "aio_bioplastic_gasket_kanim",
+      "sourceMod": {
+        "staticID": "RonivansLegacy_ChemicalProcessing",
+        "workshopId": "3557584850",
+        "title": "L'héritage de Ronivan - Révolution industrielle",
+        "assembly": "RonivansLegacy_ChemicalProcessing"
+      }
+    },
+    "AbyssVista": {
+      "kanim": "farmtile_kanim"
+    },
+    "BlueprintsV2_Element_Note": {
+      "sourceMod": {
+        "staticID": "BlueprintsV2",
+        "workshopId": "3468585385",
+        "title": "Blueprints Expanded",
+        "assembly": "BlueprintsV2"
+      }
+    }
+  },
+  "elements": {
+    "AIO_ChromiteOre_Solid": {
+      "id": "AIO_ChromiteOre_Solid",
+      "state": "Solid",
+      "localizationKey": "STRINGS.ELEMENTS.AIO_CHROMITEORE_SOLID.NAME",
+      "sourceMod": {
+        "staticID": "RonivansLegacy_ChemicalProcessing",
+        "workshopId": "3557584850",
+        "title": "L'héritage de Ronivan - Révolution industrielle",
+        "assembly": null
+      }
+    },
+    "Aerogel": {
+      "id": "Aerogel",
+      "state": "Solid",
+      "localizationKey": "STRINGS.ELEMENTS.AEROGEL.NAME"
+    }
+  },
+  "buildVersion": "U59-744825-SCRPAN",
+  "dlcs": [
+    "COSMETIC1_ID",
+    "DLC5_ID",
+    "DLC4_ID",
+    "DLC3_ID",
+    "DLC2_ID",
+    "EXPANSION1_ID",
+    ""
+  ]
+}

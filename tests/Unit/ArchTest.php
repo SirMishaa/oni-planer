@@ -10,6 +10,8 @@ arch()->preset()->strict()->ignoring([
 arch()->preset()->laravel()->ignoring([
     // PHP attributes used to tag game-data models, not models themselves.
     App\Models\Attributes::class,
+    // Exception, not a model.
+    App\Services\GameImport\OniExport\OniExportMissing::class,
 ]);
 arch()->preset()->security()->ignoring([
     'assert',
