@@ -1,0 +1,307 @@
+{
+  "DatabaseDirName": "database",
+  "ExportFileName": "entities",
+  "buildVersion": "U59-744825-SCRPAN",
+  "entities": [
+    {
+      "name": "Hatch",
+      "nameString": "<link=\"HATCH\">Glouton</link>",
+      "kPrefabID": {
+        "name": "Hatch",
+        "nameString": "<link=\"HATCH\">Glouton</link>",
+        "tags": [
+          {
+            "Name": "Creature",
+            "IsValid": true
+          },
+          {
+            "Name": "CreatureBrain",
+            "IsValid": true
+          },
+          {
+            "Name": "OriginalCreature",
+            "IsValid": true
+          }
+        ],
+        "requiredDlcIds": null
+      },
+      "critterTemperatureMonitorDef": {
+        "temperatureHotDeadly": 373.15,
+        "temperatureHotUncomfortable": 313.15,
+        "temperatureColdDeadly": 228.15,
+        "temperatureColdUncomfortable": 283.15
+      },
+      "overcrowdingMonitorDef": {
+        "spaceRequiredPerCreature": 12
+      },
+      "fertilityMonitorDef": {
+        "eggPrefab": {
+          "Name": "HatchEgg",
+          "IsValid": true
+        },
+        "initialBreedingWeights": [
+          {
+            "egg": {
+              "Name": "HatchEgg",
+              "IsValid": true
+            },
+            "weight": 0.98
+          },
+          {
+            "egg": {
+              "Name": "HatchHardEgg",
+              "IsValid": true
+            },
+            "weight": 0.02
+          }
+        ],
+        "baseFertileCycles": 60.0000038
+      },
+      "babyMonitorDef": null,
+      "creatureCalorieMonitorDef": {
+        "diet": {
+          "infos": [
+            {
+              "consumedTags": [
+                {
+                  "Name": "Sand",
+                  "IsValid": true
+                },
+                {
+                  "Name": "SandStone",
+                  "IsValid": true
+                }
+              ],
+              "producedElement": {
+                "Name": "Carbon",
+                "IsValid": true
+              },
+              "caloriesPerKg": 5000.0,
+              "producedConversionRate": 0.5
+            },
+            {
+              "consumedTags": [
+                {
+                  "Name": "PacuAlgaeEgg",
+                  "IsValid": true
+                }
+              ],
+              "producedElement": {
+                "Name": "Carbon",
+                "IsValid": true
+              },
+              "caloriesPerKg": 1600000.0,
+              "producedConversionRate": 0.75
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "HatchBaby",
+      "nameString": "<link=\"HATCH\">Bouftou</link>",
+      "kPrefabID": {
+        "name": "HatchBaby",
+        "nameString": "<link=\"HATCH\">Bouftou</link>",
+        "tags": [
+          {
+            "Name": "Creature",
+            "IsValid": true
+          },
+          {
+            "Name": "CreatureBrain",
+            "IsValid": true
+          },
+          {
+            "Name": "OriginalCreature",
+            "IsValid": true
+          }
+        ],
+        "requiredDlcIds": null
+      },
+      "critterTemperatureMonitorDef": {
+        "temperatureHotDeadly": 373.15,
+        "temperatureHotUncomfortable": 313.15,
+        "temperatureColdDeadly": 228.15,
+        "temperatureColdUncomfortable": 283.15
+      },
+      "overcrowdingMonitorDef": {
+        "spaceRequiredPerCreature": 12
+      },
+      "fertilityMonitorDef": null,
+      "babyMonitorDef": {
+        "adultPrefab": {
+          "Name": "Hatch",
+          "IsValid": true
+        },
+        "adultThreshold": 5.0
+      },
+      "creatureCalorieMonitorDef": {
+        "diet": {
+          "infos": [
+            {
+              "consumedTags": [
+                {
+                  "Name": "Sand",
+                  "IsValid": true
+                }
+              ],
+              "producedElement": {
+                "Name": "Carbon",
+                "IsValid": true
+              },
+              "caloriesPerKg": 5000.0,
+              "producedConversionRate": 0.5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "HatchHard",
+      "nameString": "<link=\"HATCHHARD\">Glouton Pierreux</link>",
+      "kPrefabID": {
+        "name": "HatchHard",
+        "nameString": "<link=\"HATCHHARD\">Glouton Pierreux</link>",
+        "tags": [
+          {
+            "Name": "Creature",
+            "IsValid": true
+          },
+          {
+            "Name": "CreatureBrain",
+            "IsValid": true
+          }
+        ],
+        "requiredDlcIds": null
+      },
+      "critterTemperatureMonitorDef": {
+        "temperatureHotDeadly": 373.15,
+        "temperatureHotUncomfortable": 313.15,
+        "temperatureColdDeadly": 228.15,
+        "temperatureColdUncomfortable": 283.15
+      },
+      "overcrowdingMonitorDef": {
+        "spaceRequiredPerCreature": 12
+      },
+      "fertilityMonitorDef": {
+        "eggPrefab": {
+          "Name": "HatchHardEgg",
+          "IsValid": true
+        },
+        "initialBreedingWeights": [
+          {
+            "egg": {
+              "Name": "HatchHardEgg",
+              "IsValid": true
+            },
+            "weight": 0.65
+          }
+        ],
+        "baseFertileCycles": 60.0000038
+      },
+      "babyMonitorDef": null,
+      "creatureCalorieMonitorDef": {
+        "diet": {
+          "infos": [
+            {
+              "consumedTags": [
+                {
+                  "Name": "SedimentaryRock",
+                  "IsValid": true
+                }
+              ],
+              "producedElement": {
+                "Name": "Carbon",
+                "IsValid": true
+              },
+              "caloriesPerKg": 5000.0,
+              "producedConversionRate": 0.5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "PacuAlgae",
+      "nameString": "<link=\"PACUALGAE\">Kelp Pacu</link>",
+      "kPrefabID": {
+        "name": "PacuAlgae",
+        "nameString": "<link=\"PACUALGAE\">Kelp Pacu</link>",
+        "tags": [
+          {
+            "Name": "Creature",
+            "IsValid": true
+          },
+          {
+            "Name": "CreatureBrain",
+            "IsValid": true
+          }
+        ],
+        "requiredDlcIds": null
+      },
+      "critterTemperatureMonitorDef": {
+        "temperatureHotDeadly": 373.15,
+        "temperatureHotUncomfortable": 313.15,
+        "temperatureColdDeadly": 228.15,
+        "temperatureColdUncomfortable": 283.15
+      },
+      "overcrowdingMonitorDef": {
+        "spaceRequiredPerCreature": 8
+      },
+      "fertilityMonitorDef": {
+        "eggPrefab": {
+          "Name": "PacuAlgaeEgg",
+          "IsValid": true
+        },
+        "initialBreedingWeights": [
+          {
+            "egg": {
+              "Name": "PacuAlgaeEgg",
+              "IsValid": true
+            },
+            "weight": 0.65
+          }
+        ],
+        "baseFertileCycles": 15.0
+      },
+      "babyMonitorDef": null,
+      "creatureCalorieMonitorDef": {
+        "diet": {
+          "infos": [
+            {
+              "consumedTags": [
+                {
+                  "Name": "Phosphorite",
+                  "IsValid": true
+                }
+              ],
+              "producedElement": {
+                "Name": "Algae",
+                "IsValid": true
+              },
+              "caloriesPerKg": 714.2857,
+              "producedConversionRate": 0.5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "SweepBot",
+      "nameString": "<link=\"SWEEPBOT\">Sweepy</link>",
+      "kPrefabID": {
+        "name": "SweepBot",
+        "nameString": "<link=\"SWEEPBOT\">Sweepy</link>",
+        "tags": [
+          {
+            "Name": "CreatureBrain",
+            "IsValid": true
+          }
+        ],
+        "requiredDlcIds": null
+      },
+      "critterTemperatureMonitorDef": null
+    }
+  ]
+}

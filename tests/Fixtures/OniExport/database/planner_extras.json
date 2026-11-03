@@ -69,6 +69,40 @@
         "title": "Blueprints Expanded",
         "assembly": "BlueprintsV2"
       }
+    },
+    "Hatch": {
+      "speciesTag": "HatchSpecies",
+      "kanim": "hatch_build_kanim"
+    },
+    "HatchBaby": {
+      "speciesTag": "HatchSpecies",
+      "kanim": "baby_hatch_kanim"
+    },
+    "HatchEgg": {
+      "kanim": "egg_hatch_kanim"
+    },
+    "HatchHard": {
+      "speciesTag": "HatchSpecies",
+      "kanim": "hatch_build_kanim"
+    },
+    "PacuAlgae": {
+      "speciesTag": "PacuSpecies",
+      "kanim": "algaepacu_kanim",
+      "sourceMod": {
+        "staticID": "ONIPacuMorphsELU",
+        "workshopId": "2020793956",
+        "title": "[Vanilla + DLC] Pacu morphs",
+        "assembly": "PacuMorphsMerged"
+      }
+    },
+    "PacuAlgaeEgg": {
+      "kanim": "egg_algaepacu_kanim",
+      "sourceMod": {
+        "staticID": "ONIPacuMorphsELU",
+        "workshopId": "2020793956",
+        "title": "[Vanilla + DLC] Pacu morphs",
+        "assembly": "PacuMorphsMerged"
+      }
     }
   },
   "elements": {

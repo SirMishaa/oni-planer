@@ -18,14 +18,27 @@ final readonly class CritterImporter
         /** @var array<int, array<string, mixed>> $critters */
         $critters = json_decode((string) file_get_contents($jsonPath), true);
 
+        $this->importRecords($critters);
+    }
+
+    /**
+     * Persists critter records (json-cache shape, optionally with `mod_id`).
+     * A baby is stored as a morph of its adult's critter, which takes the
+     * adult's mod.
+     *
+     * @param  array<int, array<string, mixed>>  $critters
+     */
+    public function importRecords(array $critters): void
+    {
         foreach ($critters as $raw) {
             $parentId = $raw['parent_critter_id'] ?? $raw['critter_id'];
 
             $dlcId = is_string($raw['dlc_id'] ?? null) ? $raw['dlc_id'] : null;
+            $modId = $raw['mod_id'] ?? null;
 
             $critter = Critter::query()->firstOrCreate(
                 ['critter_id' => $parentId],
-                ['name' => ['en' => $parentId], 'dlc_id' => $dlcId],
+                ['name' => ['en' => $parentId], 'dlc_id' => $dlcId, 'mod_id' => $modId],
             );
 
             if ($dlcId !== null && $critter->dlc_id !== $dlcId) {
@@ -55,6 +68,7 @@ final readonly class CritterImporter
                 'lifespan' => $raw['lifespan'],
                 'overcrowding_threshold' => $raw['overcrowding_threshold'] ?? 0,
                 'name' => $nameJson,
+                'mod_id' => $modId,
             ]);
 
             if (($raw['is_base'] ?? false) === true) {

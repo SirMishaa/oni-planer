@@ -1,0 +1,13 @@
+{
+  "DatabaseDirName": "database",
+  "ExportFileName": "items",
+  "buildVersion": "U59-744825-SCRPAN",
+  "eggs": [
+    {
+      "name": "HatchEgg",
+      "nameString": "<link=\"HATCH\">Œuf de Glouton</link>",
+      "incubatorMonitorDef": {"baseIncubationRate": 0.008333334, "spawnedCreature": {"Name": "HatchBaby", "IsValid": true}}
+    }
+  ],
+  "seeds": []
+}

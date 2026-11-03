@@ -17,7 +17,7 @@ use Spatie\Translatable\HasTranslations;
 #[Fillable([
     'morph_id', 'critter_id', 'is_base', 'min_temp', 'max_temp',
     'calories_per_cycle', 'incubation_time', 'lifespan',
-    'overcrowding_threshold', 'name',
+    'overcrowding_threshold', 'name', 'mod_id',
 ])]
 final class CritterMorph extends Model
 {

@@ -23,5 +23,12 @@
     "ROOMS.CRITERIA.NO_INDUSTRIAL_MACHINERY.NAME": "Pas de <link=\"REQUIREMENTCLASSINDUSTRIALMACHINERY\">machine industrielle</link>",
     "ROOMS.CRITERIA.NO_INDUSTRIAL_MACHINERY.DESCRIPTION": "Ne peut contenir aucun équipement de type Machine Industrielle",
     "ROOMS.CRITERIA.NO_INDUSTRIAL_MACHINERY.CONFLICT_DESCRIPTION": "Pas de <link=\"REQUIREMENTCLASSINDUSTRIALMACHINERY\">machine industrielle</link>"
+  },
+  "CREATURES": {
+    "CREATURES.SPECIES.HATCH.NAME": "<link=\"HATCH\">Glouton</link>",
+    "CREATURES.SPECIES.HATCH.DESC": "Les gloutons excrètent du <link=\"CARBON\">charbon</link> et peuvent être découvert en déterrant des objets enterrés.",
+    "CREATURES.SPECIES.HATCH.EGG_NAME": "<link=\"HATCH\">Œuf de Glouton</link>",
+    "CREATURES.SPECIES.HATCH.BABY.NAME": "<link=\"HATCH\">Bouftou</link>",
+    "CREATURES.SPECIES.HATCH.VARIANT_HARD.NAME": "<link=\"HATCHHARD\">Glouton Pierreux</link>"
   }
 }

@@ -632,5 +632,67 @@
         "Guid": "BathroomRoom"
       }
     }
+  ],
+  "traits": [
+    {
+      "Id": "HatchBaseTrait",
+      "SelfModifiers": [
+        {
+          "AttributeId": "CaloriesMax",
+          "Value": 7000000.0
+        },
+        {
+          "AttributeId": "CaloriesDelta",
+          "Value": -1166.66663
+        },
+        {
+          "AttributeId": "HitPointsMax",
+          "Value": 25.0
+        },
+        {
+          "AttributeId": "AgeMax",
+          "Value": 100.0
+        }
+      ]
+    },
+    {
+      "Id": "HatchBaseTrait",
+      "SelfModifiers": [
+        {
+          "AttributeId": "CaloriesDelta",
+          "Value": -1166.66663
+        },
+        {
+          "AttributeId": "AgeMax",
+          "Value": 100.0
+        }
+      ]
+    },
+    {
+      "Id": "HatchHardBaseTrait",
+      "SelfModifiers": [
+        {
+          "AttributeId": "CaloriesDelta",
+          "Value": -1166.66663
+        },
+        {
+          "AttributeId": "AgeMax",
+          "Value": 100.0
+        }
+      ]
+    },
+    {
+      "Id": "PacuAlgaeBaseTrait",
+      "SelfModifiers": [
+        {
+          "AttributeId": "CaloriesDelta",
+          "Value": -166.666672
+        },
+        {
+          "AttributeId": "AgeMax",
+          "Value": 25.0
+        }
+      ]
+    }
   ]
 }
