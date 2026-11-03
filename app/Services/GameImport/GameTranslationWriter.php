@@ -15,16 +15,34 @@ use Illuminate\Support\Facades\File;
  */
 final class GameTranslationWriter
 {
-    public function write(string $potPath, string $translationsDir, string $outputDir): void
+    /**
+     * Per locale the precedence is: base English, mod English, base translation,
+     * mod translation.
+     *
+     * @param  list<string>  $modPotPaths
+     * @param  array<string, list<string>>  $modPoPathsByLocale
+     */
+    public function write(string $potPath, string $translationsDir, string $outputDir, array $modPotPaths = [], array $modPoPathsByLocale = []): void
     {
         File::ensureDirectoryExists($outputDir);
 
         $english = PoFile::read($potPath)->sources();
+
+        foreach ($modPotPaths as $modPotPath) {
+            $english = [...$english, ...ModStringKey::normalizeAll(PoFile::read($modPotPath)->sources())];
+        }
+
         $this->writeCatalog($outputDir.'/en.json', $english);
 
         foreach (File::glob($translationsDir.'/*.po') as $poPath) {
             $locale = pathinfo($poPath, PATHINFO_FILENAME);
-            $this->writeCatalog(sprintf('%s/%s.json', $outputDir, $locale), [...$english, ...PoFile::read($poPath)->translations()]);
+            $strings = [...$english, ...PoFile::read($poPath)->translations()];
+
+            foreach ($modPoPathsByLocale[$locale] ?? [] as $modPoPath) {
+                $strings = [...$strings, ...ModStringKey::normalizeAll(PoFile::read($modPoPath)->translations())];
+            }
+
+            $this->writeCatalog(sprintf('%s/%s.json', $outputDir, $locale), $strings);
         }
     }
 

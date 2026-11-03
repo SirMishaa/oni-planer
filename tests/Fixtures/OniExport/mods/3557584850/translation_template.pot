@@ -7,3 +7,18 @@ msgstr ""
 msgctxt "STRINGS.ELEMENTS.AIO_CHROMITEORE_SOLID.NAME"
 msgid "Chromite Ore"
 msgstr ""
+
+#. RonivansLegacy_ChemicalProcessing.STRINGS.BUILDINGS.PREFABS.MINING_MINERALDRILL.NAME
+msgctxt "RonivansLegacy_ChemicalProcessing.STRINGS.BUILDINGS.PREFABS.MINING_MINERALDRILL.NAME"
+msgid "Mineral Drill"
+msgstr ""
+
+#. RonivansLegacy_ChemicalProcessing.STRINGS.BUILDINGS.PREFABS.MINING_MINERALDRILL.EFFECT
+msgctxt "RonivansLegacy_ChemicalProcessing.STRINGS.BUILDINGS.PREFABS.MINING_MINERALDRILL.EFFECT"
+msgid "Drills minerals."
+msgstr ""
+
+#. RonivansLegacy_ChemicalProcessing.STRINGS.ELEMENTS.OXYGEN.NAME
+msgctxt "RonivansLegacy_ChemicalProcessing.STRINGS.ELEMENTS.OXYGEN.NAME"
+msgid "Modded Oxygen"
+msgstr ""

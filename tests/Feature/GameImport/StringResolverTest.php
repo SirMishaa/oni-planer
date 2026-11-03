@@ -46,3 +46,14 @@ it('finds the name key of a prefab id from its STRINGS entry', function (string 
     'underscored species, not its seed' => ['SpiceVine', 'STRINGS.CREATURES.SPECIES.SPICE_VINE.NAME'],
     'unknown prefab' => ['NoSuchThing', null],
 ]);
+
+it('resolves a mod building name from the mod pot', function (): void {
+    $resolver = new StringResolver(
+        base_path('tests/Fixtures/GameImport/strings.pot'),
+        [base_path('tests/Fixtures/OniExport/mods/3557584850/translation_template.pot')],
+    );
+
+    expect($resolver->resolve('STRINGS.BUILDINGS.PREFABS.MINING_MINERALDRILL.NAME'))->toBe('Mineral Drill')
+        ->and($resolver->resolve('STRINGS.ELEMENTS.OXYGEN.NAME'))->toBe('Modded Oxygen')
+        ->and($resolver->resolve('STRINGS.ELEMENTS.CARBONDIOXIDE.NAME'))->toBe('Carbon Dioxide');
+});

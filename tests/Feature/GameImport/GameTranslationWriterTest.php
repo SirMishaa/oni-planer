@@ -56,3 +56,39 @@ it('serves game strings through the laravel translator', function (): void {
     expect(__('STRINGS.ELEMENTS.OXYGEN.NAME'))->toBe('Oxygène')
         ->and(__('STRINGS.ELEMENTS.CARBONDIOXIDE.NAME'))->toBe('Carbon Dioxide');
 });
+
+it('writes mod strings into the french catalog with english fallback', function (): void {
+    $mod = base_path('tests/Fixtures/OniExport/mods/3557584850');
+
+    new GameTranslationWriter()->write(
+        base_path('tests/Fixtures/GameImport/strings.pot'),
+        $this->translationsDir,
+        $this->outputDir,
+        [$mod.'/translation_template.pot'],
+        ['fr' => [$mod.'/translations/fr.po']],
+    );
+
+    $french = json_decode(File::get($this->outputDir.'/fr.json'), true);
+    $english = json_decode(File::get($this->outputDir.'/en.json'), true);
+    expect($french)
+        ->toHaveKey('STRINGS.BUILDINGS.PREFABS.MINING_MINERALDRILL.NAME', 'Foreuse minérale')
+        ->toHaveKey('STRINGS.BUILDINGS.PREFABS.MINING_MINERALDRILL.EFFECT', 'Drills minerals.')
+        ->and($english)->toHaveKey('STRINGS.BUILDINGS.PREFABS.MINING_MINERALDRILL.NAME', 'Mineral Drill');
+});
+
+it('keeps the base french translation when a mod overrides a base key in english', function (): void {
+    $mod = base_path('tests/Fixtures/OniExport/mods/3557584850');
+
+    new GameTranslationWriter()->write(
+        base_path('tests/Fixtures/GameImport/strings.pot'),
+        $this->translationsDir,
+        $this->outputDir,
+        [$mod.'/translation_template.pot'],
+        ['fr' => [$mod.'/translations/fr.po']],
+    );
+
+    $french = json_decode(File::get($this->outputDir.'/fr.json'), true);
+    $english = json_decode(File::get($this->outputDir.'/en.json'), true);
+    expect($french)->toHaveKey('STRINGS.ELEMENTS.OXYGEN.NAME', 'Oxygène')
+        ->and($english)->toHaveKey('STRINGS.ELEMENTS.OXYGEN.NAME', 'Modded Oxygen');
+});

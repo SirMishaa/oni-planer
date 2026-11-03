@@ -7,3 +7,8 @@ msgstr ""
 msgctxt "STRINGS.ELEMENTS.AIO_CHROMITEORE_SOLID.NAME"
 msgid "Chromite Ore"
 msgstr "Minerai de chromite"
+
+#. RonivansLegacy_ChemicalProcessing.STRINGS.BUILDINGS.PREFABS.MINING_MINERALDRILL.NAME
+msgctxt "RonivansLegacy_ChemicalProcessing.STRINGS.BUILDINGS.PREFABS.MINING_MINERALDRILL.NAME"
+msgid "Mineral Drill"
+msgstr "Foreuse minérale"

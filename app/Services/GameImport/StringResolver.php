@@ -26,9 +26,16 @@ final class StringResolver
     /** @var array<string, string>|null normalized prefab segment → name key */
     private ?array $prefabNameKeys = null;
 
-    public function __construct(string $potFilePath)
+    /** @param  list<string>  $modPotPaths  supported mod templates; their strings override base ones */
+    public function __construct(string $potFilePath, array $modPotPaths = [])
     {
-        $this->strings = PoFile::read($potFilePath)->sources();
+        $strings = PoFile::read($potFilePath)->sources();
+
+        foreach ($modPotPaths as $modPotPath) {
+            $strings = [...$strings, ...ModStringKey::normalizeAll(PoFile::read($modPotPath)->sources())];
+        }
+
+        $this->strings = $strings;
     }
 
     /**
