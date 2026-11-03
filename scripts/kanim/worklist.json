@@ -156,18 +156,18 @@
   },
   {
     "category": "critters",
-    "key": "OilFloater",
-    "kanim": "oil_floater"
+    "key": "Oilfloater",
+    "kanim": "oilfloater"
   },
   {
     "category": "critters",
-    "key": "OilFloaterDecor",
-    "kanim": "oil_floater_decor"
+    "key": "OilfloaterDecor",
+    "kanim": "oilfloater_decor"
   },
   {
     "category": "critters",
-    "key": "OilFloaterHighTemp",
-    "kanim": "oil_floater_high_temp"
+    "key": "OilfloaterHighTemp",
+    "kanim": "oilfloater_high_temp"
   },
   {
     "category": "critters",

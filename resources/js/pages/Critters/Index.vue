@@ -31,7 +31,7 @@ const DLC_LABELS: Record<string, string> = {
     DLC2_ID: 'Frosty Planet Pack',
     DLC3_ID: 'Bionic Booster Pack',
     DLC4_ID: 'Prehistoric Planet Pack',
-    DLC5: 'Aquatic Planet Pack',
+    DLC5_ID: 'Aquatic Planet Pack',
 };
 
 function toCelsius(kelvin: number): number {
