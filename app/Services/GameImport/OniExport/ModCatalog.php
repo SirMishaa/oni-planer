@@ -60,7 +60,7 @@ final class ModCatalog
 
                 $owner = $sourceMod['workshopId'] !== null
                     ? (string) $sourceMod['workshopId']
-                    : 'local:'.($sourceMod['staticID'] ?? $prefabId);
+                    : 'local:'.($sourceMod['assembly'] ?? $sourceMod['staticID'] ?? $prefabId);
                 $exportMods[$owner] ??= ['static_id' => $sourceMod['staticID'] ?? null, 'title' => (string) ($sourceMod['title'] ?? $owner)];
                 $ownerByPrefab[(string) $prefabId] = $owner;
             }

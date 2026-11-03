@@ -6,6 +6,7 @@ use App\Models\Mod;
 use App\Services\GameImport\OniExport\ModCatalog;
 use App\Services\GameImport\OniExport\OniExport;
 use App\Services\GameImport\OniExport\OniExportMissing;
+use Illuminate\Support\Facades\File;
 
 function oniFixtures(): string
 {
@@ -95,4 +96,31 @@ it('throws when an export file is missing', function (): void {
 
 it('reads the build version', function (): void {
     expect((new OniExport(oniFixtures()))->buildVersion())->toBe('U59-744825-SCRPAN');
+});
+
+it('keys entities of an unmatched mod by assembly so the report has one entry per mod', function (): void {
+    $dir = sys_get_temp_dir().'/oni-export-'.uniqid();
+    File::copyDirectory(oniFixtures(), $dir);
+    $unmatched = ['staticID' => null, 'workshopId' => null, 'title' => 'Local Mod', 'assembly' => 'LocalAssembly'];
+    File::put($dir.'/database/planner_extras.json', json_encode([
+        'entities' => ['LocalA' => ['sourceMod' => $unmatched], 'LocalB' => ['sourceMod' => $unmatched]],
+    ]));
+
+    $report = ModCatalog::fromExport(new OniExport($dir), $dir.'/mods', [])->skippedReport();
+    $local = array_values(array_filter($report, fn (array $row): bool => $row['title'] === 'Local Mod'));
+
+    expect($local)->toHaveCount(1)->and($local[0]['entities'])->toBe(2);
+
+    File::deleteDirectory($dir);
+});
+
+it('decodes an export file only once per instance', function (): void {
+    $dir = sys_get_temp_dir().'/oni-export-'.uniqid();
+    File::copyDirectory(oniFixtures(), $dir);
+    $export = new OniExport($dir);
+
+    $first = $export->json('building.json');
+    File::deleteDirectory($dir);
+
+    expect($export->json('building.json'))->toEqual($first);
 });

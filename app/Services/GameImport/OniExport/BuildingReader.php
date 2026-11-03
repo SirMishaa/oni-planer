@@ -45,7 +45,7 @@ use App\Enums\PermittedRotations;
  *     mod_id: int|null,
  * }
  */
-final readonly class BuildingReader
+final class BuildingReader
 {
     /**
      * Export `viewMode` (game overlay name) → planner overlay, as in
@@ -77,11 +77,28 @@ final readonly class BuildingReader
      */
     private const array ROCKET_MODULE_PLACEMENT = ['category' => 'rocketry', 'subcategory' => 'module'];
 
-    public function __construct(private OniExport $export, private ModCatalog $mods) {}
+    /** Raw def keys a building cannot be read without. */
+    private const array REQUIRED_KEYS = [
+        'name', 'widthInCells', 'heightInCells', 'buildLocationRule', 'permittedRotations', 'objectLayer',
+        'sceneLayer', 'isFoundation', 'isKAnimTile', 'isUtility', 'dragBuild', 'replaceable',
+    ];
+
+    /** @var list<array{building_id: string, reason: string}> */
+    private array $skippedBuildings = [];
+
+    public function __construct(private readonly OniExport $export, private readonly ModCatalog $mods) {}
+
+    /** @return list<array{building_id: string, reason: string}> */
+    public function skippedBuildings(): array
+    {
+        return $this->skippedBuildings;
+    }
 
     /** @return list<BuildingRecord> */
-    public function read(): array
+    public function records(): array
     {
+        $this->skippedBuildings = [];
+
         $file = $this->export->json('building.json');
         $extras = $this->export->json('planner_extras.json')['buildings'] ?? [];
         $menuPlacement = $this->menuPlacement($file['buildingAndSubcategoryDataPairs'] ?? [], $file['rocketModuleMenu'] ?? []);
@@ -97,10 +114,42 @@ final readonly class BuildingReader
                 continue;
             }
 
+            $reason = $this->unreadableReason($def);
+
+            if ($reason !== null) {
+                $this->skippedBuildings[] = ['building_id' => $buildingId, 'reason' => $reason];
+
+                continue;
+            }
+
             $records[] = $this->record($def, $extras[$buildingId] ?? null, $menuPlacement[$buildingId] ?? null, $objectLayerNames);
         }
 
         return $records;
+    }
+
+    /**
+     * Why the def cannot be turned into a record (missing key or unknown enum value), null when readable.
+     *
+     * @param  array<string, mixed>  $def
+     */
+    private function unreadableReason(array $def): ?string
+    {
+        foreach (self::REQUIRED_KEYS as $key) {
+            if (! array_key_exists($key, $def)) {
+                return "missing key {$key}";
+            }
+        }
+
+        if (BuildLocationRule::tryFrom((int) $def['buildLocationRule']) === null) {
+            return "unknown build location rule {$def['buildLocationRule']}";
+        }
+
+        if (PermittedRotations::tryFrom((int) $def['permittedRotations']) === null) {
+            return "unknown permitted rotations {$def['permittedRotations']}";
+        }
+
+        return null;
     }
 
     /**

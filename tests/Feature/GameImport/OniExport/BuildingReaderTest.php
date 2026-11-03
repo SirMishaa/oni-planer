@@ -6,6 +6,7 @@ use App\Models\Mod;
 use App\Services\GameImport\OniExport\BuildingReader;
 use App\Services\GameImport\OniExport\ModCatalog;
 use App\Services\GameImport\OniExport\OniExport;
+use Illuminate\Support\Facades\File;
 
 /** @return array<string, array<string, mixed>> */
 function readFixtureBuildings(): array
@@ -15,7 +16,7 @@ function readFixtureBuildings(): array
     $catalog = ModCatalog::fromExport($export, $root.'/mods', ['3557584850']);
     $catalog->persist();
 
-    return collect(new BuildingReader($export, $catalog)->read())->keyBy('building_id')->all();
+    return collect(new BuildingReader($export, $catalog)->records())->keyBy('building_id')->all();
 }
 
 it('reads electrolyzer ports and size', function (): void {
@@ -92,4 +93,45 @@ it('imports rocket modules listed in the rocket module menu', function (): void 
         ->and($engine['height'])->toBe(2)
         ->and($engine['construction_time'])->toBe(30.0)
         ->and($engine['dlc_id'])->toBe('EXPANSION1_ID');
+});
+
+/**
+ * Copies the fixture export to a temp dir, letting the caller rewrite building.json.
+ *
+ * @param  callable(array<string, mixed>): array<string, mixed>  $mutate
+ */
+function fixtureExportCopy(callable $mutate): string
+{
+    $dir = sys_get_temp_dir().'/oni-export-'.uniqid();
+    File::copyDirectory(base_path('tests/Fixtures/OniExport'), $dir);
+    $path = $dir.'/database/building.json';
+    File::put($path, json_encode($mutate(json_decode(File::get($path), true))));
+
+    return $dir;
+}
+
+it('skips a building with an unknown build location rule and reports it', function (): void {
+    $dir = fixtureExportCopy(function (array $file): array {
+        foreach ($file['bBuildingDefList'] as &$def) {
+            if ($def['name'] === 'Electrolyzer') {
+                $def['buildLocationRule'] = 9999;
+            }
+            if ($def['name'] === 'FlushToilet') {
+                unset($def['permittedRotations']);
+            }
+        }
+
+        return $file;
+    });
+
+    $export = new OniExport($dir);
+    $reader = new BuildingReader($export, ModCatalog::fromExport($export, $dir.'/mods', []));
+    $ids = array_column($reader->records(), 'building_id');
+
+    expect($ids)->not->toContain('Electrolyzer')->not->toContain('FlushToilet')->toContain('Generator')
+        ->and($reader->skippedBuildings())->toHaveCount(2)
+        ->and($reader->skippedBuildings()[0])->toHaveKeys(['building_id', 'reason'])
+        ->and($reader->skippedBuildings()[0]['building_id'])->toBe('Electrolyzer');
+
+    File::deleteDirectory($dir);
 });
