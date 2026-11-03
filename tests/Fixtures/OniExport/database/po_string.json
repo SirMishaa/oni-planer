@@ -1,0 +1,27 @@
+{
+  "ROOMS": {
+    "ROOMS.TYPES.LATRINE.NAME": "Latrines",
+    "ROOMS.TYPES.PLUMBEDBATHROOM.NAME": "Salle de Bain",
+    "ROOMS.CRITERIA.MINIMUM_SIZE.NAME": "Taille minimale: {0} dalles",
+    "ROOMS.CRITERIA.MINIMUM_SIZE.DESCRIPTION": "Doit avoir une superficie d'au moins {0} dalles",
+    "ROOMS.CRITERIA.MINIMUM_SIZE.CONFLICT_DESCRIPTION": "Taille minimale: {0} dalles",
+    "ROOMS.CRITERIA.MAXIMUM_SIZE.NAME": "Taille maximale: {0} dalles",
+    "ROOMS.CRITERIA.MAXIMUM_SIZE.DESCRIPTION": "Ne doit pas avoir une largeur de plus de {0} dalles",
+    "ROOMS.CRITERIA.MAXIMUM_SIZE.CONFLICT_DESCRIPTION": "Taille maximale: {0} dalles",
+    "ROOMS.CRITERIA.TOILETTYPE.NAME": "<link=\"REQUIREMENTCLASSTOILETTYPE\">Toilettes</link>",
+    "ROOMS.CRITERIA.TOILETTYPE.DESCRIPTION": "Requiert une ou plusieurs dépendances ou toilettes",
+    "ROOMS.CRITERIA.TOILETTYPE.CONFLICT_DESCRIPTION": "<link=\"REQUIREMENTCLASSTOILETTYPE\">Toilettes</link>",
+    "ROOMS.CRITERIA.FLUSHTOILETTYPE.NAME": "<link=\"REQUIREMENTCLASSFLUSHTOILETTYPE\">Toilettes à châsse d'eau</link>",
+    "ROOMS.CRITERIA.FLUSHTOILETTYPE.DESCRIPTION": "Requiert un sanitaire ou plus",
+    "ROOMS.CRITERIA.FLUSHTOILETTYPE.CONFLICT_DESCRIPTION": "<link=\"REQUIREMENTCLASSFLUSHTOILETTYPE\">Toilettes à châsse d'eau</link>",
+    "ROOMS.CRITERIA.NO_OUTHOUSES.NAME": "Pas de <link=\"OUTHOUSE\">Toilettes Sèches</link>",
+    "ROOMS.CRITERIA.NO_OUTHOUSES.DESCRIPTION": "Ne peut pas contenir des toilettes sèches",
+    "ROOMS.CRITERIA.NO_OUTHOUSES.CONFLICT_DESCRIPTION": "Pas de <link=\"OUTHOUSE\">toilettes sèches</link>",
+    "ROOMS.CRITERIA.WASHSTATION.NAME": "<link=\"REQUIREMENTCLASSWASHSTATION\">Station de lavage</link>",
+    "ROOMS.CRITERIA.WASHSTATION.DESCRIPTION": "Nécessite un ou plusieurs lavabos, éviers, désinfectants pour les mains ou douches",
+    "ROOMS.CRITERIA.WASHSTATION.CONFLICT_DESCRIPTION": "<link=\"REQUIREMENTCLASSWASHSTATION\">Station de lavage</link>",
+    "ROOMS.CRITERIA.NO_INDUSTRIAL_MACHINERY.NAME": "Pas de <link=\"REQUIREMENTCLASSINDUSTRIALMACHINERY\">machine industrielle</link>",
+    "ROOMS.CRITERIA.NO_INDUSTRIAL_MACHINERY.DESCRIPTION": "Ne peut contenir aucun équipement de type Machine Industrielle",
+    "ROOMS.CRITERIA.NO_INDUSTRIAL_MACHINERY.CONFLICT_DESCRIPTION": "Pas de <link=\"REQUIREMENTCLASSINDUSTRIALMACHINERY\">machine industrielle</link>"
+  }
+}

@@ -1,0 +1,636 @@
+{
+  "roomTypes": [
+    {
+      "Name": "Salle de Bain",
+      "Id": "PlumbedBathroom",
+      "IdHash": {
+        "IsValid": true,
+        "HashValue": -1905101029
+      },
+      "Disabled": false,
+      "tooltip": "Utiliser une salle de bain entièrement reliée au réseau améliorera le moral des Duplicants",
+      "description": "Un sanctuaire de l'hygiène personnelle.\n\nUtiliser une salle de bain entièrement reliée au réseau améliorera le moral des Duplicants.",
+      "effect": "    • Shorter shower time by 25%",
+      "primary_constraint": {
+        "name": "<link=\"REQUIREMENTCLASSFLUSHTOILETTYPE\">Toilettes à châsse d'eau</link>",
+        "description": "Requiert un sanitaire ou plus",
+        "conflictDescription": "<link=\"REQUIREMENTCLASSFLUSHTOILETTYPE\">Flush Toilet</link>",
+        "times_required": 1,
+        "room_criteria": null,
+        "building_criteria": {
+          "Delegate": {
+            "delegateEntry": null
+          },
+          "target0": {},
+          "method0": {
+            "Name": "<.cctor>b__57_43",
+            "AssemblyName": "Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+            "ClassName": "RoomConstraints+<>c",
+            "Signature": "Boolean <.cctor>b__57_43(KPrefabID)",
+            "Signature2": "System.Boolean <.cctor>b__57_43(KPrefabID)",
+            "MemberType": 8,
+            "GenericArguments": null
+          }
+        },
+        "creature_criteria": null,
+        "stomp_in_conflict": [
+          {
+            "name": "<link=\"SHOWER\">Shower</link>",
+            "description": "At least one Shower",
+            "conflictDescription": "<link=\"SHOWER\">Shower</link>",
+            "times_required": 1,
+            "room_criteria": null,
+            "building_criteria": {
+              "Delegate": {
+                "delegateEntry": null
+              },
+              "target0": {},
+              "method0": {
+                "Name": "<.cctor>b__37_2",
+                "AssemblyName": "RoomsExpandedMerged, Version=2026.6.11.1748, Culture=neutral, PublicKeyToken=null",
+                "ClassName": "RoomsExpanded.RoomModdedConstraints+<>c",
+                "Signature": "Boolean <.cctor>b__37_2(KPrefabID)",
+                "Signature2": "System.Boolean <.cctor>b__37_2(KPrefabID)",
+                "MemberType": 8,
+                "GenericArguments": null
+              }
+            },
+            "creature_criteria": null,
+            "stomp_in_conflict": [
+              {
+                "name": "<link=\"ITEMPEDESTAL\">Pedestal</link>",
+                "description": "At least one Pedestal",
+                "conflictDescription": "<link=\"ITEMPEDESTAL\">Pedestal</link>",
+                "times_required": 1,
+                "room_criteria": null,
+                "building_criteria": {
+                  "Delegate": {
+                    "delegateEntry": null
+                  },
+                  "target0": {},
+                  "method0": {
+                    "Name": "<.cctor>b__37_18",
+                    "AssemblyName": "RoomsExpandedMerged, Version=2026.6.11.1748, Culture=neutral, PublicKeyToken=null",
+                    "ClassName": "RoomsExpanded.RoomModdedConstraints+<>c",
+                    "Signature": "Boolean <.cctor>b__37_18(KPrefabID)",
+                    "Signature2": "System.Boolean <.cctor>b__37_18(KPrefabID)",
+                    "MemberType": 8,
+                    "GenericArguments": null
+                  }
+                },
+                "creature_criteria": null,
+                "stomp_in_conflict": null
+              }
+            ]
+          },
+          {
+            "name": "<link=\"ITEMPEDESTAL\">Pedestal</link>",
+            "description": "At least one Pedestal",
+            "conflictDescription": "<link=\"ITEMPEDESTAL\">Pedestal</link>",
+            "times_required": 1,
+            "room_criteria": null,
+            "building_criteria": {
+              "Delegate": {
+                "delegateEntry": null
+              },
+              "target0": {},
+              "method0": {
+                "Name": "<.cctor>b__37_18",
+                "AssemblyName": "RoomsExpandedMerged, Version=2026.6.11.1748, Culture=neutral, PublicKeyToken=null",
+                "ClassName": "RoomsExpanded.RoomModdedConstraints+<>c",
+                "Signature": "Boolean <.cctor>b__37_18(KPrefabID)",
+                "Signature2": "System.Boolean <.cctor>b__37_18(KPrefabID)",
+                "MemberType": 8,
+                "GenericArguments": null
+              }
+            },
+            "creature_criteria": null,
+            "stomp_in_conflict": null
+          }
+        ]
+      },
+      "additional_constraints": [
+        {
+          "name": "<link=\"REQUIREMENTCLASSWASHSTATION\">Station de lavage alimentée</link>",
+          "description": "Nécessite un ou plusieurs lavabos, éviers, désinfectants pour les mains ou douches",
+          "conflictDescription": "<link=\"REQUIREMENTCLASSWASHSTATION\">Plumbed wash station</link>",
+          "times_required": 1,
+          "room_criteria": null,
+          "building_criteria": {
+            "Delegate": {
+              "delegateEntry": null
+            },
+            "target0": {},
+            "method0": {
+              "Name": "<.cctor>b__57_45",
+              "AssemblyName": "Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+              "ClassName": "RoomConstraints+<>c",
+              "Signature": "Boolean <.cctor>b__57_45(KPrefabID)",
+              "Signature2": "System.Boolean <.cctor>b__57_45(KPrefabID)",
+              "MemberType": 8,
+              "GenericArguments": null
+            }
+          },
+          "creature_criteria": null,
+          "stomp_in_conflict": null
+        },
+        {
+          "name": "Pas de <link=\"OUTHOUSE\">Toilettes Sèches</link>",
+          "description": "Ne peut pas contenir des toilettes sèches",
+          "conflictDescription": "No <link=\"OUTHOUSE\">Outhouses</link>",
+          "times_required": 1,
+          "room_criteria": {
+            "Delegate": {
+              "delegateEntry": null
+            },
+            "target0": {},
+            "method0": {
+              "Name": "<.cctor>b__57_11",
+              "AssemblyName": "Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+              "ClassName": "RoomConstraints+<>c",
+              "Signature": "Boolean <.cctor>b__57_11(Room)",
+              "Signature2": "System.Boolean <.cctor>b__57_11(Room)",
+              "MemberType": 8,
+              "GenericArguments": null
+            }
+          },
+          "building_criteria": null,
+          "creature_criteria": null,
+          "stomp_in_conflict": null
+        },
+        {
+          "name": "Pas de <link=\"REQUIREMENTCLASSINDUSTRIALMACHINERY\">machine industrielle</link>",
+          "description": "Ne peut contenir aucun équipement de type Machine Industrielle",
+          "conflictDescription": "No <link=\"REQUIREMENTCLASSINDUSTRIALMACHINERY\">industrial machinery</link>",
+          "times_required": 1,
+          "room_criteria": {
+            "Delegate": {
+              "delegateEntry": null
+            },
+            "target0": {},
+            "method0": {
+              "Name": "<.cctor>b__57_8",
+              "AssemblyName": "Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+              "ClassName": "RoomConstraints+<>c",
+              "Signature": "Boolean <.cctor>b__57_8(Room)",
+              "Signature2": "System.Boolean <.cctor>b__57_8(Room)",
+              "MemberType": 8,
+              "GenericArguments": null
+            }
+          },
+          "building_criteria": null,
+          "creature_criteria": null,
+          "stomp_in_conflict": null
+        },
+        {
+          "name": "Taille minimale: 12 dalles",
+          "description": "Doit avoir une superficie d'au moins 12 dalles",
+          "conflictDescription": "Minimum size: 12 tiles",
+          "times_required": 1,
+          "room_criteria": {
+            "Delegate": {
+              "delegateEntry": null
+            },
+            "target0": {},
+            "method0": {
+              "Name": "<.cctor>b__57_2",
+              "AssemblyName": "Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+              "ClassName": "RoomConstraints+<>c",
+              "Signature": "Boolean <.cctor>b__57_2(Room)",
+              "Signature2": "System.Boolean <.cctor>b__57_2(Room)",
+              "MemberType": 8,
+              "GenericArguments": null
+            }
+          },
+          "building_criteria": null,
+          "creature_criteria": null,
+          "stomp_in_conflict": null
+        },
+        {
+          "name": "Taille maximale: 128 dalles",
+          "description": "Ne doit pas avoir une largeur de plus de 128 dalles",
+          "conflictDescription": "Taille maximale: 128 dalles",
+          "times_required": 1,
+          "room_criteria": {
+            "Delegate": {
+              "delegateEntry": null
+            },
+            "target0": {
+              "maxSize": 128
+            },
+            "method0": {
+              "Name": "<GetMaxSizeConstraint>b__0",
+              "AssemblyName": "RoomsExpandedMerged, Version=2026.6.11.1748, Culture=neutral, PublicKeyToken=null",
+              "ClassName": "RoomsExpanded.RoomConstraintTags+<>c__DisplayClass12_0",
+              "Signature": "Boolean <GetMaxSizeConstraint>b__0(Room)",
+              "Signature2": "System.Boolean <GetMaxSizeConstraint>b__0(Room)",
+              "MemberType": 8,
+              "GenericArguments": null
+            }
+          },
+          "building_criteria": null,
+          "creature_criteria": null,
+          "stomp_in_conflict": null
+        }
+      ],
+      "priority": 1,
+      "single_assignee": false,
+      "display_details": null,
+      "priority_building_use": false,
+      "category": {
+        "Name": "Salle de Bain",
+        "Id": "Bathroom",
+        "IdHash": {
+          "IsValid": true,
+          "HashValue": 642636974
+        },
+        "Disabled": false,
+        "colorName": "roomBathroom",
+        "icon": "ui_room_bathroom",
+        "Guid": {
+          "Guid": "Bathroom"
+        }
+      },
+      "upgrade_paths": null,
+      "effects": [
+        "RoomBathroom"
+      ],
+      "sortKey": 2,
+      "Guid": {
+        "Guid": "PlumbedBathroom"
+      }
+    },
+    {
+      "Name": "Latrines",
+      "Id": "Latrine",
+      "IdHash": {
+        "IsValid": true,
+        "HashValue": 1949560877
+      },
+      "Disabled": false,
+      "tooltip": "Utiliser des toilettes situées dans une pièce cloisonnée améliorera le moral des Duplicants",
+      "description": "Ne plus faire ses besoins à la vue du reste de la colonie est une amélioration notable.\n\nUtiliser des toilettes dans une pièce fermée améliorera le moral des Duplicants.",
+      "effect": "- Bonus de Moral",
+      "primary_constraint": {
+        "name": "<link=\"REQUIREMENTCLASSTOILETTYPE\">Toilettes</link>",
+        "description": "Requiert une ou plusieurs dépendances ou toilettes",
+        "conflictDescription": "<link=\"REQUIREMENTCLASSTOILETTYPE\">Toilet</link>",
+        "times_required": 1,
+        "room_criteria": null,
+        "building_criteria": {
+          "Delegate": {
+            "delegateEntry": null
+          },
+          "target0": {},
+          "method0": {
+            "Name": "<.cctor>b__57_39",
+            "AssemblyName": "Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+            "ClassName": "RoomConstraints+<>c",
+            "Signature": "Boolean <.cctor>b__57_39(KPrefabID)",
+            "Signature2": "System.Boolean <.cctor>b__57_39(KPrefabID)",
+            "MemberType": 8,
+            "GenericArguments": null
+          }
+        },
+        "creature_criteria": null,
+        "stomp_in_conflict": [
+          {
+            "name": "<link=\"ITEMPEDESTAL\">Pedestal</link>",
+            "description": "At least one Pedestal",
+            "conflictDescription": "<link=\"ITEMPEDESTAL\">Pedestal</link>",
+            "times_required": 1,
+            "room_criteria": null,
+            "building_criteria": {
+              "Delegate": {
+                "delegateEntry": null
+              },
+              "target0": {},
+              "method0": {
+                "Name": "<.cctor>b__37_18",
+                "AssemblyName": "RoomsExpandedMerged, Version=2026.6.11.1748, Culture=neutral, PublicKeyToken=null",
+                "ClassName": "RoomsExpanded.RoomModdedConstraints+<>c",
+                "Signature": "Boolean <.cctor>b__37_18(KPrefabID)",
+                "Signature2": "System.Boolean <.cctor>b__37_18(KPrefabID)",
+                "MemberType": 8,
+                "GenericArguments": null
+              }
+            },
+            "creature_criteria": null,
+            "stomp_in_conflict": null
+          }
+        ]
+      },
+      "additional_constraints": [
+        {
+          "name": "<link=\"REQUIREMENTCLASSWASHSTATION\">Station de lavage</link>",
+          "description": "Nécessite un ou plusieurs lavabos, éviers, désinfectants pour les mains ou douches",
+          "conflictDescription": "<link=\"REQUIREMENTCLASSWASHSTATION\">Wash station</link>",
+          "times_required": 1,
+          "room_criteria": null,
+          "building_criteria": {
+            "Delegate": {
+              "delegateEntry": null
+            },
+            "target0": {},
+            "method0": {
+              "Name": "<.cctor>b__57_44",
+              "AssemblyName": "Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+              "ClassName": "RoomConstraints+<>c",
+              "Signature": "Boolean <.cctor>b__57_44(KPrefabID)",
+              "Signature2": "System.Boolean <.cctor>b__57_44(KPrefabID)",
+              "MemberType": 8,
+              "GenericArguments": null
+            }
+          },
+          "creature_criteria": null,
+          "stomp_in_conflict": null
+        },
+        {
+          "name": "Pas de <link=\"REQUIREMENTCLASSINDUSTRIALMACHINERY\">machine industrielle</link>",
+          "description": "Ne peut contenir aucun équipement de type Machine Industrielle",
+          "conflictDescription": "No <link=\"REQUIREMENTCLASSINDUSTRIALMACHINERY\">industrial machinery</link>",
+          "times_required": 1,
+          "room_criteria": {
+            "Delegate": {
+              "delegateEntry": null
+            },
+            "target0": {},
+            "method0": {
+              "Name": "<.cctor>b__57_8",
+              "AssemblyName": "Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+              "ClassName": "RoomConstraints+<>c",
+              "Signature": "Boolean <.cctor>b__57_8(Room)",
+              "Signature2": "System.Boolean <.cctor>b__57_8(Room)",
+              "MemberType": 8,
+              "GenericArguments": null
+            }
+          },
+          "building_criteria": null,
+          "creature_criteria": null,
+          "stomp_in_conflict": null
+        },
+        {
+          "name": "Taille minimale: 12 dalles",
+          "description": "Doit avoir une superficie d'au moins 12 dalles",
+          "conflictDescription": "Minimum size: 12 tiles",
+          "times_required": 1,
+          "room_criteria": {
+            "Delegate": {
+              "delegateEntry": null
+            },
+            "target0": {},
+            "method0": {
+              "Name": "<.cctor>b__57_2",
+              "AssemblyName": "Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+              "ClassName": "RoomConstraints+<>c",
+              "Signature": "Boolean <.cctor>b__57_2(Room)",
+              "Signature2": "System.Boolean <.cctor>b__57_2(Room)",
+              "MemberType": 8,
+              "GenericArguments": null
+            }
+          },
+          "building_criteria": null,
+          "creature_criteria": null,
+          "stomp_in_conflict": null
+        },
+        {
+          "name": "Taille maximale: 128 dalles",
+          "description": "Ne doit pas avoir une largeur de plus de 128 dalles",
+          "conflictDescription": "Taille maximale: 128 dalles",
+          "times_required": 1,
+          "room_criteria": {
+            "Delegate": {
+              "delegateEntry": null
+            },
+            "target0": {
+              "maxSize": 128
+            },
+            "method0": {
+              "Name": "<GetMaxSizeConstraint>b__0",
+              "AssemblyName": "RoomsExpandedMerged, Version=2026.6.11.1748, Culture=neutral, PublicKeyToken=null",
+              "ClassName": "RoomsExpanded.RoomConstraintTags+<>c__DisplayClass12_0",
+              "Signature": "Boolean <GetMaxSizeConstraint>b__0(Room)",
+              "Signature2": "System.Boolean <GetMaxSizeConstraint>b__0(Room)",
+              "MemberType": 8,
+              "GenericArguments": null
+            }
+          },
+          "building_criteria": null,
+          "creature_criteria": null,
+          "stomp_in_conflict": null
+        }
+      ],
+      "priority": 1,
+      "single_assignee": false,
+      "display_details": null,
+      "priority_building_use": false,
+      "category": {
+        "Name": "Salle de Bain",
+        "Id": "Bathroom",
+        "IdHash": {
+          "IsValid": true,
+          "HashValue": 642636974
+        },
+        "Disabled": false,
+        "colorName": "roomBathroom",
+        "icon": "ui_room_bathroom",
+        "Guid": {
+          "Guid": "Bathroom"
+        }
+      },
+      "upgrade_paths": null,
+      "effects": [
+        "RoomLatrine"
+      ],
+      "sortKey": 1,
+      "Guid": {
+        "Guid": "Latrine"
+      }
+    },
+    {
+      "Name": "Shower Room",
+      "Id": "BathroomRoom",
+      "IdHash": {
+        "IsValid": true,
+        "HashValue": -189056919
+      },
+      "Disabled": false,
+      "tooltip": "Just entering such a nice bathroom make duplicants feel cleaner.",
+      "description": "Just entering such a nice bathroom make duplicants feel cleaner.",
+      "effect": " • Shorter shower time by 25%",
+      "primary_constraint": {
+        "name": "<link=\"SHOWER\">Shower</link>",
+        "description": "At least one Shower",
+        "conflictDescription": "<link=\"SHOWER\">Shower</link>",
+        "times_required": 1,
+        "room_criteria": null,
+        "building_criteria": {
+          "Delegate": {
+            "delegateEntry": null
+          },
+          "target0": {},
+          "method0": {
+            "Name": "<.cctor>b__37_2",
+            "AssemblyName": "RoomsExpandedMerged, Version=2026.6.11.1748, Culture=neutral, PublicKeyToken=null",
+            "ClassName": "RoomsExpanded.RoomModdedConstraints+<>c",
+            "Signature": "Boolean <.cctor>b__37_2(KPrefabID)",
+            "Signature2": "System.Boolean <.cctor>b__37_2(KPrefabID)",
+            "MemberType": 8,
+            "GenericArguments": null
+          }
+        },
+        "creature_criteria": null,
+        "stomp_in_conflict": [
+          {
+            "name": "<link=\"ITEMPEDESTAL\">Pedestal</link>",
+            "description": "At least one Pedestal",
+            "conflictDescription": "<link=\"ITEMPEDESTAL\">Pedestal</link>",
+            "times_required": 1,
+            "room_criteria": null,
+            "building_criteria": {
+              "Delegate": {
+                "delegateEntry": null
+              },
+              "target0": {},
+              "method0": {
+                "Name": "<.cctor>b__37_18",
+                "AssemblyName": "RoomsExpandedMerged, Version=2026.6.11.1748, Culture=neutral, PublicKeyToken=null",
+                "ClassName": "RoomsExpanded.RoomModdedConstraints+<>c",
+                "Signature": "Boolean <.cctor>b__37_18(KPrefabID)",
+                "Signature2": "System.Boolean <.cctor>b__37_18(KPrefabID)",
+                "MemberType": 8,
+                "GenericArguments": null
+              }
+            },
+            "creature_criteria": null,
+            "stomp_in_conflict": null
+          }
+        ]
+      },
+      "additional_constraints": [
+        {
+          "name": "<link=\"REQUIREMENTCLASSDECORATION\">Objet décoratif</link> (1)",
+          "description": "Requiert 1 ou plus d'objets décoratifs",
+          "conflictDescription": "<link=\"REQUIREMENTCLASSDECORATION\">Decor building</link> (1)",
+          "times_required": 1,
+          "room_criteria": null,
+          "building_criteria": {
+            "Delegate": {
+              "delegateEntry": null
+            },
+            "target0": {},
+            "method0": {
+              "Name": "<.cctor>b__57_22",
+              "AssemblyName": "Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+              "ClassName": "RoomConstraints+<>c",
+              "Signature": "Boolean <.cctor>b__57_22(KPrefabID)",
+              "Signature2": "System.Boolean <.cctor>b__57_22(KPrefabID)",
+              "MemberType": 8,
+              "GenericArguments": null
+            }
+          },
+          "creature_criteria": null,
+          "stomp_in_conflict": null
+        },
+        {
+          "name": "Pas de <link=\"REQUIREMENTCLASSINDUSTRIALMACHINERY\">machine industrielle</link>",
+          "description": "Ne peut contenir aucun équipement de type Machine Industrielle",
+          "conflictDescription": "No <link=\"REQUIREMENTCLASSINDUSTRIALMACHINERY\">industrial machinery</link>",
+          "times_required": 1,
+          "room_criteria": {
+            "Delegate": {
+              "delegateEntry": null
+            },
+            "target0": {},
+            "method0": {
+              "Name": "<.cctor>b__57_8",
+              "AssemblyName": "Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+              "ClassName": "RoomConstraints+<>c",
+              "Signature": "Boolean <.cctor>b__57_8(Room)",
+              "Signature2": "System.Boolean <.cctor>b__57_8(Room)",
+              "MemberType": 8,
+              "GenericArguments": null
+            }
+          },
+          "building_criteria": null,
+          "creature_criteria": null,
+          "stomp_in_conflict": null
+        },
+        {
+          "name": "Taille minimale: 12 dalles",
+          "description": "Doit avoir une superficie d'au moins 12 dalles",
+          "conflictDescription": "Minimum size: 12 tiles",
+          "times_required": 1,
+          "room_criteria": {
+            "Delegate": {
+              "delegateEntry": null
+            },
+            "target0": {},
+            "method0": {
+              "Name": "<.cctor>b__57_2",
+              "AssemblyName": "Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+              "ClassName": "RoomConstraints+<>c",
+              "Signature": "Boolean <.cctor>b__57_2(Room)",
+              "Signature2": "System.Boolean <.cctor>b__57_2(Room)",
+              "MemberType": 8,
+              "GenericArguments": null
+            }
+          },
+          "building_criteria": null,
+          "creature_criteria": null,
+          "stomp_in_conflict": null
+        },
+        {
+          "name": "Taille maximale: 128 dalles",
+          "description": "Ne doit pas avoir une largeur de plus de 128 dalles",
+          "conflictDescription": "Taille maximale: 128 dalles",
+          "times_required": 1,
+          "room_criteria": {
+            "Delegate": {
+              "delegateEntry": null
+            },
+            "target0": {
+              "maxSize": 128
+            },
+            "method0": {
+              "Name": "<GetMaxSizeConstraint>b__0",
+              "AssemblyName": "RoomsExpandedMerged, Version=2026.6.11.1748, Culture=neutral, PublicKeyToken=null",
+              "ClassName": "RoomsExpanded.RoomConstraintTags+<>c__DisplayClass12_0",
+              "Signature": "Boolean <GetMaxSizeConstraint>b__0(Room)",
+              "Signature2": "System.Boolean <GetMaxSizeConstraint>b__0(Room)",
+              "MemberType": 8,
+              "GenericArguments": null
+            }
+          },
+          "building_criteria": null,
+          "creature_criteria": null,
+          "stomp_in_conflict": null
+        }
+      ],
+      "priority": 0,
+      "single_assignee": false,
+      "display_details": null,
+      "priority_building_use": false,
+      "category": {
+        "Name": "",
+        "Id": "BathroomRoomCategory",
+        "IdHash": {
+          "IsValid": true,
+          "HashValue": -206790553
+        },
+        "Disabled": false,
+        "colorName": "BathroomRoom",
+        "icon": "unknown",
+        "Guid": {
+          "Guid": "BathroomRoomCategory"
+        }
+      },
+      "upgrade_paths": null,
+      "effects": null,
+      "sortKey": 2,
+      "Guid": {
+        "Guid": "BathroomRoom"
+      }
+    }
+  ]
+}
