@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Building;
 use App\Models\Mod;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 
 it('renders the buildings index page', function (): void {
@@ -91,4 +92,17 @@ it('exposes the mod on modded buildings', function (): void {
                 ->where('buildings.0.mod.workshop_id', '2000001')
                 ->where('buildings.1.mod', null)
         );
+});
+
+it('ignores an index cached by code with another payload shape', function (): void {
+    Building::factory()->create(['building_id' => 'Fresh']);
+    Cache::forever('buildings.index.'.app()->getLocale(), [['building_id' => 'Stale']]);
+
+    $this->get(route('buildings.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('buildings.0.building_id', 'Fresh'));
+});
+
+it('keys the index cache by payload shape and locale', function (): void {
+    expect(Building::indexCacheKey('fr'))->toMatch('/^buildings\.index\.[0-9a-f]{12}\.fr$/');
 });

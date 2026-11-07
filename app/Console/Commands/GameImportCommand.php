@@ -41,8 +41,10 @@ use App\Services\GameImport\StringResolver;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Throwable;
 
 #[Description('Import all ONI game data from the OniExtract export into the database (destructive reimport)')]
 #[Signature('game:import
@@ -80,9 +82,50 @@ final class GameImportCommand extends Command
             DB::statement('PRAGMA foreign_keys = ON');
         }
 
+        $this->forgetBuildingIndexCache();
         $this->report($report);
+        $this->reloadOctaneWorkers();
 
         return self::SUCCESS;
+    }
+
+    /** Drops the cached building index of every catalog locale once the import is committed. */
+    private function forgetBuildingIndexCache(): void
+    {
+        $locales = array_map(
+            fn (string $catalog): string => pathinfo($catalog, PATHINFO_FILENAME),
+            File::glob($this->option('lang-path').'/*.json'),
+        );
+
+        foreach (array_unique([...$locales, (string) config('app.locale')]) as $locale) {
+            Cache::forget(Building::indexCacheKey($locale));
+        }
+    }
+
+    /**
+     * Octane workers keep the translation catalogs they already loaded, so a
+     * running server is reloaded to serve the new ones. The import itself has
+     * succeeded at this point: a failed reload only prints the manual step.
+     */
+    private function reloadOctaneWorkers(): void
+    {
+        try {
+            if ($this->callSilently('octane:status') !== self::SUCCESS) {
+                $this->line('Octane is not running: no worker to reload.');
+
+                return;
+            }
+
+            if ($this->call('octane:reload') === self::SUCCESS) {
+                return;
+            }
+
+            $reason = 'octane:reload failed';
+        } catch (Throwable $exception) {
+            $reason = $exception->getMessage();
+        }
+
+        $this->warn(sprintf('Could not reload the Octane workers (%s). Run `php artisan octane:reload` so they serve the new translation catalogs.', $reason));
     }
 
     /** @param  list<string>  $supportedMods */

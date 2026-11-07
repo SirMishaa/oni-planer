@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Services\GameImport;
 
 use App\Models\Building;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\File;
 
 final readonly class BuildingImporter
 {
@@ -70,12 +68,6 @@ final readonly class BuildingImporter
             $materials = $raw['materials'] ?? [];
             $building->constructionMaterials()->createMany($materials);
         }
-
-        foreach (File::glob(lang_path('game').'/*.json') as $catalog) {
-            Cache::forget(Building::indexCacheKey(pathinfo($catalog, PATHINFO_FILENAME)));
-        }
-
-        Cache::forget(Building::indexCacheKey((string) config('app.locale')));
     }
 
     /** @return array<string, string>|null */

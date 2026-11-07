@@ -7,7 +7,9 @@ use App\Models\Element;
 use App\Models\Mod;
 use App\Models\PrefabName;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
+use Laravel\Octane\FrankenPhp\ServerProcessInspector;
 
 uses(RefreshDatabase::class);
 
@@ -28,7 +30,12 @@ beforeEach(function (): void {
     File::copyDirectory(base_path('tests/Fixtures/OniExport'), $this->workDir.'/export');
     File::put($this->workDir.'/export/database/geyser.json', '{"geysers": []}');
 
-    config(['game.supported_mods' => [FIXTURE_MOD_ID]]);
+    config(['game.supported_mods' => [FIXTURE_MOD_ID], 'octane.server' => 'frankenphp']);
+
+    // Never reload a local Octane server from the test suite.
+    $this->mock(ServerProcessInspector::class, function ($mock): void {
+        $mock->shouldReceive('serverIsRunning')->andReturnFalse();
+    });
 
     $this->importOptions = fn (array $overrides = []): array => [
         '--game-path' => $this->gamePath,
@@ -107,4 +114,45 @@ it('leaves the previous data intact when the import fails midway', function (): 
         ->toThrow(JsonException::class);
 
     expect(Building::query()->where('building_id', 'Survivor')->exists())->toBeTrue();
+});
+
+it('forgets the cached building index after the import', function (): void {
+    Cache::forever(Building::indexCacheKey('en'), [['building_id' => 'Stale']]);
+    Cache::forever(Building::indexCacheKey('fr'), [['building_id' => 'Stale']]);
+
+    $this->artisan('game:import', ($this->importOptions)())->assertSuccessful();
+
+    expect(Cache::has(Building::indexCacheKey('en')))->toBeFalse()
+        ->and(Cache::has(Building::indexCacheKey('fr')))->toBeFalse();
+});
+
+it('reloads the octane workers after the import when octane is running', function (): void {
+    $this->mock(ServerProcessInspector::class, function ($mock): void {
+        $mock->shouldReceive('serverIsRunning')->andReturnTrue();
+        $mock->shouldReceive('reloadServer')->once();
+    });
+
+    $this->artisan('game:import', ($this->importOptions)())->assertSuccessful();
+});
+
+it('tells how to reload octane when the reload fails, without failing the import', function (): void {
+    $this->mock(ServerProcessInspector::class, function ($mock): void {
+        $mock->shouldReceive('serverIsRunning')->andReturnTrue();
+        $mock->shouldReceive('reloadServer')->andThrow(new RuntimeException('admin API down'));
+    });
+
+    $this->artisan('game:import', ($this->importOptions)())
+        ->expectsOutputToContain('php artisan octane:reload')
+        ->assertSuccessful();
+});
+
+it('skips the octane reload when octane is not running', function (): void {
+    $this->mock(ServerProcessInspector::class, function ($mock): void {
+        $mock->shouldReceive('serverIsRunning')->andReturnFalse();
+        $mock->shouldNotReceive('reloadServer');
+    });
+
+    $this->artisan('game:import', ($this->importOptions)())
+        ->expectsOutputToContain('Octane is not running')
+        ->assertSuccessful();
 });
