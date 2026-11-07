@@ -80,3 +80,15 @@ it('maps the vacuum state to the special state', function (): void {
         ->and(ElementSpecialProperty::query()->where('element_id', 'Vacuum')->exists())->toBeTrue()
         ->and(ElementGasProperty::query()->where('element_id', 'Vacuum')->exists())->toBeFalse();
 });
+
+it('stores no transition temperature when the element has no transition target', function (): void {
+    importFixtureElements();
+
+    $oxygen = Element::query()->where('element_id', 'Oxygen')->firstOrFail();
+    $brick = Element::query()->where('element_id', 'Brick')->firstOrFail();
+
+    expect($oxygen->thermalProperties->high_temp)->toBeNull()
+        ->and($oxygen->thermalProperties->low_temp)->toBe(90.19)
+        ->and($brick->thermalProperties->low_temp)->toBeNull()
+        ->and($brick->thermalProperties->high_temp)->toBe(2000.0);
+});

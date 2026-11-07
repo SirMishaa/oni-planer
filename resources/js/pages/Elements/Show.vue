@@ -63,6 +63,18 @@ function thermalRows(t: ThermalPropertyData): PropRow[] {
             label: 'Température par défaut',
             value: formatTemp(t.default_temperature),
         },
+    ];
+    if (t.low_temp !== null)
+        rows.push({
+            label: 'Température basse',
+            value: formatTemp(t.low_temp),
+        });
+    if (t.high_temp !== null)
+        rows.push({
+            label: 'Température haute',
+            value: formatTemp(t.high_temp),
+        });
+    rows.push(
         {
             label: 'Capacité thermique',
             value: `${t.specific_heat_capacity} DTU/g/°C`,
@@ -71,17 +83,7 @@ function thermalRows(t: ThermalPropertyData): PropRow[] {
             label: 'Conductivité',
             value: `${t.thermal_conductivity} DTU/m/s/°C`,
         },
-    ];
-    if (t.low_temp !== null)
-        rows.splice(1, 0, {
-            label: 'Température basse',
-            value: formatTemp(t.low_temp),
-        });
-    if (t.high_temp !== null)
-        rows.splice(2, 0, {
-            label: 'Température haute',
-            value: formatTemp(t.high_temp),
-        });
+    );
     return rows;
 }
 </script>

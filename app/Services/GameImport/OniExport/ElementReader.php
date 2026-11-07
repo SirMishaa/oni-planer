@@ -11,7 +11,8 @@ namespace App\Services\GameImport\OniExport;
  * The export holds the runtime values, so elements a mod re-enables are kept
  * and disabled ones are skipped. Elements owned by an unsupported mod are
  * skipped too. The export state `Vacuum` is stored as `special`, the state of
- * the YAML `special.yaml` elements (Vacuum, Void, COMPOSITION).
+ * the YAML `special.yaml` elements (Vacuum, Void, COMPOSITION). Transition
+ * temperatures without a transition target are stored as null.
  *
  * @phpstan-type ElementRecord array{
  *     element_id: string,
@@ -77,8 +78,8 @@ final readonly class ElementReader
                 'dlc_id' => ($element['dlcId'] ?? '') ?: null,
                 'specific_heat_capacity' => (float) $element['specificHeatCapacity'],
                 'thermal_conductivity' => (float) $element['thermalConductivity'],
-                'low_temp' => isset($element['lowTemp']) ? (float) $element['lowTemp'] : null,
-                'high_temp' => isset($element['highTemp']) ? (float) $element['highTemp'] : null,
+                'low_temp' => $this->transitionTemperature($element, 'lowTemp', 'lowTempTransitionTarget'),
+                'high_temp' => $this->transitionTemperature($element, 'highTemp', 'highTempTransitionTarget'),
                 'default_temperature' => (float) ($element['defaultTemperature'] ?? 300),
                 'light_absorption_factor' => (float) ($element['lightAbsorptionFactor'] ?? 0),
                 'radiation_absorption_factor' => (float) ($element['radiationAbsorptionFactor'] ?? 0),
@@ -97,6 +98,21 @@ final readonly class ElementReader
         }
 
         return $records;
+    }
+
+    /**
+     * The export holds the runtime defaults (0 K and 10000 K) for elements
+     * without a transition, so a temperature only counts when it has a target.
+     *
+     * @param  array<string, mixed>  $element
+     */
+    private function transitionTemperature(array $element, string $temperatureKey, string $targetKey): ?float
+    {
+        if (! isset($element[$targetKey], $element[$temperatureKey])) {
+            return null;
+        }
+
+        return (float) $element[$temperatureKey];
     }
 
     /** @return 'gas'|'liquid'|'solid'|'special' */
