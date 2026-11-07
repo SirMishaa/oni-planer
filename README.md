@@ -30,7 +30,9 @@ StreamingAssets/ (strings, codex) ───────────────�
 
 **Stage 1 — OniExtract export**: the OniExtract mod writes the game's runtime data (buildings, entities, elements, recipes, images) to JSON; `php artisan game:sync-export` mirrors it and the supported mods into `game-data/`.
 
-**Stage 2 — Laravel importer** (`php artisan game:import`): readers in `app/Services/GameImport/OniExport/` turn the export into records that the importers persist into the database tables. The whole import runs in one transaction. `php artisan game:import-assets` then converts the exported renders to WebP.
+**Stage 2 — Laravel importer** (`php artisan game:import`): readers in `app/Services/GameImport/OniExport/` turn the export into records that the importers persist into the database tables. The whole import runs in one transaction; the translation catalogs in `lang/game/` are generated alongside and only replace the previous ones once it commits. When Octane is running, the command then reloads its workers so they serve the new catalogs (if the reload fails it prints the `php artisan octane:reload` to run by hand).
+
+**Stage 3 — Assets** (`php artisan game:import-assets`): converts the exported building renders and sprites to WebP under `public/assets/game/`.
 
 ### Database schema (27 tables)
 
@@ -51,8 +53,8 @@ Elements use a Class Table Inheritance (CTI) pattern — each state (gas, liquid
 - **PHP 8.5** / **Laravel 13**
 - **Pest 5** for testing
 - **spatie/laravel-translatable** for multilingual entity names
-- **symfony/yaml** for parsing game element YAML files
-- **.NET 8** / **Mono.Cecil** for DLL extraction (C# project)
+- **symfony/yaml** for reading mod metadata (`mod.yaml`)
+- **OniExtract** (in-game mod) for the game data export
 - **SQLite** for development and tests, **PostgreSQL** for production
 - **Tailwind CSS v4** / **Vite** for the frontend
 
@@ -82,11 +84,12 @@ php artisan migrate
 
 ### Import game data
 
-Place your game data directory at `game-data/OxygenNotIncluded_Data/` (or update the path in `.env`), then run:
+Run the OniExtract export from the game's pause menu, place your game data directory at `game-data/OxygenNotIncluded_Data/` (or update the path in `.env`), then run the three steps in order:
 
 ```bash
-php artisan game:sync-export
-php artisan game:import
+php artisan game:sync-export     # mirror the OniExtract export and the supported mods into game-data/
+php artisan game:import          # rebuild the game data tables and lang/game catalogs
+php artisan game:import-assets   # convert the exported images to WebP
 
 # Custom paths
 php artisan game:import \
@@ -121,8 +124,9 @@ app/
 ├── Console/Commands/GameImportCommand.php   # game:import command
 ├── Models/                                  # 27 Eloquent models
 └── Services/GameImport/                     # Import pipeline services
+    ├── OniExport/                           # Readers: OniExtract export → records
     ├── StringResolver.php                   # .pot localization parser
-    ├── ElementImporter.php                  # YAML → elements tables
+    ├── ElementImporter.php                  # element records → elements tables
     ├── BuildingImporter.php
     ├── CritterImporter.php
     ├── PlantImporter.php
@@ -139,7 +143,8 @@ tests/
 ├── Feature/
 │   ├── GameImport/                          # Importer tests
 │   └── Models/                             # Model tests
-├── Fixtures/GameImport/                     # JSON/YAML fixtures for tests
+├── Fixtures/OniExport/                      # OniExtract export slice for tests
+├── Fixtures/GameImport/                     # strings, codex and translation fixtures
 └── Unit/ArchTest.php                        # Architecture preset checks
 
 game-data/                                   # gitignored — your game files here

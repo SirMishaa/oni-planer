@@ -66,20 +66,26 @@ final class GameImportCommand extends Command
 
         $export = new OniExport($exportPath);
 
-        if (! $this->validateSources($export, $modsPath, $supportedMods)) {
+        if (! $this->validateSources($gamePath, $export, $modsPath, $supportedMods)) {
             return self::FAILURE;
         }
 
         $report = [];
+        $langPath = (string) $this->option('lang-path');
+        $stagingPath = $langPath.'.staging';
+        File::deleteDirectory($stagingPath);
 
         DB::statement('PRAGMA foreign_keys = OFF');
 
         try {
-            DB::transaction(function () use ($gamePath, $export, $modsPath, $supportedMods, &$report): void {
-                $report = $this->importAll($gamePath, $export, $modsPath, $supportedMods);
+            DB::transaction(function () use ($gamePath, $export, $modsPath, $supportedMods, $stagingPath, &$report): void {
+                $report = $this->importAll($gamePath, $export, $modsPath, $supportedMods, $stagingPath);
             });
+
+            $this->publishCatalogs($stagingPath, $langPath);
         } finally {
             DB::statement('PRAGMA foreign_keys = ON');
+            File::deleteDirectory($stagingPath);
         }
 
         $this->forgetBuildingIndexCache();
@@ -87,6 +93,20 @@ final class GameImportCommand extends Command
         $this->reloadOctaneWorkers();
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Catalogs are generated into a staging directory during the import and
+     * only replace the live ones once the database transaction has committed,
+     * so a failed import leaves both untouched.
+     */
+    private function publishCatalogs(string $stagingPath, string $langPath): void
+    {
+        File::ensureDirectoryExists($langPath);
+
+        foreach (File::glob($stagingPath.'/*.json') as $catalog) {
+            File::move($catalog, $langPath.'/'.basename($catalog));
+        }
     }
 
     /** Drops the cached building index of every catalog locale once the import is committed. */
@@ -129,8 +149,20 @@ final class GameImportCommand extends Command
     }
 
     /** @param  list<string>  $supportedMods */
-    private function validateSources(OniExport $export, string $modsPath, array $supportedMods): bool
+    private function validateSources(string $gamePath, OniExport $export, string $modsPath, array $supportedMods): bool
     {
+        if (! File::isFile($gamePath.'/StreamingAssets/strings/strings_template.pot')) {
+            $this->error(sprintf('Game strings missing: %s/StreamingAssets/strings/strings_template.pot not found.', $gamePath));
+
+            return false;
+        }
+
+        if (! File::isDirectory($gamePath.'/StreamingAssets/codex')) {
+            $this->error(sprintf('Game codex missing: %s/StreamingAssets/codex not found.', $gamePath));
+
+            return false;
+        }
+
         foreach (['building.json', 'planner_extras.json'] as $file) {
             if (! File::isFile($export->path.'/database/'.$file)) {
                 $this->error(sprintf('OniExtract export incomplete: %s/database/%s is missing. Run game:sync-export.', $export->path, $file));
@@ -159,7 +191,7 @@ final class GameImportCommand extends Command
      * @param  list<string>  $supportedMods
      * @return array{counts: array<string, string>, skippedMods: list<array{workshop_id: string, title: string, entities: int}>, skipped: array<string, int>}
      */
-    private function importAll(string $gamePath, OniExport $export, string $modsPath, array $supportedMods): array
+    private function importAll(string $gamePath, OniExport $export, string $modsPath, array $supportedMods, string $catalogsPath): array
     {
         $this->info('Truncating game data tables...');
         foreach (GameDataTables::all() as $table) {
@@ -180,7 +212,7 @@ final class GameImportCommand extends Command
         foreach ($locales as $locale) {
             $poPathsByLocale[$locale] = $catalog->poPaths($locale);
         }
-        new GameTranslationWriter()->write($stringsPath, $translationsPath, (string) $this->option('lang-path'), $catalog->potPaths(), $poPathsByLocale);
+        new GameTranslationWriter()->write($stringsPath, $translationsPath, $catalogsPath, $catalog->potPaths(), $poPathsByLocale);
         $resolver = new StringResolver($stringsPath, $catalog->potPaths());
 
         $this->info('Importing mods...');
@@ -215,7 +247,8 @@ final class GameImportCommand extends Command
 
         $this->info('Importing geysers...');
         $geysers = new GeyserReader($export, $catalog)->records();
-        new GeyserImporter($resolver)->importRecords($geysers);
+        $geyserImporter = new GeyserImporter($resolver);
+        $geyserImporter->importRecords($geysers);
 
         $this->info('Indexing prefab names...');
         new PrefabNameImporter($resolver, $catalog)->import(compact('buildings', 'critters', 'plants', 'geysers'));
@@ -229,10 +262,7 @@ final class GameImportCommand extends Command
         $rocketImporter->importRecords($rocketReader->records());
 
         $this->info('Importing codex...');
-        $codexDir = $gamePath.'/StreamingAssets/codex';
-        if (is_dir($codexDir)) {
-            new CodexImporter($resolver)->import($codexDir);
-        }
+        new CodexImporter($resolver)->import($gamePath.'/StreamingAssets/codex');
 
         return [
             'counts' => [
@@ -247,10 +277,11 @@ final class GameImportCommand extends Command
             'skippedMods' => $catalog->skippedReport(),
             'skipped' => [
                 'buildings' => count($buildingReader->skippedBuildings()),
-                'recipes' => $recipeReader->skippedRecipes(),
+                'recipes' => $recipeReader->skippedRecipes() + $recipeImporter->skippedRecipes(),
                 'recipe references' => $recipeReader->skippedReferences() + $recipeImporter->skippedReferences(),
                 'critter references' => $critterReader->skippedReferences(),
                 'plant references' => $plantReader->skippedReferences() + $plantImporter->skippedReferences(),
+                'geysers' => $geyserImporter->skippedGeysers(),
                 'rocket references' => $rocketReader->skippedReferences() + $rocketImporter->skippedReferences(),
             ],
         ];

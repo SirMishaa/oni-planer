@@ -26,9 +26,8 @@ beforeEach(function (): void {
         $this->gamePath.'/StreamingAssets/strings/strings_template.pot',
     );
 
-    // The fixture slice has no Steam element, which the fixture geyser references.
+    File::copyDirectory(base_path('tests/Fixtures/GameImport/codex'), $this->gamePath.'/StreamingAssets/codex');
     File::copyDirectory(base_path('tests/Fixtures/OniExport'), $this->workDir.'/export');
-    File::put($this->workDir.'/export/database/geyser.json', '{"geysers": []}');
 
     config(['game.supported_mods' => [FIXTURE_MOD_ID], 'octane.server' => 'frankenphp']);
 
@@ -81,6 +80,17 @@ it('aborts before truncating when a supported mod folder is missing', function (
     expect(Building::query()->count())->toBe(1);
 });
 
+it('aborts before truncating when the codex folder is missing', function (): void {
+    Building::factory()->create();
+    File::deleteDirectory($this->gamePath.'/StreamingAssets/codex');
+
+    $this->artisan('game:import', ($this->importOptions)())
+        ->expectsOutputToContain('codex')
+        ->assertExitCode(1);
+
+    expect(Building::query()->count())->toBe(1);
+});
+
 it('warns on build version mismatch', function (): void {
     $this->artisan('game:import', ($this->importOptions)(['--game-build' => 'U1-000000-OTHER']))
         ->expectsOutputToContain('U59-744825-SCRPAN')
@@ -106,14 +116,26 @@ it('imports the fixture export end to end', function (): void {
         ->and($this->langPath.'/fr.json')->toBeFile();
 });
 
-it('leaves the previous data intact when the import fails midway', function (): void {
+it('leaves the previous data and catalogs intact when the import fails midway', function (): void {
     Building::factory()->create(['building_id' => 'Survivor']);
+    File::ensureDirectoryExists($this->langPath);
+    File::put($this->langPath.'/en.json', '{"OLD": "catalog"}');
     File::put($this->workDir.'/export/database/recipe.json', '{broken');
 
     expect(fn () => $this->artisan('game:import', ($this->importOptions)())->run())
         ->toThrow(JsonException::class);
 
-    expect(Building::query()->where('building_id', 'Survivor')->exists())->toBeTrue();
+    expect(Building::query()->where('building_id', 'Survivor')->exists())->toBeTrue()
+        ->and(File::get($this->langPath.'/en.json'))->toBe('{"OLD": "catalog"}')
+        ->and(File::files($this->langPath))->toHaveCount(1)
+        ->and(File::glob($this->workDir.'/*'))->not->toContain($this->langPath.'.staging');
+});
+
+it('reports the recipes and geysers it skips', function (): void {
+    $this->artisan('game:import', ($this->importOptions)())
+        ->expectsOutputToContain('  recipes: 9')
+        ->expectsOutputToContain('  geysers: 2')
+        ->assertSuccessful();
 });
 
 it('forgets the cached building index after the import', function (): void {

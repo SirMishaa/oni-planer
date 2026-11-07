@@ -80,11 +80,11 @@ it('drops ingredients from unsupported mods and counts them', function (): void 
         ->and($reader->skippedReferences())->toBe(2);
 });
 
-it('keeps the first of two recipes sharing an id and counts the duplicate', function (): void {
+it('keeps both recipes sharing an id under distinct ids and counts the duplicate', function (): void {
     $reader = fixtureRecipeReader();
     $ids = array_column($reader->records(), 'recipe_id');
 
-    expect(array_count_values($ids)['MissileFabricator_I_0_0_0_O_MissileLongRange'])->toBe(1)
+    expect($ids)->toContain('MissileFabricator_I_0_0_0_O_MissileLongRange', 'MissileFabricator_I_0_0_0_O_MissileLongRange_2')
         ->and($reader->duplicateRecipes())->toBe(1);
 });
 
@@ -133,7 +133,7 @@ it('imports recipes, dropping recipes without an imported fabricator and items t
         ->and($recipe->inputs)->toHaveCount(1)
         ->and($recipe->inputs->first()->element_id)->toBe('Katairite')
         ->and($recipe->outputs)->toHaveCount(0)
-        ->and($importer->skippedRecipes())->toBe(7)
+        ->and($importer->skippedRecipes())->toBe(8)
         ->and($importer->skippedReferences())->toBe(1);
 });
 

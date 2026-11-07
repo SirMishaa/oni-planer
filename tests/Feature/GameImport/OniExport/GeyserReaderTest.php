@@ -81,3 +81,13 @@ it('imports geyser records', function (): void {
     expect(GeyserType::query()->count())->toBe(3)
         ->and(GeyserType::query()->where('geyser_id', 'AmmoniaGeyser')->value('mod_id'))->not->toBeNull();
 });
+
+it('skips geysers whose element is not imported and counts them', function (): void {
+    Element::factory()->create(['element_id' => 'Magma']);
+
+    $importer = new GeyserImporter(new StringResolver(base_path('tests/Fixtures/GameImport/strings.pot')));
+    $importer->importRecords(fixtureGeyserReader()->records());
+
+    expect(GeyserType::query()->pluck('geyser_id')->all())->toBe(['small_volcano'])
+        ->and($importer->skippedGeysers())->toBe(2);
+});

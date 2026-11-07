@@ -17,8 +17,11 @@ namespace App\Services\GameImport\OniExport;
  * its `possibleMaterials`, each with its own amount in
  * `possibleMaterialAmounts`. It becomes one item per option, all sharing an
  * `alternative_group` (the 1-based position of the ingredient in the recipe).
- * Plain items have a null group. When two recipes share an id the first is
- * kept.
+ * Plain items have a null group.
+ *
+ * Recipe ids are not unique: the game registers MissileLongRange twice at the
+ * MissileFabricator. Both recipes are kept, a repeated id gets a `_2`, `_3`…
+ * suffix (the fabricator is the same, so it cannot tell them apart).
  *
  * Whether the fabricator or the referenced elements exist in the database is
  * decided by the importer, the reader cannot see it.
@@ -53,18 +56,16 @@ final class RecipeReader
         $this->duplicateRecipes = 0;
 
         $records = [];
-        $seen = [];
+        $occurrences = [];
 
         foreach ($this->export->json('recipe.json')['recipes'] ?? [] as $recipe) {
             $recipeId = (string) $recipe['id'];
+            $occurrences[$recipeId] = ($occurrences[$recipeId] ?? 0) + 1;
 
-            if (isset($seen[$recipeId])) {
+            if ($occurrences[$recipeId] > 1) {
                 $this->duplicateRecipes++;
-
-                continue;
+                $recipeId .= '_'.$occurrences[$recipeId];
             }
-
-            $seen[$recipeId] = true;
 
             $fabricators = array_map(fn (array $fabricator): string => (string) $fabricator['Name'], $recipe['fabricators'] ?? []);
 
@@ -110,7 +111,7 @@ final class RecipeReader
         return $this->skippedRecipes;
     }
 
-    /** Number of recipes ignored because an earlier recipe has the same id. */
+    /** Number of recipes whose id repeats an earlier one and got a suffix. */
     public function duplicateRecipes(): int
     {
         return $this->duplicateRecipes;
