@@ -73,6 +73,7 @@ final class RecipeImporter
                         'element_id' => $elementId,
                         'amount' => $item['amount'],
                         'role' => $role,
+                        'alternative_group' => $item['alternative_group'] ?? null,
                     ]);
                 }
             }

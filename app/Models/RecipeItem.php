@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[GameData]
-#[Fillable(['recipe_id', 'element_id', 'amount', 'role'])]
+#[Fillable(['recipe_id', 'element_id', 'amount', 'role', 'alternative_group'])]
 final class RecipeItem extends Model
 {
     use HasFactory;

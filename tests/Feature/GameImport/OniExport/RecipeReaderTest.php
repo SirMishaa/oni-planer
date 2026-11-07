@@ -42,8 +42,8 @@ it('reads the katairite electrobank recipe', function (): void {
     expect($recipe['building_id'])->toBe('AdvancedCraftingTable')
         ->and($recipe['fabricators'])->toBe(['AdvancedCraftingTable'])
         ->and($recipe['duration'])->toBe(60.0)
-        ->and($recipe['inputs'])->toBe([['element_id' => 'Katairite', 'amount' => 200.0]])
-        ->and($recipe['outputs'])->toBe([['element_id' => 'EmptyElectrobank', 'amount' => 1.0]])
+        ->and($recipe['inputs'])->toBe([['element_id' => 'Katairite', 'amount' => 200.0, 'alternative_group' => null]])
+        ->and($recipe['outputs'])->toBe([['element_id' => 'EmptyElectrobank', 'amount' => 1.0, 'alternative_group' => null]])
         ->and($recipe['mod_id'])->toBeNull();
 });
 
@@ -77,7 +77,7 @@ it('drops ingredients from unsupported mods and counts them', function (): void 
 
     expect($recipe['outputs'])->toBe([])
         ->and($recipe['mod_id'])->toBeNull()
-        ->and($reader->skippedReferences())->toBe(1);
+        ->and($reader->skippedReferences())->toBe(2);
 });
 
 it('keeps the first of two recipes sharing an id and counts the duplicate', function (): void {
@@ -88,11 +88,36 @@ it('keeps the first of two recipes sharing an id and counts the duplicate', func
         ->and($reader->duplicateRecipes())->toBe(1);
 });
 
-it('ignores unnamed placeholder ingredients', function (): void {
-    $recipe = readFixtureRecipes()['MissileFabricator_I_0_0_0_O_MissileLongRange'];
+it('keeps the options of an any-of ingredient as alternatives of one group', function (): void {
+    $recipe = readFixtureRecipes()['MetalRefinery_I_IronOre_0_O_Iron_SolidSlag'];
 
-    expect($recipe['inputs'])->toBe([])
-        ->and($recipe['outputs'])->toBe([['element_id' => 'MissileLongRange', 'amount' => 1.0]]);
+    expect($recipe['inputs'])->toBe([
+        ['element_id' => 'IronOre', 'amount' => 100.0, 'alternative_group' => null],
+        ['element_id' => 'Carbon', 'amount' => 20.0, 'alternative_group' => 2],
+        ['element_id' => 'Peat', 'amount' => 20.0, 'alternative_group' => 2],
+        ['element_id' => 'RefinedCarbon', 'amount' => 20.0, 'alternative_group' => 2],
+    ])->and($recipe['outputs'])->toBe([
+        ['element_id' => 'Iron', 'amount' => 80.0, 'alternative_group' => null],
+        ['element_id' => 'SolidSlag', 'amount' => 40.0, 'alternative_group' => null],
+    ]);
+});
+
+it('keeps the inputs of a recipe made only of any-of ingredients', function (): void {
+    $recipe = readFixtureRecipes()['RockCrusher_I_0_O_Sand'];
+
+    expect($recipe['inputs'])->toHaveCount(13)
+        ->and(array_unique(array_column($recipe['inputs'], 'alternative_group')))->toBe([1])
+        ->and($recipe['inputs'][0])->toBe(['element_id' => 'SuperInsulator', 'amount' => 100.0, 'alternative_group' => 1])
+        ->and(array_column($recipe['inputs'], 'element_id'))->toContain('Granite', 'Basalt');
+});
+
+it('drops any-of options from unsupported mods and counts them', function (): void {
+    $reader = fixtureRecipeReader(supported: []);
+    $recipe = collect($reader->records())->keyBy('recipe_id')['CraftingTable_I_0_O_AIO_SimpleDrillbit_Hardened'];
+
+    expect(array_column($recipe['inputs'], 'element_id'))->not->toContain('PhosphorBronze')
+        ->and(array_column($recipe['inputs'], 'element_id'))->toContain('Steel')
+        ->and($reader->skippedReferences())->toBe(2);
 });
 
 it('imports recipes, dropping recipes without an imported fabricator and items that are not elements', function (): void {
@@ -108,7 +133,7 @@ it('imports recipes, dropping recipes without an imported fabricator and items t
         ->and($recipe->inputs)->toHaveCount(1)
         ->and($recipe->inputs->first()->element_id)->toBe('Katairite')
         ->and($recipe->outputs)->toHaveCount(0)
-        ->and($importer->skippedRecipes())->toBe(4)
+        ->and($importer->skippedRecipes())->toBe(7)
         ->and($importer->skippedReferences())->toBe(1);
 });
 
@@ -120,5 +145,18 @@ it('stores the recipe mod id', function (): void {
     $ronivanId = Mod::query()->where('workshop_id', '3557584850')->value('id');
     new RecipeImporter()->importRecords($reader->records());
 
-    expect(Recipe::query()->sole()->mod_id)->toBe($ronivanId);
+    expect(Recipe::query()->whereRelation('items', 'element_id', 'Bioplastic')->sole()->mod_id)->toBe($ronivanId);
+});
+
+it('stores the alternative group of recipe items', function (): void {
+    Building::factory()->create(['building_id' => 'MetalRefinery']);
+    foreach (['IronOre', 'Carbon', 'Peat', 'Iron'] as $elementId) {
+        Element::factory()->create(['element_id' => $elementId]);
+    }
+
+    new RecipeImporter()->importRecords(fixtureRecipeReader()->records());
+
+    $inputs = Recipe::query()->sole()->inputs()->orderBy('id')->get();
+
+    expect($inputs->pluck('alternative_group', 'element_id')->all())->toBe(['IronOre' => null, 'Carbon' => 2, 'Peat' => 2]);
 });

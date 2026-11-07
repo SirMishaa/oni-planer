@@ -656,6 +656,351 @@
         "Name": "AIO_BioplasticGasket",
         "IsValid": true
       }
+    },
+    {
+      "id": "MetalRefinery_I_IronOre_0_O_Iron_SolidSlag",
+      "recipeCategoryID": "MetalRefinery_I_IronOre_0_O_Iron_SolidSlag_Default_Iron",
+      "ingredients": [
+        {
+          "material": {
+            "Name": "IronOre",
+            "IsValid": true
+          },
+          "possibleMaterials": [
+            {
+              "Name": "IronOre",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": [
+            100.0
+          ],
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 100.0
+        },
+        {
+          "material": {
+            "Name": null,
+            "IsValid": false
+          },
+          "possibleMaterials": [
+            {
+              "Name": "Carbon",
+              "IsValid": true
+            },
+            {
+              "Name": "Peat",
+              "IsValid": true
+            },
+            {
+              "Name": "RefinedCarbon",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": [
+            20.0,
+            20.0,
+            20.0
+          ],
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 20.0
+        }
+      ],
+      "results": [
+        {
+          "material": {
+            "Name": "Iron",
+            "IsValid": true
+          },
+          "possibleMaterials": [
+            {
+              "Name": "Iron",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": null,
+          "temperatureOperation": 1,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 80.0
+        },
+        {
+          "material": {
+            "Name": "SolidSlag",
+            "IsValid": true
+          },
+          "possibleMaterials": [
+            {
+              "Name": "SolidSlag",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": null,
+          "temperatureOperation": 1,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 40.0
+        }
+      ],
+      "time": 40.0,
+      "consumedHEP": 0,
+      "producedHEP": 0,
+      "nameDisplay": 2,
+      "customName": null,
+      "customSpritePrefabID": null,
+      "description": "Fondre un mélange de <link=\"IRONORE\">Minerai de Fer</link> et  pour produire <link=\"IRON\">Fer</link>.\nProduit <link=\"SOLIDSLAG\">Scories</link> comme déchet.",
+      "runTimeDescription": null,
+      "fabricators": [
+        {
+          "Name": "MetalRefinery",
+          "IsValid": true
+        }
+      ],
+      "sortOrder": 0,
+      "requiredTech": null,
+      "ProductHasFacade": false,
+      "RequiresAllIngredientsDiscovered": false,
+      "FirstResult": {
+        "Name": "Iron",
+        "IsValid": true
+      }
+    },
+    {
+      "id": "RockCrusher_I_0_O_Sand",
+      "recipeCategoryID": "RockCrusher_I_0_O_Sand_Default_Sand",
+      "ingredients": [
+        {
+          "material": {
+            "Name": null,
+            "IsValid": false
+          },
+          "possibleMaterials": [
+            {
+              "Name": "SuperInsulator",
+              "IsValid": true
+            },
+            {
+              "Name": "Shale",
+              "IsValid": true
+            },
+            {
+              "Name": "Ceramic",
+              "IsValid": true
+            },
+            {
+              "Name": "Coquina",
+              "IsValid": true
+            },
+            {
+              "Name": "Obsidian",
+              "IsValid": true
+            },
+            {
+              "Name": "IgneousRock",
+              "IsValid": true
+            },
+            {
+              "Name": "SiltStone",
+              "IsValid": true
+            },
+            {
+              "Name": "Brick",
+              "IsValid": true
+            },
+            {
+              "Name": "Granite",
+              "IsValid": true
+            },
+            {
+              "Name": "SedimentaryRock",
+              "IsValid": true
+            },
+            {
+              "Name": "SandStone",
+              "IsValid": true
+            },
+            {
+              "Name": "MaficRock",
+              "IsValid": true
+            },
+            {
+              "Name": "Basalt",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": [
+            100.0,
+            100.0,
+            100.0,
+            100.0,
+            100.0,
+            100.0,
+            100.0,
+            100.0,
+            100.0,
+            100.0,
+            100.0,
+            100.0,
+            100.0
+          ],
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": "",
+          "doNotConsume": false,
+          "amount": 100.0
+        }
+      ],
+      "results": [
+        {
+          "material": {
+            "Name": "Sand",
+            "IsValid": true
+          },
+          "possibleMaterials": [
+            {
+              "Name": "Sand",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": null,
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 100.0
+        }
+      ],
+      "time": 40.0,
+      "consumedHEP": 0,
+      "producedHEP": 0,
+      "nameDisplay": 6,
+      "customName": "<link=\"BUILDABLERAW\">Matériau brut</link> en <link=\"SAND\">sable</link>",
+      "customSpritePrefabID": null,
+      "description": "Transforme les <link=\"BUILDABLERAW\">matériaux bruts</link> en <link=\"SAND\">sable</link>",
+      "runTimeDescription": null,
+      "fabricators": [
+        {
+          "Name": "RockCrusher",
+          "IsValid": true
+        }
+      ],
+      "sortOrder": 0,
+      "requiredTech": null,
+      "ProductHasFacade": false,
+      "RequiresAllIngredientsDiscovered": false,
+      "FirstResult": {
+        "Name": "Sand",
+        "IsValid": true
+      }
+    },
+    {
+      "id": "CraftingTable_I_0_O_AIO_SimpleDrillbit_Hardened",
+      "recipeCategoryID": "CraftingTable_I_0_O_AIO_SimpleDrillbit_Hardened_Default_AIO_SimpleDrillbit_Hardened",
+      "ingredients": [
+        {
+          "material": {
+            "Name": null,
+            "IsValid": false
+          },
+          "possibleMaterials": [
+            {
+              "Name": "PhosphorBronze",
+              "IsValid": true
+            },
+            {
+              "Name": "AIO_Permendur_Solid",
+              "IsValid": true
+            },
+            {
+              "Name": "Steel",
+              "IsValid": true
+            },
+            {
+              "Name": "Plasteel",
+              "IsValid": true
+            },
+            {
+              "Name": "AIO_StainlessSteel_Solid",
+              "IsValid": true
+            },
+            {
+              "Name": "AIO_Invar_Solid",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": [
+            400.0,
+            400.0,
+            400.0,
+            400.0,
+            400.0,
+            400.0
+          ],
+          "temperatureOperation": 0,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 400.0
+        }
+      ],
+      "results": [
+        {
+          "material": {
+            "Name": "AIO_SimpleDrillbit_Hardened",
+            "IsValid": true
+          },
+          "possibleMaterials": [
+            {
+              "Name": "AIO_SimpleDrillbit_Hardened",
+              "IsValid": true
+            }
+          ],
+          "possibleMaterialAmounts": null,
+          "temperatureOperation": 1,
+          "storeElement": false,
+          "inheritElement": false,
+          "facadeID": null,
+          "doNotConsume": false,
+          "amount": 1.0
+        }
+      ],
+      "time": 70.0,
+      "consumedHEP": 0,
+      "producedHEP": 0,
+      "nameDisplay": 1,
+      "customName": null,
+      "customSpritePrefabID": null,
+      "description": "Instruct a duplicant to produce Simple Hardened Drillbits.",
+      "runTimeDescription": null,
+      "fabricators": [
+        {
+          "Name": "CraftingTable",
+          "IsValid": true
+        }
+      ],
+      "sortOrder": 802,
+      "requiredTech": "SolidSpace",
+      "ProductHasFacade": false,
+      "RequiresAllIngredientsDiscovered": false,
+      "FirstResult": {
+        "Name": "AIO_SimpleDrillbit_Hardened",
+        "IsValid": true
+      }
     }
   ]
 }

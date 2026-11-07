@@ -11,13 +11,19 @@ namespace App\Services\GameImport\OniExport;
  * A recipe belongs to the mod of its fabricator, else to the first mod owning
  * one of its ingredients or results, else to the base game. Recipes whose
  * fabricator belongs to an unsupported mod are skipped, as are ingredients and
- * results from unsupported mods. Placeholder ingredients without a material
- * are ignored. When two recipes share an id the first is kept.
+ * results from unsupported mods.
+ *
+ * An "any of" ingredient has no `material`: the fabricator accepts any one of
+ * its `possibleMaterials`, each with its own amount in
+ * `possibleMaterialAmounts`. It becomes one item per option, all sharing an
+ * `alternative_group` (the 1-based position of the ingredient in the recipe).
+ * Plain items have a null group. When two recipes share an id the first is
+ * kept.
  *
  * Whether the fabricator or the referenced elements exist in the database is
  * decided by the importer, the reader cannot see it.
  *
- * @phpstan-type RecipeItemRecord array{element_id: string, amount: float}
+ * @phpstan-type RecipeItemRecord array{element_id: string, amount: float, alternative_group: int|null}
  * @phpstan-type RecipeRecord array{
  *     recipe_id: string,
  *     building_id: string,
@@ -92,7 +98,7 @@ final class RecipeReader
         return $records;
     }
 
-    /** Number of ingredients and results dropped because they belong to an unsupported mod. */
+    /** Number of ingredients, ingredient options and results dropped because they belong to an unsupported mod. */
     public function skippedReferences(): int
     {
         return $this->skippedReferences;
@@ -118,23 +124,39 @@ final class RecipeReader
     {
         $items = [];
 
-        foreach ($entries as $entry) {
+        foreach ($entries as $position => $entry) {
             $name = $entry['material']['Name'] ?? null;
 
-            if (! is_string($name) || $name === '') {
-                continue;
-            }
-
-            if ($this->catalog->isSkipped($name)) {
-                $this->skippedReferences++;
+            if (is_string($name) && $name !== '') {
+                $this->addItem($items, $name, (float) $entry['amount'], null);
 
                 continue;
             }
 
-            $items[] = ['element_id' => $name, 'amount' => (float) $entry['amount']];
+            $amounts = $entry['possibleMaterialAmounts'] ?? [];
+
+            foreach ($entry['possibleMaterials'] ?? [] as $index => $option) {
+                $optionName = $option['Name'] ?? null;
+
+                if (is_string($optionName) && $optionName !== '') {
+                    $this->addItem($items, $optionName, (float) ($amounts[$index] ?? $entry['amount']), $position + 1);
+                }
+            }
         }
 
         return $items;
+    }
+
+    /** @param  list<RecipeItemRecord>  $items */
+    private function addItem(array &$items, string $elementId, float $amount, ?int $alternativeGroup): void
+    {
+        if ($this->catalog->isSkipped($elementId)) {
+            $this->skippedReferences++;
+
+            return;
+        }
+
+        $items[] = ['element_id' => $elementId, 'amount' => $amount, 'alternative_group' => $alternativeGroup];
     }
 
     /** @param  list<RecipeItemRecord>  $items */
