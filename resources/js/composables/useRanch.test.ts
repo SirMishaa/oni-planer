@@ -14,6 +14,7 @@ const catalog: RanchCatalog = {
             slug: 'hatch',
             name: 'Hatch',
             plural_name: null,
+            mod: null,
             description: null,
             image: null,
             variants: [
@@ -85,6 +86,7 @@ const catalog: RanchCatalog = {
             slug: 'drecko',
             name: 'Drecko',
             plural_name: null,
+            mod: null,
             description: null,
             image: null,
             variants: [
@@ -123,6 +125,7 @@ const catalog: RanchCatalog = {
             slug: 'pacu',
             name: 'Pacu',
             plural_name: null,
+            mod: null,
             description: null,
             image: null,
             variants: [

@@ -23,5 +23,6 @@ final class CritterFamilyListItemData extends Data
         public array $variant_previews,
         public float $min_temp,
         public float $max_temp,
+        public ?ModData $mod = null,
     ) {}
 }

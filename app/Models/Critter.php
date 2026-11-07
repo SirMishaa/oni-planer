@@ -10,6 +10,7 @@ use Database\Factories\CritterFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\Translatable\HasTranslations;
@@ -27,6 +28,12 @@ final class Critter extends Model
 
     /** @var list<string> */
     public array $translatable = ['name', 'description'];
+
+    /** @return BelongsTo<Mod, $this> */
+    public function mod(): BelongsTo
+    {
+        return $this->belongsTo(Mod::class);
+    }
 
     /** @return HasMany<CritterMorph, $this> */
     public function morphs(): HasMany

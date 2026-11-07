@@ -3,6 +3,7 @@ import { Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import CritterController from '@/actions/App/Http/Controllers/CritterController';
 import RanchController from '@/actions/App/Http/Controllers/RanchController';
+import ModBadge from '@/components/ui/ModBadge.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type {
     CritterFamilyData,
@@ -97,6 +98,11 @@ function addToRanch(): void {
                         >
                             {{ family.name }}
                         </h1>
+                        <ModBadge
+                            v-if="family.mod"
+                            :mod="family.mod"
+                            class="mt-1"
+                        />
                         <p
                             v-if="family.variants.length > 1"
                             class="mt-0.5 text-xs text-[oklch(52%_0.015_250)] dark:text-[oklch(60%_0.012_260)]"

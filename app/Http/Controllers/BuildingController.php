@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Data\BuildingData;
 use App\Data\BuildingMaterialData;
 use App\Data\BuildingShowData;
+use App\Data\ModData;
 use App\Models\Building;
 use App\Services\GameText;
 use Illuminate\Http\JsonResponse;
@@ -28,7 +29,7 @@ final class BuildingController
 
     public function show(Building $building, GameText $text): JsonResponse
     {
-        $building->load('constructionMaterials');
+        $building->load(['constructionMaterials', 'mod']);
 
         $materials = $building->constructionMaterials
             ->map(fn ($m): BuildingMaterialData => BuildingMaterialData::from([
@@ -54,6 +55,7 @@ final class BuildingController
             'effect' => $text->effect($building->building_id) ?? ($building->getTranslation('effect', 'en') ?: null),
             'dlc_id' => $building->dlc_id ?: null,
             'materials' => $materials,
+            'mod' => ModData::fromModel($building->mod),
         ]);
 
         return response()->json($data);
@@ -100,9 +102,10 @@ final class BuildingController
         )).' ELSE 99 END';
 
         $buildings = Building::query()
+            ->with('mod')
             ->orderByRaw($caseExpr) // @phpstan-ignore argument.type (CASE expression built from a hardcoded category whitelist, no user input)
             ->orderBy('building_id')
-            ->get(['building_id', 'name', 'category', 'subcategory', 'width', 'height', 'power_consumption', 'power_generation', 'dlc_id']);
+            ->get(['building_id', 'name', 'category', 'subcategory', 'width', 'height', 'power_consumption', 'power_generation', 'dlc_id', 'mod_id']);
 
         /** @var list<array<string, mixed>> $result */
         $result = $buildings->map(fn (Building $b): BuildingData => BuildingData::from([
@@ -115,6 +118,7 @@ final class BuildingController
             'power_consumption' => $b->power_consumption,
             'power_generation' => $b->power_generation,
             'dlc_id' => $b->dlc_id,
+            'mod' => ModData::fromModel($b->mod),
         ]))->values()->jsonSerialize();
 
         return $result;

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import ModBadge from '@/components/ui/ModBadge.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BuildingData, BuildingShowData } from '@/types/App/Data/data';
 
@@ -429,6 +430,13 @@ function powerIsGen(b: BuildingData): boolean {
                                     loading="lazy"
                                 />
 
+                                <span
+                                    v-if="b.mod && selectedId !== b.building_id"
+                                    class="absolute top-1 left-1 rounded bg-[oklch(88%_0.04_190)] px-1 py-0.5 text-[8px] font-bold text-[oklch(28%_0.09_190)] uppercase dark:bg-[oklch(21%_0.05_190)] dark:text-[oklch(72%_0.11_190)]"
+                                    :title="b.mod.title"
+                                    >Mod</span
+                                >
+
                                 <!-- region Active/expanded card -->
                                 <template v-if="selectedId === b.building_id">
                                     <!-- Close button -->
@@ -482,6 +490,11 @@ function powerIsGen(b: BuildingData): boolean {
                                                     >DLC</span
                                                 >
                                             </div>
+                                            <ModBadge
+                                                v-if="detailData.mod"
+                                                :mod="detailData.mod"
+                                                class="mt-1"
+                                            />
                                             <p
                                                 class="mt-0.5 truncate font-mono text-[9px] text-[oklch(48%_0.010_260)] dark:text-[oklch(56%_0.010_260)]"
                                             >

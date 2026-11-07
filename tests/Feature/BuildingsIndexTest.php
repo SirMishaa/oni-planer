@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\Building;
+use App\Models\Mod;
 use Illuminate\Support\Facades\File;
 
 it('renders the buildings index page', function (): void {
@@ -75,4 +76,19 @@ it('labels sub_groups with the translated build menu subcategory title', functio
         );
 
     File::deleteDirectory($catalogDir);
+});
+
+it('exposes the mod on modded buildings', function (): void {
+    $mod = Mod::factory()->create(['workshop_id' => '2000001', 'title' => 'Ronivans Legacy - Industrial Revolution']);
+    Building::factory()->create(['building_id' => 'Modded', 'category' => 'Power', 'mod_id' => $mod->id]);
+    Building::factory()->create(['building_id' => 'Vanilla', 'category' => 'Power']);
+
+    $this->get(route('buildings.index'))
+        ->assertInertia(
+            fn ($page) => $page
+                ->where('buildings.0.building_id', 'Modded')
+                ->where('buildings.0.mod.title', 'Ronivans Legacy - Industrial Revolution')
+                ->where('buildings.0.mod.workshop_id', '2000001')
+                ->where('buildings.1.mod', null)
+        );
 });

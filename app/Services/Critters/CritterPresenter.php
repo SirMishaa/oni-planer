@@ -12,6 +12,7 @@ use App\Data\CritterOutputData;
 use App\Data\CritterVariantData;
 use App\Data\CritterVariantPreviewData;
 use App\Data\ElementRefData;
+use App\Data\ModData;
 use App\Data\RanchCatalogData;
 use App\Models\Critter;
 use App\Models\CritterMorph;
@@ -74,6 +75,7 @@ final class CritterPresenter
                 variant_previews: $this->variantPreviews($variants, $first),
                 min_temp: $minTemp,
                 max_temp: $maxTemp,
+                mod: ModData::fromModel($first->mod),
             );
         }
 
@@ -108,7 +110,7 @@ final class CritterPresenter
     private function critterQuery(): Builder
     {
         return Critter::query()
-            ->with(['morphs.diets', 'morphs.outputs'])
+            ->with(['morphs.diets', 'morphs.outputs', 'mod'])
             ->orderBy('variant_family')
             ->orderBy('critter_id');
     }
@@ -165,6 +167,7 @@ final class CritterPresenter
             description: $this->familyDescription($variants),
             image: $this->critterImage($first->critter_id),
             variants: array_map(fn (Critter $c): CritterVariantData => $this->variantData($c, $withBaby), $variants),
+            mod: ModData::fromModel($first->mod),
         );
     }
 

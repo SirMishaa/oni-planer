@@ -3,6 +3,7 @@ import { Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import CritterController from '@/actions/App/Http/Controllers/CritterController';
 import RanchController from '@/actions/App/Http/Controllers/RanchController';
+import ModBadge from '@/components/ui/ModBadge.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { CritterFamilyListItemData } from '@/types/App/Data/data.d';
 
@@ -389,6 +390,11 @@ function familyHue(slug: string): number {
                         >
                             {{ family.name }}
                         </div>
+                        <ModBadge
+                            v-if="family.mod"
+                            :mod="family.mod"
+                            class="mt-1"
+                        />
                         <div
                             v-if="subtitle(family)"
                             class="mt-0.5 truncate text-xs text-[oklch(50%_0.015_250)] dark:text-[oklch(60%_0.012_260)]"

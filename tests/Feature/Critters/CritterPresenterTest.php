@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\Critter;
 use App\Models\CritterMorph;
 use App\Models\CritterMorphDiet;
+use App\Models\Mod;
 use App\Models\PrefabName;
 use App\Services\Critters\CritterPresenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -268,4 +269,21 @@ it('exposes the game family label from the species tag in the current locale', f
     expect($family->plural_name)->toBe('Gloutons');
 
     File::deleteDirectory($catalogDir);
+});
+
+it('exposes the mod of a modded family on the list and detail', function (): void {
+    makeHatch();
+    $mod = Mod::factory()->create(['workshop_id' => '2000002', 'title' => 'Critter Mod']);
+    Critter::query()->where('critter_id', 'Hatch')->update(['mod_id' => $mod->id]);
+
+    $presenter = resolve(CritterPresenter::class);
+
+    expect($presenter->familyList()[0]->mod?->title)->toBe('Critter Mod')
+        ->and($presenter->family('hatch')?->mod?->workshop_id)->toBe('2000002');
+});
+
+it('has no mod on base game families', function (): void {
+    makeHatch();
+
+    expect(resolve(CritterPresenter::class)->family('hatch')?->mod)->toBeNull();
 });

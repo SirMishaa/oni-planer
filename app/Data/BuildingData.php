@@ -18,5 +18,6 @@ final class BuildingData extends Data
         public ?float $power_consumption,
         public ?float $power_generation,
         public ?string $dlc_id,
+        public ?ModData $mod = null,
     ) {}
 }

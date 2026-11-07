@@ -8,6 +8,7 @@ export type BuildingData = {
     power_consumption: number | null;
     power_generation: number | null;
     dlc_id: string | null;
+    mod: ModData | null;
 };
 export type BuildingMaterialData = {
     element_id: string | null;
@@ -29,6 +30,7 @@ export type BuildingShowData = {
     effect: string | null;
     dlc_id: string | null;
     materials: BuildingMaterialData[];
+    mod: ModData | null;
 };
 export type CodexArticleData = {
     codex_id: string;
@@ -66,6 +68,7 @@ export type CritterFamilyData = {
     description: string | null;
     image: string | null;
     variants: CritterVariantData[];
+    mod: ModData | null;
 };
 export type CritterFamilyListItemData = {
     slug: string;
@@ -80,6 +83,7 @@ export type CritterFamilyListItemData = {
     variant_previews: CritterVariantPreviewData[];
     min_temp: number;
     max_temp: number;
+    mod: ModData | null;
 };
 export type CritterMorphData = {
     morph_id: string;
@@ -120,6 +124,7 @@ export type ElementData = {
     name: string;
     state: string;
     material_category: string;
+    mod: ModData | null;
 };
 export type ElementRefData = {
     element_id: string;
@@ -139,6 +144,11 @@ export type ElementShowData = {
     low_temp_transition_target: string | null;
     high_temp_transition_target: string | null;
     thermal: ThermalPropertyData | null;
+    mod: ModData | null;
+};
+export type ModData = {
+    workshop_id: string;
+    title: string;
 };
 export type RanchCatalogData = {
     families: CritterFamilyData[];

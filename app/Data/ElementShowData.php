@@ -21,5 +21,6 @@ final class ElementShowData extends Data
         public ?string $low_temp_transition_target,
         public ?string $high_temp_transition_target,
         public ?ThermalPropertyData $thermal,
+        public ?ModData $mod = null,
     ) {}
 }

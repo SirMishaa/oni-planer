@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Data\ElementData;
 use App\Data\ElementShowData;
+use App\Data\ModData;
 use App\Data\ThermalPropertyData;
 use App\Models\Element;
 use App\Services\GameText;
@@ -16,7 +17,7 @@ final class ElementController
 {
     public function show(Element $element, GameText $text): Response
     {
-        $element->load('thermalProperties');
+        $element->load(['thermalProperties', 'mod']);
 
         $thermal = $element->thermalProperties
             ? ThermalPropertyData::from($element->thermalProperties)
@@ -35,6 +36,7 @@ final class ElementController
                 'low_temp_transition_target' => $element->low_temp_transition_target,
                 'high_temp_transition_target' => $element->high_temp_transition_target,
                 'thermal' => $thermal,
+                'mod' => ModData::fromModel($element->mod),
             ]),
         ]);
     }
@@ -42,15 +44,17 @@ final class ElementController
     public function index(GameText $text): Response
     {
         $elements = Element::query()
+            ->with('mod')
             ->where('is_disabled', false)
             ->orderBy('state')
             ->orderBy('element_id')
-            ->get(['element_id', 'name', 'state', 'material_category'])
+            ->get(['element_id', 'name', 'state', 'material_category', 'mod_id'])
             ->map(fn (Element $el): ElementData => ElementData::from([
                 'element_id' => $el->element_id,
                 'name' => $text->name($el->element_id, $el->getTranslation('name', 'en') ?: null),
                 'state' => $el->state,
                 'material_category' => $el->material_category,
+                'mod' => ModData::fromModel($el->mod),
             ]));
 
         return Inertia::render('Elements/Index', [

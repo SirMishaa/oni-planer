@@ -13,5 +13,6 @@ final class ElementData extends Data
         public string $name,
         public string $state,
         public string $material_category,
+        public ?ModData $mod = null,
     ) {}
 }

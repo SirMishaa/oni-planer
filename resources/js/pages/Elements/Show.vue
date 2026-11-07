@@ -2,6 +2,7 @@
 import { Link } from '@inertiajs/vue3';
 import ElementController from '@/actions/App/Http/Controllers/ElementController';
 import Badge from '@/components/ui/Badge.vue';
+import ModBadge from '@/components/ui/ModBadge.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type {
     ElementShowData,
@@ -156,6 +157,7 @@ function thermalRows(t: ThermalPropertyData): PropRow[] {
                             variant="neutral"
                             >{{ element.material_category }}</Badge
                         >
+                        <ModBadge v-if="element.mod" :mod="element.mod" />
                     </div>
                 </div>
             </div>

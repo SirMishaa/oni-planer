@@ -17,5 +17,6 @@ final class CritterFamilyData extends Data
         public ?string $image,
         /** @var list<CritterVariantData> */
         public array $variants,
+        public ?ModData $mod = null,
     ) {}
 }

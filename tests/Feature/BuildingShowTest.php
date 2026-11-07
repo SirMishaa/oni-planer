@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Building;
 use App\Models\BuildingConstructionMaterial;
+use App\Models\Mod;
 
 it('returns building JSON for a valid building_id', function (): void {
     $building = Building::factory()->create([
@@ -60,4 +61,15 @@ it('splits camelCase names in the show response', function (): void {
     $this->getJson(route('buildings.show', $building->building_id))
         ->assertOk()
         ->assertJsonPath('name', 'Wire Refined');
+});
+
+it('exposes the mod on modded buildings', function (): void {
+    $mod = Mod::factory()->create(['title' => 'Ronivans Legacy - Industrial Revolution']);
+    $modded = Building::factory()->create(['mod_id' => $mod->id]);
+    $vanilla = Building::factory()->create();
+
+    $this->getJson(route('buildings.show', $modded->building_id))
+        ->assertJsonPath('mod.title', 'Ronivans Legacy - Industrial Revolution');
+    $this->getJson(route('buildings.show', $vanilla->building_id))
+        ->assertJsonPath('mod', null);
 });

@@ -10,6 +10,7 @@ use Database\Factories\ElementFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 use Spatie\Translatable\HasTranslations;
@@ -38,6 +39,12 @@ final class Element extends Model
             ->where('element_id', Str::studly(is_string($value) ? $value : ''))
             ->where('is_disabled', false)
             ->first();
+    }
+
+    /** @return BelongsTo<Mod, $this> */
+    public function mod(): BelongsTo
+    {
+        return $this->belongsTo(Mod::class);
     }
 
     /** @return HasOne<ElementThermalProperty, $this> */

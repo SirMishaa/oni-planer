@@ -24,5 +24,6 @@ final class BuildingShowData extends Data
         public ?string $dlc_id,
         /** @var list<BuildingMaterialData> */
         public array $materials,
+        public ?ModData $mod = null,
     ) {}
 }

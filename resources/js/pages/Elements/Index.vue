@@ -4,6 +4,7 @@ import { ToggleGroupItem, ToggleGroupRoot } from 'reka-ui';
 import { computed, ref } from 'vue';
 import ElementController from '@/actions/App/Http/Controllers/ElementController';
 import Badge from '@/components/ui/Badge.vue';
+import ModBadge from '@/components/ui/ModBadge.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { ElementData } from '@/types/App/Data/data';
 
@@ -232,6 +233,7 @@ function hasIcon(elementId: string): boolean {
                             <Badge :variant="toState(el.state)">{{
                                 el.state
                             }}</Badge>
+                            <ModBadge v-if="el.mod" :mod="el.mod" />
                         </div>
                     </Link>
                 </li>
