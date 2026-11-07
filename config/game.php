@@ -16,6 +16,9 @@ return [
 
     'mods_path' => base_path('game-data/mods'),
 
+    /* Public directory the converted building, connection and element images are written to. */
+    'assets_path' => public_path('assets/game'),
+
     /*
      * Workshop ids of the mods whose content is imported. Content of any other
      * mod found in the export is skipped.
