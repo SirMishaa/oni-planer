@@ -693,6 +693,98 @@
           "Value": 25.0
         }
       ]
+    },
+    {
+      "Id": "MinionBaseTrait",
+      "Name": "Duplicant standard",
+      "PositiveTrait": true,
+      "SelfModifiers": [
+        {
+          "AttributeId": "AirConsumptionRate",
+          "Value": 0.1,
+          "IsMultiplier": false
+        },
+        {
+          "AttributeId": "CaloriesDelta",
+          "Value": -1666.66663,
+          "IsMultiplier": false
+        },
+        {
+          "AttributeId": "BladderDelta",
+          "Value": 0.166666672,
+          "IsMultiplier": false
+        }
+      ]
+    },
+    {
+      "Id": "Ellie",
+      "Name": "Délicat",
+      "PositiveTrait": false,
+      "SelfModifiers": [
+        {
+          "AttributeId": "AirConsumptionRate",
+          "Value": -0.0449999981,
+          "IsMultiplier": false
+        },
+        {
+          "AttributeId": "DecorExpectation",
+          "Value": -5.0,
+          "IsMultiplier": false
+        }
+      ]
+    },
+    {
+      "Id": "Anemic",
+      "Name": "Anémique",
+      "PositiveTrait": false,
+      "SelfModifiers": [
+        {
+          "AttributeId": "Athletics",
+          "Value": -5.0,
+          "IsMultiplier": false
+        }
+      ]
+    },
+    {
+      "Id": "Anemic",
+      "Name": "Anémique",
+      "PositiveTrait": false,
+      "SelfModifiers": [
+        {
+          "AttributeId": "Athletics",
+          "Value": -5.0,
+          "IsMultiplier": false
+        }
+      ]
+    },
+    {
+      "Id": "Greasemonkey",
+      "Name": "Mécano",
+      "PositiveTrait": true,
+      "SelfModifiers": [
+        {
+          "AttributeId": "Machinery",
+          "Value": 3.0,
+          "IsMultiplier": false
+        },
+        {
+          "AttributeId": "Digging",
+          "Value": 1.5,
+          "IsMultiplier": true
+        }
+      ]
+    },
+    {
+      "Id": "StartWithBooster_Dig",
+      "Name": "Booster",
+      "PositiveTrait": true,
+      "SelfModifiers": []
+    },
+    {
+      "Id": "HatchOriginal",
+      "Name": "Original",
+      "PositiveTrait": true,
+      "SelfModifiers": []
     }
   ]
 }

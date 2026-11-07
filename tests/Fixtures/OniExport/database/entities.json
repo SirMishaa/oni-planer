@@ -447,6 +447,16 @@
         "temperatureWarningLow": 1.0,
         "temperatureWarningHigh": 2.0
       }
+    },
+    {
+      "name": "Minion",
+      "oxygenBreather": {
+        "O2toCO2conversion": 0.02
+      },
+      "primaryElement": {
+        "Name": "Creature",
+        "Mass": 30.0
+      }
     }
   ]
 }

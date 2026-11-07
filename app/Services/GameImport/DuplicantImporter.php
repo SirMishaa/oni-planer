@@ -17,6 +17,16 @@ final readonly class DuplicantImporter
         /** @var array{base_stats: array<string, mixed>, traits: list<array<string, mixed>>} $data */
         $data = json_decode((string) file_get_contents($jsonPath), true);
 
+        $this->importRecords($data);
+    }
+
+    /**
+     * Persists duplicant records (json-cache shape).
+     *
+     * @param  array{base_stats: array<string, mixed>, traits: list<array<string, mixed>>}  $data
+     */
+    public function importRecords(array $data): void
+    {
         DuplicantBaseStat::query()->create((array) $data['base_stats']);
 
         foreach ($data['traits'] as $raw) {

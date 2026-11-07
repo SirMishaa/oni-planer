@@ -572,7 +572,272 @@
           "type": "GasInput",
           "isSecondary": false
         }
-      ]
+      ],
+      "rocketEngineCluster": {
+        "exhaustTemperature": 245.0,
+        "fuelTag": {
+          "Name": "CarbonDioxide",
+          "IsValid": true
+        },
+        "efficiency": 20.0,
+        "requireOxidizer": false,
+        "maxModules": 3,
+        "maxHeight": 10
+      },
+      "rocketModulePerformance": {
+        "burden": 3.0,
+        "enginePower": 23.0,
+        "fuelKilogramPerDistance": 0.027777778
+      },
+      "storage": {
+        "capacityKg": 100.0
+      }
+    },
+    {
+      "name": "NoteEngine",
+      "tags": [
+        {
+          "Name": "RoomProberBuilding",
+          "IsValid": true
+        },
+        {
+          "Name": "IndustrialMachinery",
+          "IsValid": true
+        },
+        {
+          "Name": "RocketModule",
+          "IsValid": true
+        },
+        {
+          "Name": "Submergible",
+          "IsValid": true
+        }
+      ],
+      "kPrefabID": {
+        "requiredDlcIds": [
+          "EXPANSION1_ID"
+        ]
+      },
+      "uiImageRect": {
+        "x": -0.335,
+        "y": -0.21,
+        "w": 3.61,
+        "h": 2.285
+      },
+      "widthInCells": 3,
+      "heightInCells": 2,
+      "materialCategory": [
+        "Metal"
+      ],
+      "materialMass": [
+        500.0
+      ],
+      "isFoundation": false,
+      "isKAnimTile": false,
+      "isUtility": false,
+      "dragBuild": false,
+      "deprecated": false,
+      "debugOnly": false,
+      "showInBuildMenu": false,
+      "buildLocationRule": 0,
+      "permittedRotations": 0,
+      "sceneLayer": 19,
+      "objectLayer": 1,
+      "replaceable": true,
+      "viewMode": null,
+      "energyGenerator": null,
+      "energyConsumer": null,
+      "powerInputOffset": null,
+      "powerOutputOffset": null,
+      "utilities": [
+        {
+          "offset": {
+            "x": 0.0,
+            "y": 1.0
+          },
+          "type": "GasInput",
+          "isSecondary": false
+        }
+      ],
+      "rocketEngineCluster": {
+        "exhaustTemperature": 245.0,
+        "fuelTag": {
+          "Name": "BlueprintsV2_Element_Note",
+          "IsValid": true
+        },
+        "efficiency": 20.0,
+        "requireOxidizer": false,
+        "maxModules": 3,
+        "maxHeight": 10
+      },
+      "rocketModulePerformance": {
+        "burden": 3.0,
+        "enginePower": 23.0,
+        "fuelKilogramPerDistance": 0.027777778
+      },
+      "storage": {
+        "capacityKg": 100.0
+      }
+    },
+    {
+      "name": "CargoBayCluster",
+      "tags": [
+        {
+          "Name": "RoomProberBuilding",
+          "IsValid": true
+        },
+        {
+          "Name": "IndustrialMachinery",
+          "IsValid": true
+        },
+        {
+          "Name": "RocketModule",
+          "IsValid": true
+        },
+        {
+          "Name": "Submergible",
+          "IsValid": true
+        }
+      ],
+      "kPrefabID": {
+        "requiredDlcIds": [
+          "EXPANSION1_ID"
+        ]
+      },
+      "uiImageRect": {
+        "x": -0.335,
+        "y": -0.21,
+        "w": 3.61,
+        "h": 2.285
+      },
+      "widthInCells": 3,
+      "heightInCells": 2,
+      "materialCategory": [
+        "Metal"
+      ],
+      "materialMass": [
+        1000.0
+      ],
+      "isFoundation": false,
+      "isKAnimTile": false,
+      "isUtility": false,
+      "dragBuild": false,
+      "deprecated": false,
+      "debugOnly": false,
+      "showInBuildMenu": false,
+      "buildLocationRule": 0,
+      "permittedRotations": 0,
+      "sceneLayer": 19,
+      "objectLayer": 1,
+      "replaceable": true,
+      "viewMode": null,
+      "energyGenerator": null,
+      "energyConsumer": null,
+      "powerInputOffset": null,
+      "powerOutputOffset": null,
+      "utilities": [
+        {
+          "offset": {
+            "x": 0.0,
+            "y": 1.0
+          },
+          "type": "GasInput",
+          "isSecondary": false
+        }
+      ],
+      "rocketEngineCluster": null,
+      "rocketModulePerformance": {
+        "burden": 6.0,
+        "enginePower": 0.0,
+        "fuelKilogramPerDistance": 0.0
+      },
+      "storage": {
+        "capacityKg": 27000.0
+      },
+      "cargoBayCluster": {
+        "storage": {
+          "capacityKg": 27000.0
+        },
+        "storageType": 0,
+        "MaxCapacity": 27000.0
+      }
+    },
+    {
+      "name": "OxidizerTankLiquidCluster",
+      "tags": [
+        {
+          "Name": "RoomProberBuilding",
+          "IsValid": true
+        },
+        {
+          "Name": "IndustrialMachinery",
+          "IsValid": true
+        },
+        {
+          "Name": "RocketModule",
+          "IsValid": true
+        },
+        {
+          "Name": "Submergible",
+          "IsValid": true
+        }
+      ],
+      "kPrefabID": {
+        "requiredDlcIds": [
+          "EXPANSION1_ID"
+        ]
+      },
+      "uiImageRect": {
+        "x": -0.335,
+        "y": -0.21,
+        "w": 3.61,
+        "h": 2.285
+      },
+      "widthInCells": 3,
+      "heightInCells": 2,
+      "materialCategory": [
+        "Metal"
+      ],
+      "materialMass": [
+        100.0
+      ],
+      "isFoundation": false,
+      "isKAnimTile": false,
+      "isUtility": false,
+      "dragBuild": false,
+      "deprecated": false,
+      "debugOnly": false,
+      "showInBuildMenu": false,
+      "buildLocationRule": 0,
+      "permittedRotations": 0,
+      "sceneLayer": 19,
+      "objectLayer": 1,
+      "replaceable": true,
+      "viewMode": null,
+      "energyGenerator": null,
+      "energyConsumer": null,
+      "powerInputOffset": null,
+      "powerOutputOffset": null,
+      "utilities": [
+        {
+          "offset": {
+            "x": 0.0,
+            "y": 1.0
+          },
+          "type": "GasInput",
+          "isSecondary": false
+        }
+      ],
+      "rocketEngineCluster": null,
+      "rocketModulePerformance": {
+        "burden": 5.0,
+        "enginePower": 0.0,
+        "fuelKilogramPerDistance": 0.0
+      },
+      "storage": {
+        "capacityKg": 450.0
+      },
+      "cargoBayCluster": null
     }
   ],
   "buildingAndSubcategoryDataPairs": {
@@ -675,6 +940,9 @@
   ],
   "buildVersion": "U59-744825-SCRPAN",
   "rocketModuleMenu": [
-    "CO2Engine"
+    "CO2Engine",
+    "NoteEngine",
+    "CargoBayCluster",
+    "OxidizerTankLiquidCluster"
   ]
 }
