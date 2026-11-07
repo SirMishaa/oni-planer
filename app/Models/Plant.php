@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\Translatable\HasTranslations;
 
 #[GameData]
-#[Fillable(['plant_id', 'name', 'description', 'dlc_id'])]
+#[Fillable(['plant_id', 'name', 'description', 'dlc_id', 'mod_id'])]
 final class Plant extends Model
 {
     use HasCodexEntries;

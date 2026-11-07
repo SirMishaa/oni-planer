@@ -13,7 +13,9 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 final readonly class CritterController
 {
-    public function __construct(private CritterPresenter $presenter) {}
+    public function __construct(private CritterPresenter $presenter)
+    {
+    }
 
     public function index(): Response
     {
@@ -25,7 +27,7 @@ final readonly class CritterController
     public function show(Request $request, string $family): Response
     {
         $data = $this->presenter->family($family);
-        throw_if(! $data instanceof CritterFamilyData, NotFoundHttpException::class);
+        throw_if(!$data instanceof CritterFamilyData, NotFoundHttpException::class);
 
         return Inertia::render('Critters/Show', [
             'family' => $data,

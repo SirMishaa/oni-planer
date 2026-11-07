@@ -302,6 +302,151 @@
         "requiredDlcIds": null
       },
       "critterTemperatureMonitorDef": null
+    },
+    {
+      "name": "PrickleFlower",
+      "nameString": "<link=\"PRICKLEFLOWER\">Fleur Velue</link>",
+      "kPrefabID": {
+        "name": "PrickleFlower",
+        "tags": [
+          {
+            "Name": "Plant",
+            "IsValid": true
+          }
+        ],
+        "requiredDlcIds": null
+      },
+      "pressureVulnerable": {
+        "pressureLethal_Low": 0.0,
+        "pressureWarning_Low": 0.15,
+        "pressureWarning_High": 10.0,
+        "pressureLethal_High": 30.0,
+        "pressure_sensitive": true,
+        "safe_atmospheres": [
+          "Oxygen",
+          "ContaminatedOxygen"
+        ]
+      },
+      "temperatureVulnerable": {
+        "temperatureLethalLow": 218.15,
+        "temperatureLethalHigh": 398.15,
+        "temperatureWarningLow": 278.15,
+        "temperatureWarningHigh": 303.15
+      },
+      "cropVal": {
+        "cropId": "PrickleFruit",
+        "cropDuration": 3600.0,
+        "numProduced": 1,
+        "renewable": true
+      },
+      "seedInfo": {
+        "seedId": "PrickleFlowerSeed",
+        "productionType": 2,
+        "newSeedsProduced": 1
+      },
+      "irrigationDef": {
+        "consumedElements": [
+          {
+            "tag": {
+              "Name": "Water",
+              "IsValid": true
+            },
+            "massConsumptionRate": 0.0333333351
+          }
+        ]
+      },
+      "fertilizationDef": null,
+      "illuminationVulnerable": {
+        "prefersDarkness": false,
+        "LightIntensityThreshold": 200
+      }
+    },
+    {
+      "name": "BogLily",
+      "nameString": "<link=\"BOGLILY\">Bog Lily</link>",
+      "kPrefabID": {
+        "name": "BogLily",
+        "tags": [
+          {
+            "Name": "Plant",
+            "IsValid": true
+          }
+        ],
+        "requiredDlcIds": [
+          "EXPANSION1_ID"
+        ]
+      },
+      "pressureVulnerable": {
+        "pressureLethal_Low": 0.0,
+        "pressureWarning_Low": -3.40282347e+38,
+        "pressureWarning_High": 3.40282347e+38,
+        "pressureLethal_High": 3.40282347e+38,
+        "pressure_sensitive": false,
+        "safe_atmospheres": []
+      },
+      "temperatureVulnerable": {
+        "temperatureLethalLow": 200.0,
+        "temperatureLethalHigh": 400.0,
+        "temperatureWarningLow": 250.0,
+        "temperatureWarningHigh": 350.0
+      },
+      "cropVal": {
+        "cropId": "BlueprintsV2_Element_Note",
+        "cropDuration": 6000.0,
+        "numProduced": 2,
+        "renewable": true
+      },
+      "seedInfo": null,
+      "irrigationDef": {
+        "consumedElements": [
+          {
+            "tag": {
+              "Name": "Water",
+              "IsValid": true
+            },
+            "massConsumptionRate": 0.1
+          }
+        ]
+      },
+      "fertilizationDef": {
+        "consumedElements": [
+          {
+            "tag": {
+              "Name": "Dirt",
+              "IsValid": true
+            },
+            "massConsumptionRate": 0.02
+          },
+          {
+            "tag": {
+              "Name": "BlueprintsV2_Element_Note",
+              "IsValid": true
+            },
+            "massConsumptionRate": 0.01
+          }
+        ]
+      },
+      "illuminationVulnerable": null
+    },
+    {
+      "name": "BlueprintsPlant",
+      "nameString": "<link=\"BLUEPRINTSPLANT\">Blueprint Plant</link>",
+      "kPrefabID": {
+        "name": "BlueprintsPlant",
+        "tags": [
+          {
+            "Name": "Plant",
+            "IsValid": true
+          }
+        ],
+        "requiredDlcIds": null
+      },
+      "temperatureVulnerable": {
+        "temperatureLethalLow": 1.0,
+        "temperatureLethalHigh": 2.0,
+        "temperatureWarningLow": 1.0,
+        "temperatureWarningHigh": 2.0
+      }
     }
   ]
 }

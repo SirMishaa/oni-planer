@@ -29,6 +29,10 @@
     "CREATURES.SPECIES.HATCH.DESC": "Les gloutons excrètent du <link=\"CARBON\">charbon</link> et peuvent être découvert en déterrant des objets enterrés.",
     "CREATURES.SPECIES.HATCH.EGG_NAME": "<link=\"HATCH\">Œuf de Glouton</link>",
     "CREATURES.SPECIES.HATCH.BABY.NAME": "<link=\"HATCH\">Bouftou</link>",
-    "CREATURES.SPECIES.HATCH.VARIANT_HARD.NAME": "<link=\"HATCHHARD\">Glouton Pierreux</link>"
+    "CREATURES.SPECIES.HATCH.VARIANT_HARD.NAME": "<link=\"HATCHHARD\">Glouton Pierreux</link>",
+    "CREATURES.SPECIES.SEEDS.PRICKLEFLOWER.NAME": "<link=\"PRICKLEFLOWER\">Fleur Velue</link>",
+    "CREATURES.SPECIES.PRICKLEFLOWER.NAME": "<link=\"PRICKLEFLOWER\">Fleur Velue</link>",
+    "CREATURES.SPECIES.PRICKLEFLOWER.DESC": "Les fleurs velues produisent des baies.",
+    "CREATURES.SPECIES.GEYSER.STEAM.NAME": "Geyser vapeur"
   }
 }

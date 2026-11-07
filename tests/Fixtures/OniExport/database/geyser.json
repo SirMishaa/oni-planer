@@ -1,0 +1,87 @@
+{
+  "DatabaseDirName": "database",
+  "ExportFileName": "geyser",
+  "buildVersion": "U59-744825-SCRPAN",
+  "geysers": [
+    {
+      "id": "GeyserGeneric_steam",
+      "anim": "geyser_gas_steam_kanim",
+      "nameStringKey": {
+        "String": "STRINGS.CREATURES.SPECIES.GEYSER.STEAM.NAME",
+        "Hash": 0
+      },
+      "geyserType": {
+        "id": "steam",
+        "element": -899515856,
+        "shape": 0,
+        "temperature": 383.15,
+        "minRatePerCycle": 1000.0,
+        "maxRatePerCycle": 2000.0,
+        "maxPressure": 5.0,
+        "minIterationLength": 60.0,
+        "maxIterationLength": 1140.0,
+        "minIterationPercent": 0.1,
+        "maxIterationPercent": 0.9,
+        "minYearLength": 15000.0,
+        "maxYearLength": 135000.0,
+        "DlcID": null,
+        "requiredDlcIds": null
+      },
+      "isGenericGeyser": true
+    },
+    {
+      "id": "GeyserGeneric_small_volcano",
+      "anim": "geyser_molten_volcano_small_kanim",
+      "nameStringKey": {
+        "String": "STRINGS.CREATURES.SPECIES.GEYSER.SMALL_VOLCANO.NAME",
+        "Hash": 0
+      },
+      "geyserType": {
+        "id": "small_volcano",
+        "element": -1730490146,
+        "shape": 0,
+        "temperature": 383.15,
+        "minRatePerCycle": 1000.0,
+        "maxRatePerCycle": 2000.0,
+        "maxPressure": 5.0,
+        "minIterationLength": 60.0,
+        "maxIterationLength": 1140.0,
+        "minIterationPercent": 0.1,
+        "maxIterationPercent": 0.9,
+        "minYearLength": 15000.0,
+        "maxYearLength": 135000.0,
+        "DlcID": null,
+        "requiredDlcIds": [
+          "EXPANSION1_ID"
+        ]
+      },
+      "isGenericGeyser": true
+    },
+    {
+      "id": "GeyserGeneric_AmmoniaGeyser",
+      "anim": "geyser_ammonia_kanim",
+      "nameStringKey": {
+        "String": "STRINGS.CREATURES.SPECIES.GEYSER.AMMONIAGEYSER.NAME",
+        "Hash": 0
+      },
+      "geyserType": {
+        "id": "AmmoniaGeyser",
+        "element": -921814393,
+        "shape": 0,
+        "temperature": 383.15,
+        "minRatePerCycle": 1000.0,
+        "maxRatePerCycle": 2000.0,
+        "maxPressure": 5.0,
+        "minIterationLength": 60.0,
+        "maxIterationLength": 1140.0,
+        "minIterationPercent": 0.1,
+        "maxIterationPercent": 0.9,
+        "minYearLength": 15000.0,
+        "maxYearLength": 135000.0,
+        "DlcID": null,
+        "requiredDlcIds": null
+      },
+      "isGenericGeyser": true
+    }
+  ]
+}

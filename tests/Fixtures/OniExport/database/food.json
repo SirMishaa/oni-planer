@@ -1,0 +1,10 @@
+{
+  "DatabaseDirName": "database",
+  "ExportFileName": "food",
+  "buildVersion": "U59-744825-SCRPAN",
+  "foodInfoList": [
+    {
+      "Id": "PrickleFruit"
+    }
+  ]
+}

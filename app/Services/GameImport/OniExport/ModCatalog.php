@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\GameImport\OniExport;
 
 use App\Models\Mod;
+use App\Services\GameImport\ModStringKey;
+use App\Services\GameImport\PoFile;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Yaml\Yaml;
 
@@ -20,6 +22,9 @@ final class ModCatalog
 {
     /** @var array<string, int|null> */
     private array $modIds = [];
+
+    /** @var array<string, list<string>> */
+    private array $potKeys = [];
 
     /**
      * @param  array<string, string>  $ownerByPrefab  prefab id => owner key (workshop id, or `local:<staticID>`)
@@ -87,6 +92,29 @@ final class ModCatalog
         $owner = $this->ownerByPrefab[$prefabId] ?? null;
 
         return $owner !== null && ! $this->isSupportedOwner($owner);
+    }
+
+    /**
+     * Id of the supported mod whose `.pot` declares the (normalized) string key,
+     * for entities the export gives no owner (geysers).
+     */
+    public function modIdForStringKey(string $stringKey): ?int
+    {
+        foreach ($this->supported as $workshopId) {
+            $pot = $this->modsPath.'/'.$workshopId.'/translation_template.pot';
+
+            if (! File::isFile($pot)) {
+                continue;
+            }
+
+            $this->potKeys[$workshopId] ??= array_keys(ModStringKey::normalizeAll(PoFile::read($pot)->sources()));
+
+            if (in_array($stringKey, $this->potKeys[$workshopId], true)) {
+                return $this->modIdForWorkshop($workshopId);
+            }
+        }
+
+        return null;
     }
 
     public function modIdForWorkshop(string $workshopId): ?int

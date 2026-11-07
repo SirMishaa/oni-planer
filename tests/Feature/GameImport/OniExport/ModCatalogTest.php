@@ -59,7 +59,7 @@ it('skips prefabs of unsupported mods and reports them', function (): void {
         ->and($catalog->modIdFor('Stairs'))->toBeNull()
         ->and($catalog->isSkipped('BlueprintsV2_Element_Note'))->toBeTrue()
         ->and($catalog->skippedReport())->toContain(['workshop_id' => '2012810337', 'title' => 'Stairs', 'entities' => 2])
-        ->and($catalog->skippedReport())->toContain(['workshop_id' => '3468585385', 'title' => 'Blueprints Expanded', 'entities' => 1]);
+        ->and($catalog->skippedReport())->toContain(['workshop_id' => '3468585385', 'title' => 'Blueprints Expanded', 'entities' => 2]);
 });
 
 it('drops content of a mod removed from the supported list', function (): void {

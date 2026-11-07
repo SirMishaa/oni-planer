@@ -27,3 +27,8 @@ msgstr ""
 msgctxt "STRINGS.ELEMENTS.PHOSPHORBRONZE.NAME"
 msgid "Phosphor Bronze"
 msgstr ""
+
+#. RonivansLegacy_ChemicalProcessing.STRINGS.CREATURES.SPECIES.GEYSER.AMMONIAGEYSER.NAME
+msgctxt "RonivansLegacy_ChemicalProcessing.STRINGS.CREATURES.SPECIES.GEYSER.AMMONIAGEYSER.NAME"
+msgid "<link=\"GEYSERGENERICAMMONIAGEYSER\">Ammonia Geyser</link>"
+msgstr ""

@@ -17,7 +17,7 @@ use Spatie\Translatable\HasTranslations;
 #[Fillable([
     'variant_id', 'plant_id', 'is_base', 'min_temp', 'max_temp',
     'min_pressure', 'max_pressure', 'atmosphere_element_id',
-    'light_required', 'growth_time', 'name',
+    'light_required', 'growth_time', 'name', 'mod_id',
 ])]
 final class PlantVariant extends Model
 {

@@ -15,6 +15,16 @@ final readonly class GeyserImporter
         /** @var array<int, array<string, mixed>> $geysers */
         $geysers = json_decode((string) file_get_contents($jsonPath), true);
 
+        $this->importRecords($geysers);
+    }
+
+    /**
+     * Persists geyser records (json-cache shape, optionally with `mod_id`).
+     *
+     * @param  array<int, array<string, mixed>>  $geysers
+     */
+    public function importRecords(array $geysers): void
+    {
         foreach ($geysers as $raw) {
             $nameJson = is_string($raw['name_localization_id'] ?? null)
                 ? ($this->stringResolver->resolveToJson($raw['name_localization_id']) ?? ['en' => $raw['geyser_id']])
@@ -36,6 +46,7 @@ final readonly class GeyserImporter
                 'dormancy_max_cycles' => $raw['dormancy_max_cycles'],
                 'name' => $nameJson,
                 'dlc_id' => ($raw['dlc_id'] ?? '') ?: null,
+                'mod_id' => $raw['mod_id'] ?? null,
             ]);
         }
     }

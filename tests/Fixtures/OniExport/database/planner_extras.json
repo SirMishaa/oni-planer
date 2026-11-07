@@ -62,6 +62,15 @@
     "AbyssVista": {
       "kanim": "farmtile_kanim"
     },
+    "BlueprintsPlant": {
+      "kanim": "bp_kanim",
+      "sourceMod": {
+        "staticID": "BlueprintsV2",
+        "workshopId": "3468585385",
+        "title": "Blueprints Expanded",
+        "assembly": "BlueprintsV2"
+      }
+    },
     "BlueprintsV2_Element_Note": {
       "sourceMod": {
         "staticID": "BlueprintsV2",
@@ -69,6 +78,12 @@
         "title": "Blueprints Expanded",
         "assembly": "BlueprintsV2"
       }
+    },
+    "BogLily": {
+      "kanim": "boglily_kanim"
+    },
+    "GeyserGeneric_steam": {
+      "kanim": "geyser_gas_steam_kanim"
     },
     "Hatch": {
       "speciesTag": "HatchSpecies",
@@ -103,6 +118,9 @@
         "title": "[Vanilla + DLC] Pacu morphs",
         "assembly": "PacuMorphsMerged"
       }
+    },
+    "PrickleFlower": {
+      "kanim": "bristleblossom_kanim"
     }
   },
   "elements": {
