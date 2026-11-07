@@ -21,7 +21,7 @@ final readonly class BuildingImporter
     }
 
     /**
-     * Persists building records (json-cache shape, optionally with the editor
+     * Persists building records (reader record shape, with the editor
      * columns and `materials` produced by the OniExtract building reader).
      *
      * @param  list<array<string, mixed>>  $records

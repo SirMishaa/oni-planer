@@ -15,22 +15,22 @@ ONI Planner is a web-based planning tool for [Oxygen Not Included](https://www.k
 
 ## Architecture
 
-### Two-stage data pipeline
+### Data pipeline
 
 ```
-Assembly-CSharp.dll ──┐
-Unity asset bundles ──┤── dotnet-extractor ──► json-cache/ ──┐
-StreamingAssets/ ─────┘                                       │
-                                                              ▼
-                                              php artisan game:import
-                                                              │
-                                                              ▼
-                                                        SQLite / PostgreSQL
+OniExtract mod (in-game export) ──► game:sync-export ──► game-data/oniextract/current ──┐
+Supported mods (Steam workshop) ──► game:sync-export ──► game-data/mods ────────────────┤
+StreamingAssets/ (strings, codex) ──────────────────────────────────────────────────────┤
+                                                                                         ▼
+                                                                          php artisan game:import
+                                                                                         │
+                                                                                         ▼
+                                                                                 SQLite / PostgreSQL
 ```
 
-**Stage 1 — C# extractor** (`dotnet-extractor/`): Reads the game's managed DLL with Mono.Cecil and Unity asset bundles to extract raw game data into JSON and export sprites as PNG.
+**Stage 1 — OniExtract export**: the OniExtract mod writes the game's runtime data (buildings, entities, elements, recipes, images) to JSON; `php artisan game:sync-export` mirrors it and the supported mods into `game-data/`.
 
-**Stage 2 — Laravel importer** (`php artisan game:import`): Reads YAML element files and the JSON cache to populate 27 database tables. Can run independently of the extractor using `--skip-extractor`.
+**Stage 2 — Laravel importer** (`php artisan game:import`): readers in `app/Services/GameImport/OniExport/` turn the export into records that the importers persist into the database tables. The whole import runs in one transaction. `php artisan game:import-assets` then converts the exported renders to WebP.
 
 ### Database schema (27 tables)
 
@@ -85,29 +85,17 @@ php artisan migrate
 Place your game data directory at `game-data/OxygenNotIncluded_Data/` (or update the path in `.env`), then run:
 
 ```bash
-# With the C# extractor (requires dotnet 8 + built binary)
+php artisan game:sync-export
 php artisan game:import
-
-# Skip the extractor if json-cache/ is already populated
-php artisan game:import --skip-extractor
 
 # Custom paths
 php artisan game:import \
   --game-path=/path/to/OxygenNotIncluded_Data \
-  --cache-path=/path/to/json-cache
+  --export-path=/path/to/oniextract/export \
+  --mods-path=/path/to/mods
 ```
 
 The import is **destructive** — it truncates all game data tables and reimports from scratch every run.
-
-### Building the C# extractor
-
-```bash
-cd dotnet-extractor
-dotnet build
-dotnet publish -r linux-x64 -o bin/
-```
-
-> **Note:** The extractor stubs are not yet implemented. They require decompiling `Assembly-CSharp.dll` with [ilspycmd](https://github.com/icsharpcode/ILSpy) to map class names and field accessors. See each `Extractors/*.cs` file for guidance.
 
 ### Development server
 
@@ -147,11 +135,6 @@ database/
 ├── migrations/                              # 27 game data migrations
 └── seeders/
 
-dotnet-extractor/                            # C# .NET 8 extraction binary
-├── DotnetExtractor.csproj
-├── Program.cs
-└── Extractors/                              # One extractor per entity type
-
 tests/
 ├── Feature/
 │   ├── GameImport/                          # Importer tests
@@ -160,7 +143,6 @@ tests/
 └── Unit/ArchTest.php                        # Architecture preset checks
 
 game-data/                                   # gitignored — your game files here
-json-cache/                                  # gitignored — extractor output
 ```
 
 ## License

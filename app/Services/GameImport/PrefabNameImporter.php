@@ -8,6 +8,7 @@ use App\Models\CritterMorphDiet;
 use App\Models\CritterMorphOutput;
 use App\Models\Element;
 use App\Models\PrefabName;
+use App\Services\GameImport\OniExport\ModCatalog;
 
 /**
  * Records the STRINGS name key of every prefab id the UI displays: elements,
@@ -16,28 +17,64 @@ use App\Models\PrefabName;
  */
 final readonly class PrefabNameImporter
 {
-    public function __construct(private StringResolver $stringResolver) {}
+    public function __construct(private StringResolver $stringResolver, private ?ModCatalog $mods = null) {}
 
-    /** @param string $cachePath dotnet-extractor output directory (json-cache) */
-    public function import(string $cachePath): void
+    /**
+     * @param  array{buildings?: list<array<string, mixed>>, critters?: list<array<string, mixed>>, plants?: list<array<string, mixed>>, geysers?: list<array<string, mixed>>}  $recordsByDomain  reader records per domain
+     */
+    public function import(array $recordsByDomain): void
     {
+        $buildings = $recordsByDomain['buildings'] ?? [];
+        $critters = $recordsByDomain['critters'] ?? [];
+        $plants = $recordsByDomain['plants'] ?? [];
+        $geysers = $recordsByDomain['geysers'] ?? [];
+
         $keys = [
             ...$this->elementKeys(),
-            ...$this->idToKey($this->readJson($cachePath.'/buildings.json'), 'building_id'),
-            ...$this->critterKeys($this->readJson($cachePath.'/critters.json')),
-            ...$this->idToKey($this->readJson($cachePath.'/plants.json'), 'plant_id'),
-            ...$this->idToKey($this->readJson($cachePath.'/geyser_types.json'), 'geyser_id'),
+            ...$this->idToKey($buildings, 'building_id'),
+            ...$this->critterKeys($critters),
+            ...$this->idToKey($plants, 'plant_id'),
+            ...$this->idToKey($geysers, 'geyser_id'),
         ];
+
+        $modIds = [
+            ...Element::query()->whereNotNull('mod_id')->pluck('mod_id', 'element_id')->all(),
+            ...$this->recordModIds($buildings, 'building_id'),
+            ...$this->recordModIds($critters, 'critter_id'),
+            ...$this->recordModIds($plants, 'plant_id'),
+            ...$this->recordModIds($geysers, 'geyser_id'),
+        ];
+
         $keys = [...$keys, ...$this->referencedItemKeys($keys)];
 
         $rows = [];
         foreach ($keys as $prefabId => $nameKey) {
             if ($this->stringResolver->has($nameKey)) {
-                $rows[] = ['prefab_id' => $prefabId, 'name_key' => StringResolver::normalizeKey($nameKey)];
+                $rows[] = [
+                    'prefab_id' => $prefabId,
+                    'name_key' => StringResolver::normalizeKey($nameKey),
+                    'mod_id' => $modIds[$prefabId] ?? $this->mods?->modIdFor((string) $prefabId),
+                ];
             }
         }
 
-        PrefabName::query()->upsert($rows, ['prefab_id'], ['name_key']);
+        PrefabName::query()->upsert($rows, ['prefab_id'], ['name_key', 'mod_id']);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $entries
+     * @return array<string, int>
+     */
+    private function recordModIds(array $entries, string $idField): array
+    {
+        $modIds = [];
+        foreach ($entries as $raw) {
+            if (is_string($raw[$idField] ?? null) && is_int($raw['mod_id'] ?? null)) {
+                $modIds[$raw[$idField]] = $raw['mod_id'];
+            }
+        }
+
+        return $modIds;
     }
 
     /** @return array<string, string> */
@@ -149,16 +186,5 @@ final readonly class PrefabNameImporter
         return $adultKey !== null
             ? preg_replace('/\.NAME$/', '.BABY.NAME', StringResolver::normalizeKey($adultKey))
             : null;
-    }
-
-    /** @return list<array<string, mixed>> */
-    private function readJson(string $path): array
-    {
-        if (! file_exists($path)) {
-            return [];
-        }
-
-        /** @var list<array<string, mixed>> */
-        return json_decode((string) file_get_contents($path), true) ?? [];
     }
 }

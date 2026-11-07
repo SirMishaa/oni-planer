@@ -24,11 +24,6 @@ Homestead.yaml
 /tmp
 /game-data/
 .superpowers/
-dotnet-extractor/bin/
-dotnet-extractor/obj/
-dotnet-extractor.Tests/bin/
-dotnet-extractor.Tests/obj/
-json-cache/
 public/assets/game/
 __notes/
 
@@ -38,7 +33,6 @@ frankenphp-worker.php
 .cursor/
 .playwright-mcp/
 __pycache__/
-dotnet-extractor/.idea/
 /scripts/debug_crops/
 /scripts/design-audit/screenshots/
 

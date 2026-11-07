@@ -79,14 +79,13 @@ it('updates the existing mod row when persisting twice', function (): void {
     expect(Mod::query()->count())->toBe(1);
 });
 
-it('lists translation and element files of supported mods only', function (): void {
+it('lists translation files of supported mods only', function (): void {
     $catalog = modCatalog();
     $root = oniFixtures().'/mods/3557584850';
 
     expect($catalog->potPaths())->toBe([$root.'/translation_template.pot'])
         ->and($catalog->poPaths('fr'))->toBe([$root.'/translations/fr.po'])
         ->and($catalog->poPaths('de'))->toBe([])
-        ->and($catalog->elementYamlPaths())->toBe([$root.'/elements/ChemicalProcessing_IO_Elements.yaml'])
         ->and(modCatalog([])->potPaths())->toBe([]);
 });
 

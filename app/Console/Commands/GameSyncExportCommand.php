@@ -53,7 +53,6 @@ final class GameSyncExportCommand extends Command
             ...File::glob($source.'/mod.yaml'),
             ...File::glob($source.'/translation_template.pot'),
             ...File::glob($source.'/translations/*.po'),
-            ...File::glob($source.'/elements/*.yaml'),
         ];
 
         foreach ($files as $file) {

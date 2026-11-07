@@ -21,7 +21,7 @@ final readonly class DuplicantImporter
     }
 
     /**
-     * Persists duplicant records (json-cache shape).
+     * Persists duplicant records (reader record shape).
      *
      * @param  array{base_stats: array<string, mixed>, traits: list<array<string, mixed>>}  $data
      */

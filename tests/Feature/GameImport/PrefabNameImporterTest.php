@@ -5,21 +5,18 @@ declare(strict_types=1);
 use App\Models\CritterMorphDiet;
 use App\Models\CritterMorphOutput;
 use App\Models\Element;
+use App\Models\Mod;
 use App\Models\PrefabName;
+use App\Services\GameImport\OniExport\ModCatalog;
+use App\Services\GameImport\OniExport\OniExport;
 use App\Services\GameImport\PrefabNameImporter;
 use App\Services\GameImport\StringResolver;
 
-function importPrefabNames(array $critters = [], array $plants = [], array $buildings = [], array $geysers = []): void
+function importPrefabNames(array $critters = [], array $plants = [], array $buildings = [], array $geysers = [], ?ModCatalog $mods = null): void
 {
-    $cachePath = sys_get_temp_dir().'/prefab-cache-'.uniqid();
-    mkdir($cachePath);
-    file_put_contents($cachePath.'/critters.json', json_encode($critters));
-    file_put_contents($cachePath.'/plants.json', json_encode($plants));
-    file_put_contents($cachePath.'/buildings.json', json_encode($buildings));
-    file_put_contents($cachePath.'/geyser_types.json', json_encode($geysers));
     $resolver = new StringResolver(base_path('tests/Fixtures/GameImport/strings.pot'));
 
-    new PrefabNameImporter($resolver)->import($cachePath);
+    new PrefabNameImporter($resolver, $mods)->import(compact('critters', 'plants', 'buildings', 'geysers'));
 }
 
 function nameKeyOf(string $prefabId): ?string
@@ -99,4 +96,20 @@ it('keys buildings and geysers from their extracted name keys', function (): voi
 
     expect(nameKeyOf('TestBuilding'))->toBe('STRINGS.BUILDINGS.PREFABS.TESTBUILDING.NAME')
         ->and(nameKeyOf('steam'))->toBe('STRINGS.CREATURES.SPECIES.GEYSER.STEAM.NAME');
+});
+
+it('records the mod owning a prefab', function (): void {
+    $root = base_path('tests/Fixtures/OniExport');
+    $catalog = ModCatalog::fromExport(new OniExport($root), $root.'/mods', ['3557584850']);
+    $catalog->persist();
+    $modId = Mod::query()->value('id');
+    Element::factory()->create(['element_id' => 'Oxygen']);
+
+    importPrefabNames(
+        buildings: [['building_id' => 'TestBuilding', 'mod_id' => $modId, 'name_localization_id' => 'STRINGS.BUILDINGS.PREFABS.TESTBUILDING.NAME']],
+        mods: $catalog,
+    );
+
+    expect(PrefabName::query()->where('prefab_id', 'TestBuilding')->value('mod_id'))->toBe($modId)
+        ->and(PrefabName::query()->where('prefab_id', 'Oxygen')->value('mod_id'))->toBeNull();
 });

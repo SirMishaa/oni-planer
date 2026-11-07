@@ -24,7 +24,7 @@ final class RecipeImporter
     }
 
     /**
-     * Persists recipe records (json-cache shape, optionally with `mod_id`).
+     * Persists recipe records (reader record shape, optionally with `mod_id`).
      *
      * Recipes whose fabricator is not an imported building are skipped, and so
      * are items that are not imported elements (crafted objects such as

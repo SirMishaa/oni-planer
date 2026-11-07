@@ -6,6 +6,7 @@ where `kanim` is the snake_case default base name; OVERRIDES corrects the few
 entities whose kanim base differs.
 """
 import json
+import sqlite3
 from pathlib import Path
 
 WORKLIST = Path(__file__).resolve().parent / "worklist.json"
@@ -129,28 +130,51 @@ EXTRA_BUILD_BASES: dict[str, list[str]] = {
 }
 
 
-JSON_CACHE = Path(__file__).resolve().parents[2] / "json-cache"
+ROOT = Path(__file__).resolve().parents[2]
+DATABASE = ROOT / "database" / "database.sqlite"
+EXPORT_DATABASE = ROOT / "game-data" / "oniextract" / "current" / "database"
 
 
-def _cache_rows(category: str, file_name: str, id_field: str) -> list[dict[str, str]]:
-    """Plants/geysers straight from the dotnet-extractor output, with the exact kanim
-    the game config loads (no name guessing)."""
-    path = JSON_CACHE / file_name
-    if not path.exists():
+def _imported_ids(table: str, id_column: str) -> list[str]:
+    """Ids of the plants/geysers actually imported into the app DB."""
+    if not DATABASE.exists():
         return []
+    with sqlite3.connect(DATABASE) as connection:
+        return [row[0] for row in connection.execute(f"SELECT {id_column} FROM {table} ORDER BY {id_column}")]
+
+
+def _export_kanims(category: str) -> dict[str, str]:
+    """id -> exact kanim base the game loads, read from the synced OniExtract export."""
+    if category == "plants":
+        path = EXPORT_DATABASE / "planner_extras.json"
+        if not path.exists():
+            return {}
+        entities = json.loads(path.read_text()).get("entities", {})
+        return {key: entity["kanim"] for key, entity in entities.items() if entity.get("kanim")}
+    path = EXPORT_DATABASE / "geyser.json"
+    if not path.exists():
+        return {}
+    geysers = json.loads(path.read_text()).get("geysers", [])
+    return {geyser["geyserType"]["id"]: geyser["anim"] for geyser in geysers if geyser.get("anim")}
+
+
+def _export_rows(category: str, table: str, id_column: str) -> list[dict[str, str]]:
+    """Plants/geysers present in the DB, with the exact kanim from the export (no name guessing)."""
+    kanims = _export_kanims(category)
     rows = []
-    for entry in json.loads(path.read_text()):
-        kanim = entry.get("kanim")
+    for key in _imported_ids(table, id_column):
+        # Plant ids are prefab ids; geyser ids are geyserType ids (kanims keyed accordingly).
+        kanim = kanims.get(key)
         if kanim:
             base = kanim.removesuffix("_kanim")
-            rows.append({"category": category, "key": entry[id_field], "kanim": base, "exact_kanim": base})
+            rows.append({"category": category, "key": key, "kanim": base, "exact_kanim": base})
     return rows
 
 
 def load_worklist() -> list[dict[str, str]]:
     """Critters come from the curated worklist.json (morph overrides live here);
-    plants and geysers come from json-cache when it carries their kanim."""
+    plants and geysers come from the imported DB ids plus the export's exact kanims."""
     curated = json.loads(WORKLIST.read_text())
-    cached = [*_cache_rows("plants", "plants.json", "plant_id"), *_cache_rows("geysers", "geyser_types.json", "geyser_id")]
-    cached_categories = {row["category"] for row in cached}
-    return [*(row for row in curated if row["category"] not in cached_categories), *cached]
+    exact = [*_export_rows("plants", "plants", "plant_id"), *_export_rows("geysers", "geyser_types", "geyser_id")]
+    exact_categories = {row["category"] for row in exact}
+    return [*(row for row in curated if row["category"] not in exact_categories), *exact]

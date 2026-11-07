@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Model;
  * food item...). The display name is `__($name_key)` from the game catalogs.
  */
 #[GameData]
-#[Fillable(['prefab_id', 'name_key'])]
+#[Fillable(['prefab_id', 'name_key', 'mod_id'])]
 final class PrefabName extends Model
 {
     /** @use HasFactory<PrefabNameFactory> */

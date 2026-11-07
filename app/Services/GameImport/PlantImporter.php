@@ -25,7 +25,7 @@ final class PlantImporter
     }
 
     /**
-     * Persists plant records (json-cache shape, optionally with `mod_id`).
+     * Persists plant records (reader record shape, optionally with `mod_id`).
      * A null pressure means "not pressure sensitive" and is stored as 0, since
      * the columns are not nullable. Inputs and outputs that are not imported
      * elements (foods and seeds have no element row) are skipped.

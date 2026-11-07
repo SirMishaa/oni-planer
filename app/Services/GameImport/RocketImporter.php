@@ -23,7 +23,7 @@ final class RocketImporter
     }
 
     /**
-     * Persists rocket records (json-cache shape). A fuel that is not an
+     * Persists rocket records (reader record shape). A fuel that is not an
      * imported element is stored as null and counted.
      *
      * @param  array{engines: list<array<string, mixed>>, modules: list<array<string, mixed>>}  $data

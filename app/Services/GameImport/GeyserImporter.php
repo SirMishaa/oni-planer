@@ -19,7 +19,7 @@ final readonly class GeyserImporter
     }
 
     /**
-     * Persists geyser records (json-cache shape, optionally with `mod_id`).
+     * Persists geyser records (reader record shape, optionally with `mod_id`).
      *
      * @param  array<int, array<string, mixed>>  $geysers
      */

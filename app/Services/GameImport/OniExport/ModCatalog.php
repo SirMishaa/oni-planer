@@ -182,12 +182,6 @@ final class ModCatalog
         return $this->existing(fn (string $id): array => [$this->modsPath.'/'.$id.'/translations/'.$locale.'.po']);
     }
 
-    /** @return list<string> */
-    public function elementYamlPaths(): array
-    {
-        return $this->existing(fn (string $id): array => File::glob($this->modsPath.'/'.$id.'/elements/*.yaml'));
-    }
-
     /** @return array<string, mixed> */
     private static function plannerExtras(OniExport $export): array
     {

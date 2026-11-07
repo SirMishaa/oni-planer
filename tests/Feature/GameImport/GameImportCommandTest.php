@@ -2,60 +2,109 @@
 
 declare(strict_types=1);
 
+use App\Models\Building;
 use App\Models\Element;
+use App\Models\Mod;
+use App\Models\PrefabName;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
 
+const FIXTURE_MOD_ID = '3557584850';
+
 beforeEach(function (): void {
-    $this->langPath = sys_get_temp_dir().'/oni-lang-'.uniqid();
+    $this->workDir = sys_get_temp_dir().'/oni-import-'.uniqid();
+    $this->langPath = $this->workDir.'/lang';
+    $this->gamePath = $this->workDir.'/game';
+
+    File::ensureDirectoryExists($this->gamePath.'/StreamingAssets/strings');
+    File::copy(
+        base_path('tests/Fixtures/GameImport/strings.pot'),
+        $this->gamePath.'/StreamingAssets/strings/strings_template.pot',
+    );
+
+    // The fixture slice has no Steam element, which the fixture geyser references.
+    File::copyDirectory(base_path('tests/Fixtures/OniExport'), $this->workDir.'/export');
+    File::put($this->workDir.'/export/database/geyser.json', '{"geysers": []}');
+
+    config(['game.supported_mods' => [FIXTURE_MOD_ID]]);
+
+    $this->importOptions = fn (array $overrides = []): array => [
+        '--game-path' => $this->gamePath,
+        '--export-path' => $this->workDir.'/export',
+        '--mods-path' => base_path('tests/Fixtures/OniExport/mods'),
+        '--translations-path' => base_path('tests/Fixtures/GameImport/translations'),
+        '--lang-path' => $this->langPath,
+        ...$overrides,
+    ];
 });
 
 afterEach(function (): void {
-    File::deleteDirectory($this->langPath);
+    File::deleteDirectory($this->workDir);
 });
 
-it('imports elements from game data yaml files', function (): void {
-    $this->artisan('game:import', [
-        '--game-path' => base_path('game-data/OxygenNotIncluded_Data'),
-        '--skip-extractor' => true,
-        '--cache-path' => base_path('tests/Fixtures/GameImport'),
-        '--lang-path' => $this->langPath,
-    ])
-        ->assertSuccessful();
+it('aborts before truncating when the export is missing', function (): void {
+    Building::factory()->create();
+    File::ensureDirectoryExists($this->workDir.'/empty');
 
-    expect(Element::query()->count())->toBeGreaterThan(0);
+    $this->artisan('game:import', ($this->importOptions)(['--export-path' => $this->workDir.'/empty']))
+        ->assertExitCode(1);
+
+    expect(Building::query()->count())->toBe(1);
 });
 
-it('truncates existing data before reimport', function (): void {
-    Element::query()->create([
-        'element_id' => 'OldElement', 'state' => 'gas', 'molar_mass' => 1.0,
-        'toxicity' => 0, 'material_category' => 'Test', 'tags' => [],
-        'name' => ['en' => 'Old'], 'is_disabled' => false,
-    ]);
+it('aborts before truncating when planner_extras.json is missing', function (): void {
+    Building::factory()->create();
+    File::delete($this->workDir.'/export/database/planner_extras.json');
 
-    $this->artisan('game:import', [
-        '--game-path' => base_path('game-data/OxygenNotIncluded_Data'),
-        '--skip-extractor' => true,
-        '--cache-path' => base_path('tests/Fixtures/GameImport'),
-        '--lang-path' => $this->langPath,
-    ])
-        ->assertSuccessful();
+    $this->artisan('game:import', ($this->importOptions)())
+        ->assertExitCode(1);
 
-    expect(Element::query()->where('element_id', 'OldElement')->exists())->toBeFalse();
+    expect(Building::query()->count())->toBe(1);
 });
 
-it('writes the game translation catalogs', function (): void {
-    $this->artisan('game:import', [
-        '--game-path' => base_path('game-data/OxygenNotIncluded_Data'),
-        '--skip-extractor' => true,
-        '--cache-path' => base_path('tests/Fixtures/GameImport'),
-        '--translations-path' => base_path('tests/Fixtures/GameImport/translations'),
-        '--lang-path' => $this->langPath,
-    ])
+it('aborts before truncating when a supported mod folder is missing', function (): void {
+    Building::factory()->create();
+    File::ensureDirectoryExists($this->workDir.'/mods');
+
+    $this->artisan('game:import', ($this->importOptions)(['--mods-path' => $this->workDir.'/mods']))
+        ->assertExitCode(1);
+
+    expect(Building::query()->count())->toBe(1);
+});
+
+it('warns on build version mismatch', function (): void {
+    $this->artisan('game:import', ($this->importOptions)(['--game-build' => 'U1-000000-OTHER']))
+        ->expectsOutputToContain('U59-744825-SCRPAN')
+        ->assertSuccessful();
+});
+
+it('imports the fixture export end to end', function (): void {
+    Element::factory()->create(['element_id' => 'OldElement']);
+
+    $this->artisan('game:import', ($this->importOptions)())
+        ->expectsOutputToContain('Stairs')
         ->assertSuccessful();
 
-    expect($this->langPath.'/en.json')->toBeFile()
+    $modId = Mod::query()->where('workshop_id', FIXTURE_MOD_ID)->value('id');
+
+    expect(Building::query()->where('building_id', 'Mining_MineralDrill')->value('mod_id'))->toBe($modId)
+        ->and(Building::query()->where('building_id', 'Electrolyzer')->exists())->toBeTrue()
+        ->and(Building::query()->where('building_id', 'Stairs')->exists())->toBeFalse()
+        ->and(Element::query()->where('element_id', 'PhosphorBronze')->exists())->toBeTrue()
+        ->and(Element::query()->where('element_id', 'OldElement')->exists())->toBeFalse()
+        ->and(PrefabName::query()->where('prefab_id', 'Oxygen')->exists())->toBeTrue()
+        ->and($this->langPath.'/en.json')->toBeFile()
         ->and($this->langPath.'/fr.json')->toBeFile();
+});
+
+it('leaves the previous data intact when the import fails midway', function (): void {
+    Building::factory()->create(['building_id' => 'Survivor']);
+    File::put($this->workDir.'/export/database/recipe.json', '{broken');
+
+    expect(fn () => $this->artisan('game:import', ($this->importOptions)())->run())
+        ->toThrow(JsonException::class);
+
+    expect(Building::query()->where('building_id', 'Survivor')->exists())->toBeTrue();
 });

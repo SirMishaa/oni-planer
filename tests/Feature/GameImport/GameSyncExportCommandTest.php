@@ -35,7 +35,6 @@ it('mirrors the export and supported mod files', function (): void {
         ->and($this->workDir.'/out/mods/3557584850/mod.yaml')->toBeFile()
         ->and($this->workDir.'/out/mods/3557584850/translation_template.pot')->toBeFile()
         ->and($this->workDir.'/out/mods/3557584850/translations/fr.po')->toBeFile()
-        ->and($this->workDir.'/out/mods/3557584850/elements/ChemicalProcessing_IO_Elements.yaml')->toBeFile()
         ->and($this->workDir.'/out/mods/3557584850/RonivansLegacy.dll')->not->toBeFile();
 });
 

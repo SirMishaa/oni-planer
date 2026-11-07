@@ -22,7 +22,7 @@ final readonly class CritterImporter
     }
 
     /**
-     * Persists critter records (json-cache shape, optionally with `mod_id`).
+     * Persists critter records (reader record shape, optionally with `mod_id`).
      * A baby is stored as a morph of its adult's critter, which takes the
      * adult's mod.
      *
