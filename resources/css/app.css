@@ -30,6 +30,88 @@
     --color-oni-amber-dim: oklch(52% 0.095 52);
 }
 
+/*
+ * Colony pages (mockup v2): tinted ink neutrals, one ration yellow for
+ * calories, state colours always paired with a word. Scoped to `.colony` so
+ * the other pages keep their look.
+ */
+.colony {
+    --ink-0: oklch(16% 0.022 222);
+    --ink-1: oklch(20% 0.026 222);
+    --ink-2: oklch(24% 0.03 222);
+    --ink-3: oklch(30% 0.032 222);
+    --line: oklch(36% 0.03 222);
+    --text: oklch(93% 0.014 90);
+    --text-2: oklch(77% 0.02 200);
+    --text-3: oklch(66% 0.022 210);
+    --ration: oklch(82% 0.13 82);
+    --ration-ink: oklch(22% 0.04 82);
+    --ok: oklch(78% 0.13 158);
+    --warn: oklch(80% 0.14 62);
+    --bad: oklch(72% 0.17 25);
+    --wild: oklch(76% 0.09 205);
+    --live: oklch(78% 0.15 150);
+    --font-text: 'Barlow', ui-sans-serif, system-ui, sans-serif;
+    --font-figure: 'Barlow Semi Condensed', 'Barlow', ui-sans-serif, sans-serif;
+
+    /* CycleTimeline theme */
+    --tl-line: var(--ink-3);
+    --tl-text: var(--text);
+    --tl-muted: var(--text-3);
+    --tl-now: var(--ration);
+    --tl-surface: var(--ink-0);
+    --tl-label-width: 148px;
+    --tl-summary-width: 88px;
+
+    background: var(--ink-0);
+    color: var(--text);
+    font: 400 15px/1.45 var(--font-text);
+    font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 768px) {
+    .colony {
+        --tl-label-width: 250px;
+        --tl-summary-width: 130px;
+    }
+}
+
+.colony .figure {
+    font-family: var(--font-figure);
+}
+
+/* Block headings and notes shared by the colony blocks. */
+.colony .block-title {
+    margin-top: 44px;
+    font-family: var(--font-figure);
+    font-size: 21px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.colony .block-intro {
+    max-width: 70ch;
+    margin-block: 4px 14px;
+    color: var(--text-2);
+}
+
+.colony .block-note {
+    max-width: 70ch;
+    margin-bottom: 12px;
+    color: var(--warn);
+    font-size: 14px;
+}
+
+.colony .block-empty {
+    padding-block: 12px;
+    color: var(--text-3);
+}
+
+.colony :focus-visible {
+    outline: 2px solid var(--ration);
+    outline-offset: 2px;
+}
+
 /* Content area dot grid — reduced opacity in dark mode */
 .content-grid {
     background-image: radial-gradient(
