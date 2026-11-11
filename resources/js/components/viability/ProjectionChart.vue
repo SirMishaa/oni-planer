@@ -21,9 +21,11 @@ const HEIGHT = 230;
 const TOP = 14;
 const BOTTOM = 28;
 const LEFT = 46;
-/** Below this width, line labels move inside the plot. */
+/** Below this width, line labels wrap on two lines to leave room to the plot. */
 const COMPACT_WIDTH = 520;
-const LABEL_GAP = 16;
+const LABEL_LINE_HEIGHT = 15;
+/** Rough advance of a label character (13.5px semi-condensed bold). */
+const LABEL_CHAR_PX = 7.2;
 
 const { t } = useT();
 const format = useFormat();
@@ -48,7 +50,17 @@ onMounted(() => {
 onBeforeUnmount(() => observer?.disconnect());
 
 const compact = computed(() => width.value < COMPACT_WIDTH);
-const right = computed(() => (compact.value ? 10 : 168));
+/** Right margin reserved for the line labels, from their longest line. */
+const right = computed(() => {
+    const longest = Math.max(
+        1,
+        ...labelLines.value.flatMap((lines) =>
+            lines.map((line) => line.length),
+        ),
+    );
+
+    return Math.ceil(longest * LABEL_CHAR_PX + 16);
+});
 const plotRight = computed(() => width.value - right.value);
 const startCycle = computed(() => Math.floor(props.nowCycle));
 
@@ -166,28 +178,67 @@ const xTicks = computed(() =>
 
 // region Labels
 
-/** Line-end labels, pushed apart so they never overlap. */
+/** Splits a label in two at the space nearest its middle. */
+function wrap(text: string): string[] {
+    const spaces = [...text.matchAll(/ /g)].map((match) => match.index);
+
+    if (spaces.length === 0) {
+        return [text];
+    }
+
+    const cut = spaces.reduce((best, index) =>
+        Math.abs(index - text.length / 2) < Math.abs(best - text.length / 2)
+            ? index
+            : best,
+    );
+
+    return [text.slice(0, cut), text.slice(cut + 1)];
+}
+
+/** Label lines per scenario, in `ORDER`: one line, or two on narrow charts. */
+const labelLines = computed(() =>
+    ORDER.map((key) => {
+        const text = t(`colony.viability.chart.${key}`);
+
+        return compact.value ? wrap(text) : [text];
+    }),
+);
+
+/** Line-end labels in the right margin, pushed apart so they never overlap. */
 const labels = computed(() => {
     const placed = series.value
-        .map((line) => ({
-            key: line.key,
-            text: line.label,
-            color: line.color,
-            y: y(line.values.at(-1) ?? 0) + (compact.value ? -8 : 4),
-        }))
+        .map((line, index) => {
+            const lines = labelLines.value[index] ?? [line.label];
+
+            return {
+                key: line.key,
+                lines,
+                color: line.color,
+                y:
+                    y(line.values.at(-1) ?? 0) +
+                    4 -
+                    ((lines.length - 1) * LABEL_LINE_HEIGHT) / 2,
+            };
+        })
         .sort((a, b) => a.y - b.y);
     const floor = HEIGHT - BOTTOM - 4;
 
     for (let index = 1; index < placed.length; index++) {
         const previous = placed[index - 1];
         const current = placed[index];
+        const minimum = previous
+            ? previous.y + previous.lines.length * LABEL_LINE_HEIGHT + 2
+            : 0;
 
-        if (previous && current && current.y - previous.y < LABEL_GAP) {
-            current.y = previous.y + LABEL_GAP;
+        if (current && current.y < minimum) {
+            current.y = minimum;
         }
     }
 
-    const overflow = (placed.at(-1)?.y ?? 0) - floor;
+    const last = placed.at(-1);
+    const overflow = last
+        ? last.y + (last.lines.length - 1) * LABEL_LINE_HEIGHT - floor
+        : 0;
 
     if (overflow > 0) {
         placed.forEach((label) => {
@@ -298,13 +349,19 @@ const labels = computed(() => {
                 <text
                     v-for="label in labels"
                     :key="label.key"
-                    :x="compact ? plotRight : plotRight + 10"
+                    :x="plotRight + 8"
                     :y="label.y"
-                    :text-anchor="compact ? 'end' : 'start'"
                     :fill="label.color"
                     class="projection__label"
                 >
-                    {{ label.text }}
+                    <tspan
+                        v-for="(line, index) in label.lines"
+                        :key="index"
+                        :x="plotRight + 8"
+                        :dy="index === 0 ? 0 : LABEL_LINE_HEIGHT"
+                    >
+                        {{ line }}
+                    </tspan>
                 </text>
             </g>
             <!-- endregion -->

@@ -127,6 +127,25 @@ function markTitle(mark: TimelineMark<HarvestPayload>): string {
                                     )
                                 }}
                             </span>
+                            <!-- Phones: the summary column is hidden, the total shows here. -->
+                            <span
+                                class="figure source__sum-inline block md:hidden"
+                                :class="{
+                                    'source__sum--wild':
+                                        row.source.kind !== 'planted',
+                                }"
+                            >
+                                {{
+                                    t(
+                                        'colony.viability.arrivals.per_cycle_inline',
+                                        {
+                                            kcal: format.number(
+                                                row.source.kcalPerCycle,
+                                            ),
+                                        },
+                                    )
+                                }}
+                            </span>
                         </div>
                     </div>
                 </template>
@@ -219,6 +238,12 @@ function markTitle(mark: TimelineMark<HarvestPayload>): string {
     font-size: 18px;
     font-weight: 700;
     line-height: 1.1;
+}
+
+.source__sum-inline {
+    color: var(--ration);
+    font-size: 14px;
+    font-weight: 700;
 }
 
 .source__sum--wild {

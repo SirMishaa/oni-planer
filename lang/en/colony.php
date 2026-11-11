@@ -50,7 +50,7 @@ return [
             'nobody' => 'Nobody in this colony eats.',
             'no_harvest' => 'With no harvest at all, the stock would last :count cycle.|With no harvest at all, the stock would last :count cycles.',
             'no_harvest_beyond' => 'Even with no harvest, the stock lasts more than :count cycles.',
-            'consumption' => 'Your colony eats :kcal kcal per cycle and has :stock in stock.',
+            'consumption' => 'Your colony eats :kcal kcal per cycle from a stock of :stock kcal.',
         ],
         'chart' => [
             'label' => 'Projected food stock over the next :count cycles',
@@ -66,14 +66,15 @@ return [
             'title' => 'Incoming harvests',
             'intro' => 'One row per source. Each mark is a harvest, placed where it ripens.',
             'count' => [
-                'planted' => ':count planted|:count planted',
-                'wild_auto' => ':count wild, auto-harvested|:count wild, auto-harvested',
-                'wild_manual' => ':count wild, needs picking|:count wild, needs picking',
+                'planted' => ':count plant planted|:count plants planted',
+                'wild_auto' => ':count wild plant, auto-harvested|:count wild plants, auto-harvested',
+                'wild_manual' => ':count wild plant, needs picking|:count wild plants, need picking',
             ],
             'row' => ':name, :detail',
             'stopped' => ':count stopped growing|:count stopped growing',
             'per_cycle' => '+:kcal',
             'per_cycle_unit' => 'kcal / cycle',
+            'per_cycle_inline' => '+:kcal kcal / cycle',
             'mark' => ':count harvest on cycle :cycle, :kcal kcal|:count harvests from cycle :cycle, :kcal kcal',
             'legend' => [
                 'now' => 'Now',
@@ -115,8 +116,8 @@ return [
                 'value' => '+:kcal kcal / cycle',
             ],
             'critter' => [
-                'tame' => ':count tame, to butcher|:count tame, butcher them all',
-                'wild' => ':count wild, to butcher|:count wild, butcher them all',
+                'tame' => ':count tame, if you butcher it|:count tame, if you butcher them all',
+                'wild' => ':count wild, if you butcher it|:count wild, if you butcher them all',
                 'value' => '+:kcal kcal',
                 'unknown' => 'unknown yield',
             ],

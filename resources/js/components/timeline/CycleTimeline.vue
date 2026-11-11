@@ -284,8 +284,13 @@ function onWheel(event: WheelEvent): void {
     left: 0;
 }
 
+/*
+ * `--tl-summary-display: none` (with `--tl-summary-width: 0px`) drops the
+ * summary column, e.g. on narrow screens where the label slot shows it.
+ */
 .tl-summary {
     right: 0;
+    display: var(--tl-summary-display, flex);
 }
 
 .tl-track {

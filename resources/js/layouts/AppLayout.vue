@@ -711,7 +711,8 @@ function isActive(item: NavItem): boolean {
                 <Link
                     v-if="item.available"
                     :href="item.href"
-                    class="flex flex-1 flex-col items-center gap-1 py-2.5 text-shell-text transition-colors"
+                    class="flex min-w-0 flex-1 flex-col items-center gap-1 px-0.5 py-2.5 text-shell-text transition-colors"
+                    :title="item.label"
                     :class="isActive(item) ? 'text-oni-amber!' : ''"
                 >
                     <span class="flex h-5 w-5 items-center justify-center">
@@ -912,13 +913,14 @@ function isActive(item: NavItem): boolean {
                         </svg>
                     </span>
                     <span
-                        class="text-[9px] font-medium tracking-widest uppercase"
+                        class="w-full truncate text-center text-[10px] leading-tight font-medium"
                         >{{ item.label }}</span
                     >
                 </Link>
                 <button
                     v-else
-                    class="flex flex-1 flex-col items-center gap-1 py-2.5 opacity-25"
+                    class="flex min-w-0 flex-1 flex-col items-center gap-1 px-0.5 py-2.5 opacity-25"
+                    :title="item.label"
                     disabled
                 >
                     <span
@@ -1039,7 +1041,7 @@ function isActive(item: NavItem): boolean {
                         </svg>
                     </span>
                     <span
-                        class="text-[9px] font-medium tracking-widest text-shell-muted uppercase"
+                        class="w-full truncate text-center text-[10px] leading-tight font-medium text-shell-muted"
                         >{{ item.label }}</span
                     >
                 </button>

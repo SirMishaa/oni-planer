@@ -50,7 +50,7 @@ return [
             'nobody' => 'Personne ne mange dans cette colonie.',
             'no_harvest' => 'Sans aucune récolte, le stock durerait :count cycle.|Sans aucune récolte, le stock durerait :count cycles.',
             'no_harvest_beyond' => 'Même sans récolte, le stock tient plus de :count cycles.',
-            'consumption' => 'Ta colonie mange :kcal kcal par cycle et en a :stock en stock.',
+            'consumption' => 'Ta colonie mange :kcal kcal par cycle, sur un stock de :stock kcal.',
         ],
         'chart' => [
             'label' => 'Stock de nourriture prévu sur les :count prochains cycles',
@@ -74,6 +74,7 @@ return [
             'stopped' => ':count ne pousse plus|:count ne poussent plus',
             'per_cycle' => '+:kcal',
             'per_cycle_unit' => 'kcal / cycle',
+            'per_cycle_inline' => '+:kcal kcal / cycle',
             'mark' => ':count récolte au cycle :cycle, :kcal kcal|:count récoltes à partir du cycle :cycle, :kcal kcal',
             'legend' => [
                 'now' => 'Maintenant',
@@ -115,8 +116,8 @@ return [
                 'value' => '+:kcal kcal / cycle',
             ],
             'critter' => [
-                'tame' => ':count domestiqué, à abattre|:count domestiqués, à abattre tous',
-                'wild' => ':count sauvage, à abattre|:count sauvages, à abattre tous',
+                'tame' => ':count domestiqué, si on l\'abat|:count domestiqués, si on les abat tous',
+                'wild' => ':count sauvage, si on l\'abat|:count sauvages, si on les abat tous',
                 'value' => '+:kcal kcal',
                 'unknown' => 'butin inconnu',
             ],

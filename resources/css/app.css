@@ -60,9 +60,13 @@
     --tl-muted: var(--text-3);
     --tl-now: var(--ration);
     --tl-surface: var(--ink-0);
+    /* Phones: no summary column, the label slot carries it. */
     --tl-label-width: 148px;
-    --tl-summary-width: 88px;
+    --tl-summary-width: 0px;
+    --tl-summary-display: none;
 
+    color-scheme: dark;
+    scrollbar-color: var(--line) var(--ink-1);
     background: var(--ink-0);
     color: var(--text);
     font: 400 15px/1.45 var(--font-text);
@@ -73,7 +77,14 @@
     .colony {
         --tl-label-width: 250px;
         --tl-summary-width: 130px;
+        --tl-summary-display: flex;
     }
+}
+
+/* The layout's scroll area around a colony page: dark scrollbar too. */
+:has(> .colony) {
+    color-scheme: dark;
+    scrollbar-color: oklch(36% 0.03 222) oklch(20% 0.026 222);
 }
 
 .colony .figure {
