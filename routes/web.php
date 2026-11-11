@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\BuildingController;
 use App\Http\Controllers\CodexController;
+use App\Http\Controllers\ColonyController;
 use App\Http\Controllers\CritterController;
 use App\Http\Controllers\ElementController;
 use App\Http\Controllers\RanchController;
@@ -29,3 +30,6 @@ Route::get('/codex/{codexEntry:codex_id}', [CodexController::class, 'show'])->na
 Route::get('/critters', [CritterController::class, 'index'])->name('critters.index');
 Route::get('/critters/{family}', [CritterController::class, 'show'])->name('critters.show');
 Route::get('/ranch', [RanchController::class, 'index'])->name('ranch.index');
+
+Route::get('/colony/viability', [ColonyController::class, 'viability'])->name('colony.viability');
+Route::get('/colony/uplink', [ColonyController::class, 'uplink'])->name('colony.uplink');

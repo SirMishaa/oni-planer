@@ -3,6 +3,11 @@
 declare(strict_types=1);
 
 return [
+    'nav' => [
+        'group' => 'Ma colonie',
+        'viability' => 'Viabilité',
+        'uplink' => 'Uplink',
+    ],
     'install' => [
         'written' => 'Réglages Uplink écrits dans :file.',
         'folder_missing' => "Le dossier du mod :path n'existe pas. Compilez et installez d'abord le mod Uplink, puis relancez cette commande.",

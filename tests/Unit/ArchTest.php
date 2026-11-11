@@ -12,6 +12,8 @@ arch()->preset()->laravel()->ignoring([
     App\Models\Attributes::class,
     // Exception, not a model.
     App\Services\GameImport\OniExport\OniExportMissing::class,
+    // Two named pages (viability, uplink) fed by the same colony status.
+    App\Http\Controllers\ColonyController::class,
 ]);
 arch()->preset()->security()->ignoring([
     'assert',

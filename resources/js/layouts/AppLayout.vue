@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
 import { computed, ref, onMounted } from 'vue';
+import ColonyController from '@/actions/App/Http/Controllers/ColonyController';
 import CodexPanel from '@/components/codex/CodexPanel.vue';
 import { useCodex } from '@/composables/useCodex';
+import { useT } from '@/composables/useT';
 
 const { dockActive, width: codexWidth } = useCodex();
+const { t } = useT();
 
 const contentStyle = computed(() => ({
     paddingRight: dockActive.value ? `${codexWidth.value}px` : '0px',
@@ -31,6 +34,8 @@ type NavItem = {
     label: string;
     href: string;
     available: boolean;
+    /** Heading shown above the first item of a group. */
+    group?: string;
 };
 
 const navItems: NavItem[] = [
@@ -51,7 +56,32 @@ const navItems: NavItem[] = [
     { key: 'ranch', label: 'Élevage', href: '/ranch', available: true },
     { key: 'plants', label: 'Plantes', href: '/plants', available: false },
     { key: 'recipes', label: 'Recettes', href: '/recipes', available: false },
+    {
+        key: 'viability',
+        label: t('colony.nav.viability'),
+        href: ColonyController.viability.url(),
+        available: true,
+        group: t('colony.nav.group'),
+    },
+    {
+        key: 'uplink',
+        label: t('colony.nav.uplink'),
+        href: ColonyController.uplink.url(),
+        available: true,
+        group: t('colony.nav.group'),
+    },
 ];
+
+/** Mobile bar: the first five items, then the colony pages. */
+const mobileNavItems = [
+    ...navItems.slice(0, 5),
+    ...navItems.filter((item) => item.group !== undefined),
+];
+
+function startsGroup(index: number): boolean {
+    const group = navItems[index]?.group;
+    return group !== undefined && navItems[index - 1]?.group !== group;
+}
 
 function isActive(item: NavItem): boolean {
     const url = page.url;
@@ -164,7 +194,20 @@ function isActive(item: NavItem): boolean {
 
             <!-- region Nav -->
             <nav class="relative flex-1 space-y-0.5 px-2 pt-3">
-                <template v-for="item in navItems" :key="item.key">
+                <template v-for="(item, index) in navItems" :key="item.key">
+                    <!-- Group heading -->
+                    <div
+                        v-if="startsGroup(index)"
+                        class="mt-3 border-t border-shell-border px-2.5 pt-3 pb-1"
+                    >
+                        <span
+                            v-if="expanded"
+                            class="text-[9px] font-medium tracking-[0.12em] whitespace-nowrap text-shell-muted uppercase"
+                        >
+                            {{ item.group }}
+                        </span>
+                    </div>
+
                     <!-- Available item -->
                     <Link
                         v-if="item.available"
@@ -327,6 +370,55 @@ function isActive(item: NavItem): boolean {
                                 />
                                 <path
                                     d="M6 5v9M12 5v9"
+                                    stroke="currentColor"
+                                    stroke-width="1.2"
+                                    stroke-linecap="round"
+                                />
+                            </svg>
+                            <!-- Viability icon: bowl -->
+                            <svg
+                                v-else-if="item.key === 'viability'"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 18 18"
+                                fill="none"
+                            >
+                                <path
+                                    d="M2.5 8.5h13a6.5 6.5 0 0 1-13 0Z"
+                                    stroke="currentColor"
+                                    stroke-width="1.3"
+                                    stroke-linejoin="round"
+                                />
+                                <path
+                                    d="M7 5.5c0-1 1-1.5 1-2.5M10.5 5.5c0-1 1-1.5 1-2.5"
+                                    stroke="currentColor"
+                                    stroke-width="1.2"
+                                    stroke-linecap="round"
+                                />
+                            </svg>
+                            <!-- Uplink icon: antenna -->
+                            <svg
+                                v-else-if="item.key === 'uplink'"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 18 18"
+                                fill="none"
+                            >
+                                <path
+                                    d="M9 9v6.5M6.5 15.5h5"
+                                    stroke="currentColor"
+                                    stroke-width="1.3"
+                                    stroke-linecap="round"
+                                />
+                                <circle
+                                    cx="9"
+                                    cy="7.5"
+                                    r="1.5"
+                                    stroke="currentColor"
+                                    stroke-width="1.3"
+                                />
+                                <path
+                                    d="M5.5 4a5 5 0 0 0 0 7M12.5 4a5 5 0 0 1 0 7"
                                     stroke="currentColor"
                                     stroke-width="1.2"
                                     stroke-linecap="round"
@@ -615,7 +707,7 @@ function isActive(item: NavItem): boolean {
         <nav
             class="fixed inset-x-0 bottom-0 z-20 flex border-t border-shell-border bg-shell md:hidden"
         >
-            <template v-for="item in navItems.slice(0, 5)" :key="item.key">
+            <template v-for="item in mobileNavItems" :key="item.key">
                 <Link
                     v-if="item.available"
                     :href="item.href"
@@ -766,6 +858,53 @@ function isActive(item: NavItem): boolean {
                             />
                             <path
                                 d="M6 5v9M12 5v9"
+                                stroke="currentColor"
+                                stroke-width="1.2"
+                                stroke-linecap="round"
+                            />
+                        </svg>
+                        <svg
+                            v-else-if="item.key === 'viability'"
+                            width="18"
+                            height="18"
+                            viewBox="0 0 18 18"
+                            fill="none"
+                        >
+                            <path
+                                d="M2.5 8.5h13a6.5 6.5 0 0 1-13 0Z"
+                                stroke="currentColor"
+                                stroke-width="1.3"
+                                stroke-linejoin="round"
+                            />
+                            <path
+                                d="M7 5.5c0-1 1-1.5 1-2.5M10.5 5.5c0-1 1-1.5 1-2.5"
+                                stroke="currentColor"
+                                stroke-width="1.2"
+                                stroke-linecap="round"
+                            />
+                        </svg>
+                        <svg
+                            v-else-if="item.key === 'uplink'"
+                            width="18"
+                            height="18"
+                            viewBox="0 0 18 18"
+                            fill="none"
+                        >
+                            <path
+                                d="M9 9v6.5M6.5 15.5h5"
+                                stroke="currentColor"
+                                stroke-width="1.3"
+                                stroke-linecap="round"
+                            />
+                            <circle
+                                cx="9"
+                                cy="7.5"
+                                r="1.5"
+                                stroke="currentColor"
+                                stroke-width="1.3"
+                            />
+                            <path
+                                d="M5.5 4a5 5 0 0 0 0 7M12.5 4a5 5 0 0 1 0 7"
                                 stroke="currentColor"
                                 stroke-width="1.2"
                                 stroke-linecap="round"

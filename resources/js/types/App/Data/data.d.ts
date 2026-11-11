@@ -55,6 +55,14 @@ export type CodexListItemData = {
     title: string;
     image: string | null;
 };
+export type ColonyStatusData = {
+    state: 'never' | 'no_colony' | 'ok' | 'newer_schema';
+    colonyName: string | null;
+    cycle: number | null;
+    lastSeenAt: string | null;
+    schema: number | null;
+    echo: { channel: 'uplink'; event: '.client-colony.state' };
+};
 export type CritterDietData = {
     consumed: ElementRefData;
     produced: ElementRefData | null;
@@ -160,4 +168,16 @@ export type ThermalPropertyData = {
     low_temp: number | null;
     high_temp: number | null;
     default_temperature: number;
+};
+export type UplinkMessageData = {
+    id: number;
+    event: string | null;
+    colonyGuid: string | null;
+    colonyName: string | null;
+    cycle: number | null;
+    size: number;
+    outcome: 'stored' | 'refused';
+    reason: string | null;
+    sectionErrors: string[];
+    receivedAt: string;
 };
