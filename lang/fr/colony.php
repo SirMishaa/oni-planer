@@ -59,6 +59,7 @@ return [
             'no_harvest' => 'Sans aucune récolte, le stock durerait :count cycle.|Sans aucune récolte, le stock durerait :count cycles.',
             'no_harvest_beyond' => 'Même sans récolte, le stock tient plus de :count cycles.',
             'consumption' => 'Ta colonie mange :kcal kcal par cycle, sur un stock de :stock kcal.',
+            'consumption_uneaten' => 'Ta colonie mange :kcal kcal par cycle, sur un stock de :stock kcal (+ :uneaten kcal que personne ne mange).',
         ],
         'chart' => [
             'label' => 'Stock de nourriture prévu sur les :count prochains cycles',
@@ -69,6 +70,7 @@ return [
             'kcal' => ':kcal kcal',
             'point' => ':label, cycle :cycle : :kcal kcal',
             'summary' => ':label : :start kcal au cycle :from, :end kcal au cycle :to',
+            'summary_short' => ':label : :start kcal au cycle :from, pénurie au cycle :to',
         ],
         'arrivals' => [
             'title' => 'Arrivages',
@@ -83,6 +85,7 @@ return [
             'per_cycle' => '+:kcal',
             'per_cycle_unit' => 'kcal / cycle',
             'per_cycle_inline' => '+:kcal kcal / cycle',
+            'nobody_eats' => "personne n'en mange",
             'mark' => ':count récolte au cycle :cycle, :kcal kcal|:count récoltes à partir du cycle :cycle, :kcal kcal',
             'legend' => [
                 'now' => 'Maintenant',
@@ -98,6 +101,7 @@ return [
         'menu' => [
             'title' => 'Au menu',
             'intro' => "Ce qu'il y a en stock : :kcal kcal.",
+            'intro_uneaten' => "Ce qu'il y a en stock : :kcal kcal (+ :uneaten kcal que personne ne mange).",
             'units' => ':count unité|:count unités',
             'kcal' => ':kcal kcal',
             'forbidden' => 'Interdit à :names',
@@ -123,6 +127,7 @@ return [
                 'title' => ':name sauvage',
                 'body' => ':count pied sauvage, récolté dès qu\'il est mûr|:count pieds sauvages, récoltés dès qu\'ils sont mûrs',
                 'value' => '+:kcal kcal / cycle',
+                'nobody_eats' => "personne n'en mange",
             ],
             'critter' => [
                 'tame' => ':count domestiqué, si on l\'abat|:count domestiqués, si on les abat tous',

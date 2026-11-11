@@ -14,7 +14,7 @@ final class ViabilityScenarioData extends Data
         public ?int $autonomy,
         /** Name of the first duplicant to run short, null when nobody does. */
         public ?string $firstShort,
-        /** @var list<float> stock (kcal) at the start of each cycle from now */
+        /** @var list<float|null> stock (kcal) at least one duplicant may eat, at the start of each cycle from now; null after the shortage */
         public array $stockByCycle,
     ) {}
 }

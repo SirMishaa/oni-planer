@@ -19,7 +19,10 @@ final class ViabilityData extends Data
         /** @var 'critical'|'tight'|'holds'|'unknown' unknown when the duplicants or the food could not be read */
         public string $verdict,
         public float $consumptionKcalPerCycle,
+        /** Stock at least one duplicant may eat. */
         public float $stockKcal,
+        /** Stock every duplicant is forbidden. */
+        public float $uneatenStockKcal,
         public ViabilityScenariosData $scenarios,
         /** @var list<ViabilitySourceData> */
         public array $sources,

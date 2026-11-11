@@ -26,7 +26,8 @@ const props = defineProps<{
 // region Timeline data
 
 type SourceKind = ViabilitySourceData['kind'];
-type HarvestPayload = { kcal: number };
+/** `uneaten`: every duplicant is forbidden the crop of this harvest. */
+type HarvestPayload = { kcal: number; uneaten: boolean };
 
 const KINDS: SourceKind[] = ['planted', 'wild_auto', 'wild_manual'];
 
@@ -44,12 +45,24 @@ const rows = computed(() =>
     })),
 );
 
+const uneatenSources = computed(
+    () =>
+        new Set(
+            props.viability.sources
+                .filter((source) => source.forbiddenToAll)
+                .map((source) => source.key),
+        ),
+);
+
 const events = computed<TimelineEvent<HarvestPayload>[]>(() =>
     props.viability.harvests.map((harvest) => ({
         rowId: harvest.sourceKey,
         cycle: harvest.cycle,
         kind: harvest.kind,
-        payload: { kcal: harvest.kcal },
+        payload: {
+            kcal: harvest.kcal,
+            uneaten: uneatenSources.value.has(harvest.sourceKey),
+        },
     })),
 );
 
@@ -103,11 +116,17 @@ function markTitle(mark: TimelineMark<HarvestPayload>): string {
                 :zoom-out-label="t('colony.viability.arrivals.zoom_out')"
             >
                 <template #label="{ row }">
-                    <div class="source">
+                    <div
+                        class="source"
+                        :class="{
+                            'source--uneaten': row.source.forbiddenToAll,
+                        }"
+                    >
                         <GameSprite
                             :src="row.source.plantIcon"
                             kind="plant"
                             :size="40"
+                            :dimmed="row.source.forbiddenToAll"
                         />
                         <div class="min-w-0">
                             <b class="source__name">{{
@@ -129,6 +148,13 @@ function markTitle(mark: TimelineMark<HarvestPayload>): string {
                             </span>
                             <!-- Phones: the summary column is hidden, the total shows here. -->
                             <span
+                                v-if="row.source.forbiddenToAll"
+                                class="source__uneaten block md:hidden"
+                            >
+                                {{ t('colony.viability.arrivals.nobody_eats') }}
+                            </span>
+                            <span
+                                v-else
                                 class="figure source__sum-inline block md:hidden"
                                 :class="{
                                     'source__sum--wild':
@@ -151,21 +177,32 @@ function markTitle(mark: TimelineMark<HarvestPayload>): string {
                 </template>
 
                 <template #summary="{ row }">
-                    <b
-                        class="figure source__sum"
-                        :class="{
-                            'source__sum--wild': row.source.kind !== 'planted',
-                        }"
+                    <span
+                        v-if="row.source.forbiddenToAll"
+                        class="source__uneaten"
                     >
-                        {{
-                            t('colony.viability.arrivals.per_cycle', {
-                                kcal: format.number(row.source.kcalPerCycle),
-                            })
-                        }}
-                    </b>
-                    <span class="source__meta">{{
-                        t('colony.viability.arrivals.per_cycle_unit')
-                    }}</span>
+                        {{ t('colony.viability.arrivals.nobody_eats') }}
+                    </span>
+                    <template v-else>
+                        <b
+                            class="figure source__sum"
+                            :class="{
+                                'source__sum--wild':
+                                    row.source.kind !== 'planted',
+                            }"
+                        >
+                            {{
+                                t('colony.viability.arrivals.per_cycle', {
+                                    kcal: format.number(
+                                        row.source.kcalPerCycle,
+                                    ),
+                                })
+                            }}
+                        </b>
+                        <span class="source__meta">{{
+                            t('colony.viability.arrivals.per_cycle_unit')
+                        }}</span>
+                    </template>
                 </template>
 
                 <template #mark="{ mark }">
@@ -173,7 +210,12 @@ function markTitle(mark: TimelineMark<HarvestPayload>): string {
                         class="harvest"
                         :class="[
                             `harvest--${mark.kind}`,
-                            { 'harvest--many': mark.events.length > 1 },
+                            {
+                                'harvest--many': mark.events.length > 1,
+                                'harvest--uneaten': mark.events.every(
+                                    (event) => event.payload.uneaten,
+                                ),
+                            },
                         ]"
                         :title="markTitle(mark)"
                     >
@@ -250,6 +292,17 @@ function markTitle(mark: TimelineMark<HarvestPayload>): string {
     color: var(--wild);
 }
 
+/* A crop nobody may eat: the row steps back, its harvests feed nobody. */
+.source--uneaten .source__name {
+    color: var(--text-2);
+}
+
+.source__uneaten {
+    color: var(--text-3);
+    font-size: 13px;
+    font-style: italic;
+}
+
 /* Harvest marks: shape and colour both carry the kind. */
 .harvest {
     display: grid;
@@ -285,6 +338,18 @@ function markTitle(mark: TimelineMark<HarvestPayload>): string {
     border: 2px dashed var(--wild);
     background: var(--ink-0);
     color: var(--text);
+}
+
+/* Muted marks keep their shape (the kind) but drop the colour. */
+.harvest--uneaten.harvest--planted {
+    background: var(--ink-3);
+    color: var(--text-3);
+}
+
+.harvest--uneaten.harvest--wild_auto,
+.harvest--uneaten.harvest--wild_manual {
+    border-color: var(--line);
+    color: var(--text-3);
 }
 
 .legend {

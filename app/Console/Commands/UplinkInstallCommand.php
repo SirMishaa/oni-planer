@@ -9,7 +9,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 
-#[Description('Write the Uplink mod settings (Reverb URL, channel, interval) into the mod folder')]
+#[Description('Write the Uplink mod settings (Reverb URL, interval) into the mod folder')]
 #[Signature('uplink:install {--path= : Mod folder, defaults to game.uplink_mod_path} {--host=127.0.0.1 : Host the game reaches Reverb on}')]
 final class UplinkInstallCommand extends Command
 {
@@ -38,7 +38,7 @@ final class UplinkInstallCommand extends Command
     }
 
     /**
-     * @return array{url: string, channel: string, intervalSeconds: int}
+     * @return array{url: string, intervalSeconds: int}
      */
     private function settings(string $key): array
     {
@@ -52,7 +52,6 @@ final class UplinkInstallCommand extends Command
                 (int) config('reverb.servers.reverb.port'),
                 $key,
             ),
-            'channel' => 'uplink',
             'intervalSeconds' => 5,
         ];
     }

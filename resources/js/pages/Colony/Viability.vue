@@ -121,6 +121,7 @@ const LIMITS = [
                     <MenuBlock
                         :menu="viability.menu"
                         :stock-kcal="viability.stockKcal"
+                        :uneaten-stock-kcal="viability.uneatenStockKcal"
                         :unavailable="viability.unavailable.includes('food')"
                     />
                     <EatersBlock

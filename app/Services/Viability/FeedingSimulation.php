@@ -21,15 +21,26 @@ final class FeedingSimulation
      * lands in. A harvest that is ripe now (offset 0 or less) is already in
      * hand and feeds cycle 1.
      *
+     * The stock series counts only the food at least one duplicant may eat.
+     * It stops at the cycle of the shortage: the cycles after it are null,
+     * since nobody knows what the colony would do then.
+     *
      * @param  array<string, float>  $stockKcal  by food id
      * @param  list<array{id: string, name: string, needKcal: float, forbidden: list<string>, ...}>  $eaters
      * @param  list<array{offset: float, cropId: string, kcal: float, ...}>  $arrivals
-     * @return array{autonomy: int|null, firstShort: string|null, stockByCycle: list<float>}
+     * @return array{autonomy: int|null, firstShort: string|null, stockByCycle: list<float|null>}
      */
     public static function run(array $stockKcal, array $eaters, array $arrivals, int $horizon = HarvestSchedule::HORIZON): array
     {
         $stock = array_map(floatval(...), $stockKcal);
-        $stockByCycle = [array_sum($stock)];
+        $edibleKcal = function () use (&$stock, $eaters): float {
+            return array_sum(array_filter(
+                $stock,
+                fn (string|int $foodId): bool => ! self::nobodyEats((string) $foodId, $eaters),
+                ARRAY_FILTER_USE_KEY,
+            ));
+        };
+        $stockByCycle = [$edibleKcal()];
 
         foreach ($arrivals as $arrival) {
             if ($arrival['offset'] <= 0) {
@@ -41,12 +52,12 @@ final class FeedingSimulation
             $short = self::feed($stock, $eaters);
 
             if ($short !== null) {
-                $stockByCycle[] = array_sum($stock);
+                $stockByCycle[] = $edibleKcal();
 
                 return [
                     'autonomy' => $cycle - 1,
                     'firstShort' => $short,
-                    'stockByCycle' => array_pad($stockByCycle, $horizon + 1, 0.0),
+                    'stockByCycle' => array_pad($stockByCycle, $horizon + 1, null),
                 ];
             }
 
@@ -56,10 +67,21 @@ final class FeedingSimulation
                 }
             }
 
-            $stockByCycle[] = array_sum($stock);
+            $stockByCycle[] = $edibleKcal();
         }
 
         return ['autonomy' => null, 'firstShort' => null, 'stockByCycle' => $stockByCycle];
+    }
+
+    /**
+     * Whether every duplicant is forbidden this food. With no duplicant at
+     * all, nobody is forbidden anything.
+     *
+     * @param  list<array{forbidden: list<string>, ...}>  $eaters
+     */
+    public static function nobodyEats(string $foodId, array $eaters): bool
+    {
+        return $eaters !== [] && array_all($eaters, fn (array $eater): bool => in_array($foodId, $eater['forbidden'], true));
     }
 
     /**

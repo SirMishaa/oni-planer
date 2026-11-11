@@ -105,3 +105,22 @@ it('describes the menu, eaters and harvests on the absolute cycle', function ():
         ->and($v['harvests'][0]['cycle'])->toEqualWithDelta(60.0, 0.001)
         ->and($v['reserves']['wildManual'])->toHaveCount(1);
 });
+
+it('sets apart the food and the crops nobody may eat', function (): void {
+    $state = fixtureState();
+    $state['duplicants'] = array_map(fn (array $duplicant): array => [...$duplicant, 'forbiddenFoods' => ['Lettuce']], $state['duplicants']);
+
+    $v = FoodViability::compute($state, $this->cal);
+
+    expect($v['stockKcal'])->toBe(3000.0)
+        ->and($v['uneatenStockKcal'])->toBe(4000.0)
+        ->and(collect($v['sources'])->firstWhere('key', 'SeaLettuce:planted')['forbiddenToAll'])->toBeTrue()
+        ->and($v['scenarios']['automatic']['autonomy'])->toBe($v['scenarios']['none']['autonomy']);
+});
+
+it('keeps a crop that some duplicants may eat', function (): void {
+    $v = FoodViability::compute(fixtureState(), $this->cal);
+
+    expect($v['uneatenStockKcal'])->toBe(0.0)
+        ->and(collect($v['sources'])->pluck('forbiddenToAll')->unique()->all())->toBe([false]);
+});

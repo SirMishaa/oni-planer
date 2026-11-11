@@ -90,23 +90,39 @@ const STYLES: Record<
 /** Drawn back to front: the automatic scenario (the verdict) stays on top. */
 const ORDER: ScenarioKey[] = ['all', 'none', 'automatic'];
 
+/**
+ * The stock someone may eat, from now up to the end of the chart or to the
+ * shortage: the series is null past it, so the line stops there instead of
+ * falling to zero while food nobody may eat is left.
+ */
 const valuesByKey = computed(() =>
-    ORDER.map((key) => ({
-        key,
-        values: props.scenarios[key].stockByCycle
-            .slice(0, POINTS)
-            .map((value) => Math.max(0, value)),
-    })),
+    ORDER.map((key) => {
+        const visible = props.scenarios[key].stockByCycle.slice(0, POINTS);
+        const end = visible.indexOf(null);
+        const values = (end === -1 ? visible : visible.slice(0, end)).map(
+            (value) => Math.max(0, value ?? 0),
+        );
+
+        const autonomy = props.scenarios[key].autonomy;
+
+        /** The shortage is the last point drawn, inside the chart. */
+        return {
+            key,
+            values,
+            short: autonomy !== null && autonomy + 1 < POINTS,
+        };
+    }),
 );
 
 const series = computed(() =>
-    valuesByKey.value.map(({ key, values }) => {
+    valuesByKey.value.map(({ key, values, short }) => {
         const label = t(`colony.viability.chart.${key}`);
 
         return {
             key,
             label,
             values,
+            short,
             ...STYLES[key],
             path: values
                 .map(
@@ -114,24 +130,36 @@ const series = computed(() =>
                         `${index ? 'L' : 'M'}${x(index).toFixed(1)} ${y(value).toFixed(1)}`,
                 )
                 .join(' '),
-            summary: t('colony.viability.chart.summary', {
-                label,
-                start: format.number(values[0] ?? 0),
-                from: startCycle.value,
-                end: format.number(values.at(-1) ?? 0),
-                to: startCycle.value + values.length - 1,
-            }),
+            summary: t(
+                short
+                    ? 'colony.viability.chart.summary_short'
+                    : 'colony.viability.chart.summary',
+                {
+                    label,
+                    start: format.number(values[0] ?? 0),
+                    from: startCycle.value,
+                    end: format.number(values.at(-1) ?? 0),
+                    to: startCycle.value + values.length - 1,
+                },
+            ),
         };
     }),
 );
 
-/** First point where the no-harvest stock hits zero. */
-const emptyPoint = computed(() => {
-    const values = series.value.find((line) => line.key === 'none')?.values;
-    const index = values?.findIndex((value, i) => i > 0 && value < 0.5) ?? -1;
+/** End of each line that stops on a shortage within the chart. */
+const shortagePoints = computed(() =>
+    series.value
+        .filter((line) => line.short && line.values.length > 0)
+        .map((line) => {
+            const index = line.values.length - 1;
 
-    return index > 0 ? { x: x(index), y: y(0) } : null;
-});
+            return {
+                key: line.key,
+                x: x(index),
+                y: y(line.values[index] ?? 0),
+            };
+        }),
+);
 
 // endregion
 
@@ -335,9 +363,10 @@ const labels = computed(() => {
                 </circle>
             </g>
             <circle
-                v-if="emptyPoint"
-                :cx="emptyPoint.x"
-                :cy="emptyPoint.y"
+                v-for="point in shortagePoints"
+                :key="`short-${point.key}`"
+                :cx="point.x"
+                :cy="point.y"
                 r="4"
                 fill="var(--bad)"
                 aria-hidden="true"

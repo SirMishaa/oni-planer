@@ -82,7 +82,12 @@ const podNext = computed(() => {
                 :key="source.key"
                 class="reserve"
             >
-                <GameSprite :src="source.plantIcon" kind="plant" :size="60" />
+                <GameSprite
+                    :src="source.plantIcon"
+                    kind="plant"
+                    :size="60"
+                    :dimmed="source.forbiddenToAll"
+                />
                 <div class="min-w-0">
                     <b class="reserve__title">{{
                         t('colony.viability.reserves.wild.title', {
@@ -92,7 +97,14 @@ const podNext = computed(() => {
                     <span class="reserve__body">{{
                         tc('colony.viability.reserves.wild.body', source.count)
                     }}</span>
-                    <em class="figure reserve__value">{{
+                    <em
+                        v-if="source.forbiddenToAll"
+                        class="reserve__value reserve__value--uneaten"
+                        >{{
+                            t('colony.viability.reserves.wild.nobody_eats')
+                        }}</em
+                    >
+                    <em v-else class="figure reserve__value">{{
                         t('colony.viability.reserves.wild.value', {
                             kcal: format.number(source.kcalPerCycle),
                         })
@@ -187,5 +199,12 @@ const podNext = computed(() => {
     font-size: 17px;
     font-style: normal;
     font-weight: 700;
+}
+
+.reserve__value--uneaten {
+    color: var(--text-3);
+    font-size: 14px;
+    font-style: italic;
+    font-weight: 400;
 }
 </style>

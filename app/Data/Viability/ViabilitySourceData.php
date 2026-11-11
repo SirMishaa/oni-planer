@@ -23,5 +23,7 @@ final class ViabilitySourceData extends Data
         /** Plants of the group that are not growing (wilting, stifled...). */
         public int $stopped,
         public float $kcalPerCycle,
+        /** Every duplicant is forbidden its crop: its harvests feed nobody. */
+        public bool $forbiddenToAll,
     ) {}
 }

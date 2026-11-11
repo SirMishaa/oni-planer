@@ -11,6 +11,7 @@ export type ViabilityData = {
     verdict: 'critical' | 'tight' | 'holds' | 'unknown';
     consumptionKcalPerCycle: number;
     stockKcal: number;
+    uneatenStockKcal: number;
     scenarios: ViabilityScenariosData;
     sources: ViabilitySourceData[];
     harvests: ViabilityHarvestData[];
@@ -61,7 +62,7 @@ export type ViabilityReservesData = {
 export type ViabilityScenarioData = {
     autonomy: number | null;
     firstShort: string | null;
-    stockByCycle: number[];
+    stockByCycle: (number | null)[];
 };
 export type ViabilityScenariosData = {
     none: ViabilityScenarioData;
@@ -78,4 +79,5 @@ export type ViabilitySourceData = {
     count: number;
     stopped: number;
     kcalPerCycle: number;
+    forbiddenToAll: boolean;
 };

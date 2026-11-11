@@ -59,6 +59,7 @@ return [
             'no_harvest' => 'With no harvest at all, the stock would last :count cycle.|With no harvest at all, the stock would last :count cycles.',
             'no_harvest_beyond' => 'Even with no harvest, the stock lasts more than :count cycles.',
             'consumption' => 'Your colony eats :kcal kcal per cycle from a stock of :stock kcal.',
+            'consumption_uneaten' => 'Your colony eats :kcal kcal per cycle from a stock of :stock kcal (+ :uneaten kcal nobody eats).',
         ],
         'chart' => [
             'label' => 'Projected food stock over the next :count cycles',
@@ -69,6 +70,7 @@ return [
             'kcal' => ':kcal kcal',
             'point' => ':label, cycle :cycle: :kcal kcal',
             'summary' => ':label: :start kcal on cycle :from, :end kcal on cycle :to',
+            'summary_short' => ':label: :start kcal on cycle :from, shortage on cycle :to',
         ],
         'arrivals' => [
             'title' => 'Incoming harvests',
@@ -83,6 +85,7 @@ return [
             'per_cycle' => '+:kcal',
             'per_cycle_unit' => 'kcal / cycle',
             'per_cycle_inline' => '+:kcal kcal / cycle',
+            'nobody_eats' => 'nobody eats this',
             'mark' => ':count harvest on cycle :cycle, :kcal kcal|:count harvests from cycle :cycle, :kcal kcal',
             'legend' => [
                 'now' => 'Now',
@@ -98,6 +101,7 @@ return [
         'menu' => [
             'title' => 'On the menu',
             'intro' => 'In stock: :kcal kcal.',
+            'intro_uneaten' => 'In stock: :kcal kcal (+ :uneaten kcal nobody eats).',
             'units' => ':count unit|:count units',
             'kcal' => ':kcal kcal',
             'forbidden' => 'Off limits for :names',
@@ -123,6 +127,7 @@ return [
                 'title' => 'Wild :name',
                 'body' => ':count wild plant, picked as soon as it ripens|:count wild plants, picked as soon as they ripen',
                 'value' => '+:kcal kcal / cycle',
+                'nobody_eats' => 'nobody eats this',
             ],
             'critter' => [
                 'tame' => ':count tame, if you butcher it|:count tame, if you butcher them all',

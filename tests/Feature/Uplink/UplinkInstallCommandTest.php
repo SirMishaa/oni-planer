@@ -26,7 +26,6 @@ it('writes the uplink settings into the mod folder', function (): void {
 
     expect($settings)->toBe([
         'url' => 'ws://127.0.0.1:8080/app/test-app-key?protocol=7&client=uplink&version=1',
-        'channel' => 'uplink',
         'intervalSeconds' => 5,
     ]);
 });

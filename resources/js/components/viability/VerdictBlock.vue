@@ -76,12 +76,21 @@ const noHarvest = computed(() => {
         : tc('colony.viability.verdict.no_harvest', autonomy);
 });
 
-const consumption = computed(() =>
-    t('colony.viability.verdict.consumption', {
-        kcal: format.number(props.viability.consumptionKcalPerCycle),
-        stock: format.number(props.viability.stockKcal),
-    }),
-);
+/** The stock someone may eat, then aside what every duplicant is forbidden. */
+const consumption = computed(() => {
+    const uneaten = props.viability.uneatenStockKcal;
+
+    return t(
+        uneaten > 0
+            ? 'colony.viability.verdict.consumption_uneaten'
+            : 'colony.viability.verdict.consumption',
+        {
+            kcal: format.number(props.viability.consumptionKcalPerCycle),
+            stock: format.number(props.viability.stockKcal),
+            uneaten: format.number(uneaten),
+        },
+    );
+});
 
 const unit = computed(() =>
     tc(

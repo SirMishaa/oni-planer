@@ -9,7 +9,10 @@ import type { ViabilityMenuItemData } from '@/types/App/Data/Viability/data.d';
 
 const props = defineProps<{
     menu: ViabilityMenuItemData[];
+    /** Stock at least one duplicant may eat. */
     stockKcal: number;
+    /** Stock every duplicant is forbidden. */
+    uneatenStockKcal: number;
     /** The game could not read its food stock this time. */
     unavailable: boolean;
 }>();
@@ -33,9 +36,15 @@ function unitsLabel(item: ViabilityMenuItemData): string {
         <h2 class="block-title">{{ t('colony.viability.menu.title') }}</h2>
         <p class="block-intro">
             {{
-                t('colony.viability.menu.intro', {
-                    kcal: format.number(stockKcal),
-                })
+                t(
+                    uneatenStockKcal > 0
+                        ? 'colony.viability.menu.intro_uneaten'
+                        : 'colony.viability.menu.intro',
+                    {
+                        kcal: format.number(stockKcal),
+                        uneaten: format.number(uneatenStockKcal),
+                    },
+                )
             }}
         </p>
         <p v-if="unavailable" class="block-note" role="status">

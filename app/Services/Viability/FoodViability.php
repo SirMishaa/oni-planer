@@ -36,19 +36,20 @@ final class FoodViability
      *   verdict: 'critical'|'tight'|'holds'|'unknown',
      *   consumptionKcalPerCycle: float,
      *   stockKcal: float,
+     *   uneatenStockKcal: float,
      *   scenarios: array{
-     *     none: array{autonomy: int|null, firstShort: string|null, stockByCycle: list<float>},
-     *     automatic: array{autonomy: int|null, firstShort: string|null, stockByCycle: list<float>},
-     *     all: array{autonomy: int|null, firstShort: string|null, stockByCycle: list<float>},
+     *     none: array{autonomy: int|null, firstShort: string|null, stockByCycle: list<float|null>},
+     *     automatic: array{autonomy: int|null, firstShort: string|null, stockByCycle: list<float|null>},
+     *     all: array{autonomy: int|null, firstShort: string|null, stockByCycle: list<float|null>},
      *   },
-     *   sources: list<array{key: string, plantId: string, cropId: string, kind: 'planted'|'wild_auto'|'wild_manual', count: int, stopped: int, kcalPerCycle: float}>,
+     *   sources: list<array{key: string, plantId: string, cropId: string, kind: 'planted'|'wild_auto'|'wild_manual', count: int, stopped: int, kcalPerCycle: float, forbiddenToAll: bool}>,
      *   harvests: list<array{sourceKey: string, kind: 'planted'|'wild_auto'|'wild_manual', cycle: float, kcal: float}>,
      *   lastComputedCycle: float,
      *   menu: list<array{foodId: string, units: float, kcal: float, forbiddenFor: list<string>}>,
      *   eaters: list<array{id: string, name: string, kcal: float|null, maxKcal: float|null, needKcal: float, allowed: list<string>, forbidden: list<string>}>,
      *   nonEaters: list<array{name: string, model: string|null}>,
      *   reserves: array{
-     *     wildManual: list<array{key: string, plantId: string, cropId: string, kind: 'wild_manual', count: int, stopped: int, kcalPerCycle: float}>,
+     *     wildManual: list<array{key: string, plantId: string, cropId: string, kind: 'wild_manual', count: int, stopped: int, kcalPerCycle: float, forbiddenToAll: bool}>,
      *     critters: list<array{id: string, tame: bool, count: int, kcal: float|null}>,
      *     printingPod: array{cyclesUntilNextPrint: float|null},
      *   },
@@ -99,6 +100,11 @@ final class FoodViability
         }
 
         $stockedFoodIds = array_map(strval(...), array_keys($menu));
+        $uneatenStock = array_filter($stock, fn (string|int $foodId): bool => FeedingSimulation::nobodyEats((string) $foodId, $eaters), ARRAY_FILTER_USE_KEY);
+        $sources = array_map(fn (array $source): array => [
+            ...$source,
+            'forbiddenToAll' => FeedingSimulation::nobodyEats($source['cropId'], $eaters),
+        ], $schedule['sources']);
         $printingPod = $sections['printingPod'];
         $secondsUntilNextPrint = self::finite($printingPod['secondsUntilNextPrint'] ?? null);
 
@@ -106,9 +112,10 @@ final class FoodViability
             'nowCycle' => $nowCycle,
             'verdict' => array_intersect(self::REQUIRED_SECTIONS, $unavailable) === [] ? self::verdict($scenarios['automatic']['autonomy']) : 'unknown',
             'consumptionKcalPerCycle' => array_sum(array_column($eaters, 'needKcal')),
-            'stockKcal' => array_sum($stock),
+            'stockKcal' => (float) array_sum(array_diff_key($stock, $uneatenStock)),
+            'uneatenStockKcal' => (float) array_sum($uneatenStock),
             'scenarios' => $scenarios,
-            'sources' => $schedule['sources'],
+            'sources' => $sources,
             'harvests' => array_map(fn (array $harvest): array => [
                 'sourceKey' => $harvest['sourceKey'],
                 'kind' => $harvest['kind'],
@@ -128,7 +135,7 @@ final class FoodViability
             ], $eaters),
             'nonEaters' => $nonEaters,
             'reserves' => [
-                'wildManual' => array_values(array_filter($schedule['sources'], fn (array $source): bool => $source['kind'] === 'wild_manual')),
+                'wildManual' => array_values(array_filter($sources, fn (array $source): bool => $source['kind'] === 'wild_manual')),
                 'critters' => self::critters($sections['critters'], $caloriesPerUnit),
                 'printingPod' => ['cyclesUntilNextPrint' => $secondsUntilNextPrint === null ? null : $secondsUntilNextPrint / HarvestSchedule::CYCLE_SECONDS],
             ],

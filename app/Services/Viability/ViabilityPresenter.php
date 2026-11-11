@@ -37,6 +37,7 @@ final readonly class ViabilityPresenter
             verdict: $result['verdict'],
             consumptionKcalPerCycle: $result['consumptionKcalPerCycle'],
             stockKcal: $result['stockKcal'],
+            uneatenStockKcal: $result['uneatenStockKcal'],
             scenarios: new ViabilityScenariosData(
                 none: new ViabilityScenarioData(...$result['scenarios']['none']),
                 automatic: new ViabilityScenarioData(...$result['scenarios']['automatic']),
@@ -73,7 +74,7 @@ final readonly class ViabilityPresenter
         );
     }
 
-    /** @param  array{key: string, plantId: string, cropId: string, kind: 'planted'|'wild_auto'|'wild_manual', count: int, stopped: int, kcalPerCycle: float}  $source */
+    /** @param  array{key: string, plantId: string, cropId: string, kind: 'planted'|'wild_auto'|'wild_manual', count: int, stopped: int, kcalPerCycle: float, forbiddenToAll: bool}  $source */
     private function source(array $source): ViabilitySourceData
     {
         return new ViabilitySourceData(
@@ -86,6 +87,7 @@ final readonly class ViabilityPresenter
             count: $source['count'],
             stopped: $source['stopped'],
             kcalPerCycle: $source['kcalPerCycle'],
+            forbiddenToAll: $source['forbiddenToAll'],
         );
     }
 

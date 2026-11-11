@@ -36,7 +36,7 @@ it('adds the arrivals of a cycle after its meals', function (): void {
         [['offset' => 0.5, 'cropId' => 'Lettuce', 'kcal' => 2000.0]]);
 
     expect($r['autonomy'])->toBe(3)
-        ->and(array_slice($r['stockByCycle'], 0, 6))->toBe([1000.0, 2000.0, 1000.0, 0.0, 0.0, 0.0]);
+        ->and(array_slice($r['stockByCycle'], 0, 6))->toBe([1000.0, 2000.0, 1000.0, 0.0, 0.0, null]);
 });
 
 it('does not feed a cycle with a harvest landing during it', function (): void {
@@ -53,4 +53,41 @@ it('feeds the first cycle from a harvest that is ripe now', function (): void {
         [['offset' => 0.0, 'cropId' => 'Lettuce', 'kcal' => 1000.0]]);
 
     expect($r['autonomy'])->toBe(1);
+});
+
+it('stops the projection at the shortage instead of dropping it to zero', function (): void {
+    $r = FeedingSimulation::run(['Lettuce' => 1500.0, 'FishMeat' => 5000.0], [
+        ['id' => 'd1', 'name' => 'Ruby', 'needKcal' => 1000.0, 'forbidden' => []],
+        ['id' => 'd2', 'name' => 'Ellie', 'needKcal' => 1000.0, 'forbidden' => ['FishMeat']],
+    ], []);
+
+    // Ruby eats fish, Ellie lettuce: Ellie runs short in cycle 2 while fish remains.
+    expect($r['autonomy'])->toBe(1)
+        ->and($r['stockByCycle'])->toHaveCount(51)
+        ->and(array_slice($r['stockByCycle'], 0, 4))->toBe([6500.0, 4500.0, 4000.0, null]);
+});
+
+it('leaves food nobody may eat out of the projection and the autonomy', function (): void {
+    $eaters = [
+        ['id' => 'd1', 'name' => 'Ruby', 'needKcal' => 1000.0, 'forbidden' => ['Lettuce']],
+        ['id' => 'd2', 'name' => 'Ellie', 'needKcal' => 1000.0, 'forbidden' => ['Lettuce']],
+    ];
+
+    $withoutHarvest = FeedingSimulation::run(['Lettuce' => 9000.0, 'FishMeat' => 3000.0], $eaters, []);
+    $withHarvest = FeedingSimulation::run(['Lettuce' => 9000.0, 'FishMeat' => 3000.0], $eaters, [['offset' => 0.5, 'cropId' => 'Lettuce', 'kcal' => 4000.0]]);
+
+    expect($withoutHarvest['autonomy'])->toBe(1)
+        ->and($withHarvest['autonomy'])->toBe(1)
+        ->and(array_slice($withHarvest['stockByCycle'], 0, 3))->toBe([3000.0, 1000.0, 0.0]);
+});
+
+it('tells whether every duplicant is forbidden a food', function (): void {
+    $eaters = [
+        ['id' => 'd1', 'name' => 'Ruby', 'needKcal' => 1000.0, 'forbidden' => ['Lettuce', 'FishMeat']],
+        ['id' => 'd2', 'name' => 'Ellie', 'needKcal' => 1000.0, 'forbidden' => ['Lettuce']],
+    ];
+
+    expect(FeedingSimulation::nobodyEats('Lettuce', $eaters))->toBeTrue()
+        ->and(FeedingSimulation::nobodyEats('FishMeat', $eaters))->toBeFalse()
+        ->and(FeedingSimulation::nobodyEats('Lettuce', []))->toBeFalse();
 });
