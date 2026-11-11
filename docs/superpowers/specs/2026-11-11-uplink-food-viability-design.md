@@ -95,6 +95,7 @@ reference for shapes and for test fixtures.
   ("le visuel de cette page est super, on peut garder"), heavy on game sprites.
 - The cycle timeline is a **generic, reusable component**, scrollable horizontally as far as
   data was computed, with an adjustable scale.
+- The app has a built-in way to **see the messages received over the WebSocket**.
 
 Everything below that is not in this list is the designer's call and can be overridden.
 
@@ -257,6 +258,25 @@ name and cycle while events arrive, and "vu il y a 2 h, cycle 59" otherwise.
 `uplink:install`, with nothing fake on screen); connected but no colony loaded; live; stale;
 state from a newer schema than the site understands; a section the mod could not read.
 
+**Message inspector** (asked by the user at approval: "un moyen de pouvoir voir les messages
+reçus par le websocket intégré dans l'app"; the shape below is the designer's call). A second
+page, `colony/uplink` (`Colony/Uplink.vue`), in the same "Ma colonie" group and linked from
+the viability page's status element:
+
+- Connection summary: Reverb reachable or not, last message time, colony, mod schema.
+- The list of the last messages received by the site, newest first, updating live: time,
+  event name, size, colony and cycle, and the outcome (stored / refused with the reason /
+  section errors reported by the mod).
+- Selecting a message shows its JSON as a collapsible tree, sections folded by default with
+  their item counts (a snapshot is ~140 KB), plus a "copy JSON" action.
+- Pause / resume of the live list, so a message can be read while others arrive.
+- The source is the server, not the browser's socket: the ingestion listener records each
+  reception in an `uplink_messages` table (payload, size, outcome, reason), pruned to the
+  last 50. This way the inspector shows what the site actually received and why it refused
+  something, including messages that arrived while no page was open. Same rule as
+  `colonies`: user data, never truncated by `game:import`.
+- It is a diagnostic page: same look, plain table and tree, no sprites needed.
+
 **Look**: as mockup v2 — dark, blue-green tinted neutrals (the game is dark and saturated and
 runs next to the site in a dim room), one warm "ration" yellow for calories, green / amber /
 red for state always paired with a word, Barlow with Barlow Semi Condensed for numbers and
@@ -297,5 +317,6 @@ the real page).
 The work is done when, in the user's own colony: the mod connects without any click, the
 page shows their duplicants, stock and arrivals with the game's art, the headline matches a
 hand check of stock ÷ consumption for the no-harvest case, toggling auto-harvest on a wild
-plant moves its marks between the two wild styles within seconds, and closing the game
+plant moves its marks between the two wild styles within seconds, the inspector page lists
+the messages as they arrive and opens one as readable JSON, and closing the game
 leaves the page readable with its age shown.
