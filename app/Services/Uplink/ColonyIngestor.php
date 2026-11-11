@@ -10,14 +10,18 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Turns a raw Pusher message received by Reverb into the colony's last state
- * and a journal entry. Messages that are not a colony state on the Uplink
- * channel are ignored; colony states that cannot be used are journaled as
- * refused with a reason code.
+ * and a journal entry. Messages that are not a colony state are ignored;
+ * colony states that cannot be used (including those sent on another channel
+ * than Uplink's) are journaled as refused with a reason code. Only the most
+ * recently seen colonies are kept.
  */
 final class ColonyIngestor
 {
     /** Number of journaled messages kept. */
     public const int KEEP = 50;
+
+    /** Number of colonies kept, by most recently seen. */
+    public const int KEEP_COLONIES = 10;
 
     /** Highest state schema this site understands. */
     public const int SCHEMA = 1;
@@ -39,8 +43,12 @@ final class ColonyIngestor
                 : null;
         }
 
-        if (($envelope['event'] ?? null) !== self::EVENT || ($envelope['channel'] ?? null) !== self::CHANNEL) {
+        if (($envelope['event'] ?? null) !== self::EVENT) {
             return null;
+        }
+
+        if (($envelope['channel'] ?? null) !== self::CHANNEL) {
+            return $this->journal($rawMessage, ['outcome' => 'refused', 'reason' => 'wrong_channel']);
         }
 
         $data = $envelope['data'] ?? null;
@@ -79,6 +87,9 @@ final class ColonyIngestor
                 'schema' => $schema,
                 'last_seen_at' => now(),
             ]);
+
+            $keptIds = Colony::query()->latest('last_seen_at')->latest('id')->limit(self::KEEP_COLONIES)->pluck('id');
+            Colony::query()->whereNotIn('id', $keptIds)->delete();
 
             return $this->journal($rawMessage, [
                 ...$identity,

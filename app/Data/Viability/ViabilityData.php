@@ -15,8 +15,8 @@ final class ViabilityData extends Data
 {
     public function __construct(
         public float $nowCycle,
-        #[LiteralTypeScriptType("'critical' | 'tight' | 'holds'")]
-        /** @var 'critical'|'tight'|'holds' */
+        #[LiteralTypeScriptType("'critical' | 'tight' | 'holds' | 'unknown'")]
+        /** @var 'critical'|'tight'|'holds'|'unknown' unknown when the duplicants or the food could not be read */
         public string $verdict,
         public float $consumptionKcalPerCycle,
         public float $stockKcal,

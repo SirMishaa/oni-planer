@@ -8,7 +8,7 @@ export type ViabilityCritterReserveData = {
 };
 export type ViabilityData = {
     nowCycle: number;
-    verdict: 'critical' | 'tight' | 'holds';
+    verdict: 'critical' | 'tight' | 'holds' | 'unknown';
     consumptionKcalPerCycle: number;
     stockKcal: number;
     scenarios: ViabilityScenariosData;

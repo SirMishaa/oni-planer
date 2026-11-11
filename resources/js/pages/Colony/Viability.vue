@@ -135,7 +135,9 @@ const LIMITS = [
 
                 <ReservesBlock
                     :reserves="viability.reserves"
-                    :autonomy-text="autonomyText"
+                    :autonomy-text="
+                        viability.verdict === 'unknown' ? null : autonomyText
+                    "
                     :unavailable="viability.unavailable"
                 />
 

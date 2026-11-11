@@ -152,6 +152,8 @@ Everything below that is not in this list is the designer's call and can be over
 
 - Numbers that are not finite are sent as `null`. Calories are in the game's unit (cal, not
   kcal). Ids are the game's prefab ids, the same ids the site's game data uses.
+- `colony.cycle` is the cycle the game's HUD shows (`GameUtil.GetCurrentCycle()`, one-based,
+  `GameClock.GetCycle() + 1`), not the zero-based `GetCycle()`.
 - `plants` contains only entities with a crop; tree branches are folded into their trunk or
   dropped (builder's choice, stated in the mod's README).
 - `schema` lets the site refuse or adapt to an older mod.

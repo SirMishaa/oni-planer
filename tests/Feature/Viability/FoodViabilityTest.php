@@ -36,7 +36,29 @@ it('marks an unreadable section as unavailable', function (): void {
     $v = FoodViability::compute($state, $this->cal);
 
     expect($v['unavailable'])->toBe(['plants'])
-        ->and($v['scenarios']['automatic']['autonomy'])->toBe(3);
+        ->and($v['scenarios']['automatic']['autonomy'])->toBe(3)
+        ->and($v['verdict'])->toBe('tight');
+});
+
+it('withholds the verdict when the duplicants or the food cannot be read', function (string $section): void {
+    $state = fixtureState();
+    $state[$section] = ['error' => 'boom'];
+
+    $v = FoodViability::compute($state, $this->cal);
+
+    expect($v['unavailable'])->toBe([$section])
+        ->and($v['verdict'])->toBe('unknown');
+})->with(['duplicants', 'food']);
+
+it('leaves zero-calorie edibles off the menu', function (): void {
+    $state = fixtureState();
+    $state['food'][] = ['id' => 'ColdWheatSeed', 'worldId' => 0, 'units' => 40, 'calories' => 0];
+
+    $v = FoodViability::compute($state, $this->cal);
+
+    expect(collect($v['menu'])->pluck('foodId')->all())->not->toContain('ColdWheatSeed')
+        ->and(collect($v['eaters'])->flatMap(fn (array $eater): array => $eater['allowed'])->all())->not->toContain('ColdWheatSeed')
+        ->and($v['stockKcal'])->toBe(7000.0);
 });
 
 it('lists critter reserves without counting them', function (): void {

@@ -12,8 +12,8 @@ import type {
 
 const props = defineProps<{
     reserves: ViabilityReservesData;
-    /** The headline autonomy, already formatted (`12` or `50+`). */
-    autonomyText: string;
+    /** The headline autonomy, already formatted (`12` or `50+`), or null when it could not be computed. */
+    autonomyText: string | null;
     /** Sections the game could not read this time. */
     unavailable: string[];
 }>();
@@ -63,9 +63,11 @@ const podNext = computed(() => {
         <h2 class="block-title">{{ t('colony.viability.reserves.title') }}</h2>
         <p class="block-intro">
             {{
-                t('colony.viability.reserves.intro', {
-                    autonomy: autonomyText,
-                })
+                autonomyText === null
+                    ? t('colony.viability.reserves.intro_unknown')
+                    : t('colony.viability.reserves.intro', {
+                          autonomy: autonomyText,
+                      })
             }}
         </p>
         <p v-for="note in notes" :key="note" class="block-note" role="status">

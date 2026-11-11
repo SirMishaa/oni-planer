@@ -15,9 +15,11 @@ final class FeedingSimulation
     private const float EPSILON = 1e-6;
 
     /**
-     * Each cycle adds the arrivals landing in it (an offset of 0 counts in
-     * cycle 1), then feeds the most constrained duplicants first, each one
-     * drawing first on the food the fewest duplicants may eat.
+     * Each cycle first feeds the most constrained duplicants first, each one
+     * drawing first on the food the fewest duplicants may eat, then adds the
+     * arrivals landing in it: a harvest feeds the cycles after the one it
+     * lands in. A harvest that is ripe now (offset 0 or less) is already in
+     * hand and feeds cycle 1.
      *
      * @param  array<string, float>  $stockKcal  by food id
      * @param  list<array{id: string, name: string, needKcal: float, forbidden: list<string>, ...}>  $eaters
@@ -29,23 +31,32 @@ final class FeedingSimulation
         $stock = array_map(floatval(...), $stockKcal);
         $stockByCycle = [array_sum($stock)];
 
-        for ($cycle = 1; $cycle <= $horizon; $cycle++) {
-            foreach ($arrivals as $arrival) {
-                if ($arrival['offset'] <= $cycle && ($arrival['offset'] > $cycle - 1 || ($cycle === 1 && $arrival['offset'] <= 0))) {
-                    $stock[$arrival['cropId']] = ($stock[$arrival['cropId']] ?? 0.0) + $arrival['kcal'];
-                }
+        foreach ($arrivals as $arrival) {
+            if ($arrival['offset'] <= 0) {
+                $stock[$arrival['cropId']] = ($stock[$arrival['cropId']] ?? 0.0) + $arrival['kcal'];
             }
+        }
 
+        for ($cycle = 1; $cycle <= $horizon; $cycle++) {
             $short = self::feed($stock, $eaters);
-            $stockByCycle[] = array_sum($stock);
 
             if ($short !== null) {
+                $stockByCycle[] = array_sum($stock);
+
                 return [
                     'autonomy' => $cycle - 1,
                     'firstShort' => $short,
                     'stockByCycle' => array_pad($stockByCycle, $horizon + 1, 0.0),
                 ];
             }
+
+            foreach ($arrivals as $arrival) {
+                if ($arrival['offset'] > $cycle - 1 && $arrival['offset'] <= $cycle) {
+                    $stock[$arrival['cropId']] = ($stock[$arrival['cropId']] ?? 0.0) + $arrival['kcal'];
+                }
+            }
+
+            $stockByCycle[] = array_sum($stock);
         }
 
         return ['autonomy' => null, 'firstShort' => null, 'stockByCycle' => $stockByCycle];

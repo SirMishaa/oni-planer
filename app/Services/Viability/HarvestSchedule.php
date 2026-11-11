@@ -28,13 +28,15 @@ final class HarvestSchedule
      * numbers are degenerate and would make the harvest loop run (nearly)
      * forever, so the plant counts as stopped.
      */
-    private const float MIN_PERIOD_SECONDS = 1.0;
+    private const float MIN_PERIOD_SECONDS = 60.0;
 
     /**
      * Unknown crops (not in $caloriesPerUnit) are listed and dropped. Stopped
      * plants (wilting, not growing, with no known next harvest or crop size,
-     * or with a harvest period under one second) are counted and yield nothing. A growing plant whose crop duration
-     * is unknown yields only its next harvest.
+     * or with a harvest period under one minute) are counted and yield
+     * nothing, except a ripe wilting plant, which still yields the harvest
+     * waiting on it, once. A growing plant whose crop duration is unknown
+     * yields only its next harvest.
      *
      * @param  list<array<mixed>>  $plants
      * @param  array<string, float>  $caloriesPerUnit  calories (cal) per unit, by food id
@@ -90,10 +92,20 @@ final class HarvestSchedule
 
             $period = self::period($cropDurationSeconds, $growthPerSecond, $planted);
 
-            $stopped = ($plant['wilting'] ?? false) === true
+            $wilting = ($plant['wilting'] ?? false) === true;
+            $kcal = $cropUnits === null ? null : $cropUnits * $caloriesPerUnit[$cropId] / 1000;
+
+            if ($wilting && $grown && $kcal !== null) {
+                $sources[$key]['stopped']++;
+                $harvests[] = ['sourceKey' => $key, 'plantId' => $plantId, 'cropId' => $cropId, 'kind' => $kind, 'offset' => 0.0, 'kcal' => $kcal];
+
+                continue;
+            }
+
+            $stopped = $wilting
                 || (! $grown && ($growthPerSecond === null || $growthPerSecond <= 0))
                 || $secondsUntilHarvest === null
-                || $cropUnits === null
+                || $kcal === null
                 || ($period !== null && $period < self::MIN_PERIOD_SECONDS);
 
             if ($stopped) {
@@ -101,8 +113,6 @@ final class HarvestSchedule
 
                 continue;
             }
-
-            $kcal = $cropUnits * $caloriesPerUnit[$cropId] / 1000;
 
             if ($period !== null) {
                 $sources[$key]['kcalPerCycle'] += $kcal / ($period / self::CYCLE_SECONDS);

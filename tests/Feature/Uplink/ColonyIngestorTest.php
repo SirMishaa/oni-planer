@@ -76,3 +76,24 @@ it('keeps only the last 50 messages', function (): void {
 it('is not truncated by the game import', function (): void {
     expect(GameDataTables::all())->not->toContain('colonies')->not->toContain('uplink_messages');
 });
+
+it('refuses a colony state sent on another channel', function (): void {
+    $envelope = json_decode(uplinkFixture(), true);
+    $envelope['channel'] = 'elsewhere';
+
+    $message = app(ColonyIngestor::class)->ingest(json_encode($envelope));
+
+    expect($message->outcome)->toBe('refused')
+        ->and($message->reason)->toBe('wrong_channel')
+        ->and(Colony::query()->count())->toBe(0);
+});
+
+it('keeps only the 10 most recently seen colonies', function (): void {
+    foreach (range(1, 12) as $i) {
+        $this->travel(1)->minutes();
+        app(ColonyIngestor::class)->ingest(uplinkFixture(['colony' => ['id' => "guid-{$i}"]]));
+    }
+
+    expect(Colony::query()->count())->toBe(10)
+        ->and(Colony::query()->pluck('guid')->all())->not->toContain('guid-1')->not->toContain('guid-2')->toContain('guid-12');
+});

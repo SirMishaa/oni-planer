@@ -31,8 +31,9 @@ return [
                 'after' => 'Charge ensuite une partie : cette page se remplit toute seule.',
             ],
             'no_colony' => [
-                'title' => 'Uplink connecté, aucune colonie chargée',
-                'body' => 'Charge une partie dans le jeu : cette page se met à jour dès que la colonie arrive.',
+                'title' => "Des messages sont arrivés, aucun n'a pu être enregistré",
+                'body' => "Uplink a envoyé des messages au site, mais aucun ne contenait une colonie que le site pouvait enregistrer. L'inspecteur montre chaque message et pourquoi il a été refusé.",
+                'inspector' => "Ouvrir l'inspecteur",
             ],
         ],
         'verdict' => [
@@ -41,7 +42,14 @@ return [
                 'critical' => 'Critique.',
                 'tight' => 'Juste.',
                 'holds' => 'Ça tient.',
+                'unknown' => 'Calcul impossible :',
             ],
+            'unknown' => [
+                'duplicants' => 'les duplicants sont illisibles dans le jeu.',
+                'food' => 'le stock de nourriture est illisible dans le jeu.',
+            ],
+            'inspector' => 'Voir ce que le jeu a envoyé',
+            'no_plants' => 'Plantes illisibles dans le jeu : les récoltes ne sont pas comptées dans ce chiffre.',
             'beyond' => ':count+',
             'unit' => 'cycle|cycles',
             'short' => 'À ce rythme, :name manque de nourriture au cycle :cycle.',
@@ -110,6 +118,7 @@ return [
         'reserves' => [
             'title' => 'Réserves, si tu décides',
             'intro' => "Rien de ceci n'est compté dans les :autonomy cycles ci-dessus.",
+            'intro_unknown' => "Rien de ceci n'est compté dans l'autonomie alimentaire.",
             'wild' => [
                 'title' => ':name sauvage',
                 'body' => ':count pied sauvage, récolté dès qu\'il est mûr|:count pieds sauvages, récoltés dès qu\'ils sont mûrs',
@@ -182,6 +191,7 @@ return [
             'schema_missing' => 'schéma absent',
             'schema_newer' => 'schéma plus récent',
             'colony_missing' => 'colonie absente',
+            'wrong_channel' => 'envoyé sur un autre canal que uplink',
         ],
         'section_errors' => 'section illisible : :sections|sections illisibles : :sections',
         'detail' => [

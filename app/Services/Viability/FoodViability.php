@@ -16,6 +16,9 @@ final class FoodViability
     /** Need of a duplicant whose calorie burn is unknown (kcal per cycle). */
     private const float DEFAULT_NEED_KCAL = 1000.0;
 
+    /** Sections without which no autonomy can be computed. */
+    private const array REQUIRED_SECTIONS = ['duplicants', 'food'];
+
     /** Below this many cycles of autonomy the verdict is critical. */
     private const int CRITICAL_BELOW = 3;
 
@@ -30,7 +33,7 @@ final class FoodViability
      * @param  array<string, float>  $caloriesPerUnit  calories (cal) per unit, by food id
      * @return array{
      *   nowCycle: float,
-     *   verdict: 'critical'|'tight'|'holds',
+     *   verdict: 'critical'|'tight'|'holds'|'unknown',
      *   consumptionKcalPerCycle: float,
      *   stockKcal: float,
      *   scenarios: array{
@@ -101,7 +104,7 @@ final class FoodViability
 
         return [
             'nowCycle' => $nowCycle,
-            'verdict' => self::verdict($scenarios['automatic']['autonomy']),
+            'verdict' => array_intersect(self::REQUIRED_SECTIONS, $unavailable) === [] ? self::verdict($scenarios['automatic']['autonomy']) : 'unknown',
             'consumptionKcalPerCycle' => array_sum(array_column($eaters, 'needKcal')),
             'stockKcal' => array_sum($stock),
             'scenarios' => $scenarios,
@@ -137,6 +140,8 @@ final class FoodViability
 
     /**
      * Stocked foods summed by id over all worlds, unknown foods included.
+     * Rows with no calories (seeds and other ingredients the game counts as
+     * edible) are left out.
      *
      * @param  array<mixed>  $food
      * @return array<string, array{foodId: string, units: float, kcal: float, forbiddenFor: list<string>}>
@@ -145,14 +150,15 @@ final class FoodViability
     {
         $menu = [];
         foreach ($food as $item) {
-            if (! is_array($item) || ! is_string($item['id'] ?? null)) {
+            $calories = is_array($item) ? self::finite($item['calories'] ?? null) : null;
+            if (! is_array($item) || ! is_string($item['id'] ?? null) || $calories === null || $calories <= 0) {
                 continue;
             }
 
             $id = $item['id'];
             $menu[$id] ??= ['foodId' => $id, 'units' => 0.0, 'kcal' => 0.0, 'forbiddenFor' => []];
             $menu[$id]['units'] += self::finite($item['units'] ?? null) ?? 0.0;
-            $menu[$id]['kcal'] += (self::finite($item['calories'] ?? null) ?? 0.0) / 1000;
+            $menu[$id]['kcal'] += $calories / 1000;
         }
 
         return $menu;

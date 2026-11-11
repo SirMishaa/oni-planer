@@ -16,11 +16,14 @@ use Inertia\Response;
 /** Pages fed by the Uplink channel: food viability and the message inspector. */
 final readonly class ColonyController
 {
+    /** Columns the Uplink status reads; never the large `state`. */
+    private const array STATUS_COLUMNS = ['id', 'name', 'cycle', 'schema', 'last_seen_at'];
+
     public function __construct(private ViabilityPresenter $presenter) {}
 
     public function viability(): Response
     {
-        $colony = $this->latestColony();
+        $colony = $this->latestColony([...self::STATUS_COLUMNS, 'state']);
 
         return Inertia::render('Colony/Viability', [
             'status' => $this->status($colony),
@@ -41,16 +44,20 @@ final readonly class ColonyController
             : null;
 
         return Inertia::render('Colony/Uplink', [
-            'status' => $this->status($this->latestColony()),
+            'status' => $this->status($this->latestColony(self::STATUS_COLUMNS)),
             'messages' => $messages->map(UplinkMessageData::fromModel(...))->all(),
             'selected' => $selected instanceof UplinkMessage ? ['id' => $selected->id, 'payload' => $selected->payload] : null,
         ]);
     }
 
-    /** The colony shown is the most recently seen one. */
-    private function latestColony(): ?Colony
+    /**
+     * The colony shown is the most recently seen one.
+     *
+     * @param  list<string>  $columns
+     */
+    private function latestColony(array $columns): ?Colony
     {
-        return Colony::query()->latest('last_seen_at')->first();
+        return Colony::query()->latest('last_seen_at')->first($columns);
     }
 
     private function status(?Colony $colony): ColonyStatusData

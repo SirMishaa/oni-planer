@@ -31,10 +31,26 @@ it('returns null beyond the horizon', function (): void {
         ->and($r['stockByCycle'][50])->toBe(10000.0);
 });
 
-it('uses arrivals in the cycle they land', function (): void {
+it('adds the arrivals of a cycle after its meals', function (): void {
+    $r = FeedingSimulation::run(['Lettuce' => 1000.0], [['id' => 'd1', 'name' => 'Ruby', 'needKcal' => 1000.0, 'forbidden' => []]],
+        [['offset' => 0.5, 'cropId' => 'Lettuce', 'kcal' => 2000.0]]);
+
+    expect($r['autonomy'])->toBe(3)
+        ->and(array_slice($r['stockByCycle'], 0, 6))->toBe([1000.0, 2000.0, 1000.0, 0.0, 0.0, 0.0]);
+});
+
+it('does not feed a cycle with a harvest landing during it', function (): void {
     $r = FeedingSimulation::run(['Lettuce' => 1000.0], [['id' => 'd1', 'name' => 'Ruby', 'needKcal' => 1000.0, 'forbidden' => []]],
         [['offset' => 1.5, 'cropId' => 'Lettuce', 'kcal' => 2000.0]]);
 
-    expect($r['autonomy'])->toBe(3)
-        ->and(array_slice($r['stockByCycle'], 0, 6))->toBe([1000.0, 0.0, 1000.0, 0.0, 0.0, 0.0]);
+    expect($r['autonomy'])->toBe(1)
+        ->and($r['firstShort'])->toBe('Ruby')
+        ->and(array_slice($r['stockByCycle'], 0, 3))->toBe([1000.0, 0.0, 0.0]);
+});
+
+it('feeds the first cycle from a harvest that is ripe now', function (): void {
+    $r = FeedingSimulation::run([], [['id' => 'd1', 'name' => 'Ruby', 'needKcal' => 1000.0, 'forbidden' => []]],
+        [['offset' => 0.0, 'cropId' => 'Lettuce', 'kcal' => 1000.0]]);
+
+    expect($r['autonomy'])->toBe(1);
 });

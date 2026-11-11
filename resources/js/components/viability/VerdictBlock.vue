@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import ColonyController from '@/actions/App/Http/Controllers/ColonyController';
 import ProjectionChart from '@/components/viability/ProjectionChart.vue';
 import { useFormat } from '@/composables/useFormat';
 import { useT } from '@/composables/useT';
@@ -24,7 +26,17 @@ const format = useFormat();
 
 const automatic = computed(() => props.viability.scenarios.automatic);
 
+/** No autonomy without the duplicants or the food: say which one is missing. */
+const unknown = computed(() => props.viability.verdict === 'unknown');
+
 const sentence = computed(() => {
+    if (unknown.value) {
+        return (['duplicants', 'food'] as const)
+            .filter((section) => props.viability.unavailable.includes(section))
+            .map((section) => t(`colony.viability.verdict.unknown.${section}`))
+            .join(' ');
+    }
+
     if (props.viability.eaters.length === 0) {
         return t('colony.viability.verdict.nobody');
     }
@@ -48,6 +60,11 @@ const sentence = computed(() => {
           })
         : t('colony.viability.verdict.short_anonymous', { cycle });
 });
+
+/** The figure stands, but without any harvest. */
+const plantsMissing = computed(() =>
+    props.viability.unavailable.includes('plants'),
+);
 
 const noHarvest = computed(() => {
     const autonomy = props.viability.scenarios.none.autonomy;
@@ -83,7 +100,7 @@ const unit = computed(() =>
             <p class="verdict__eyebrow">
                 {{ t('colony.viability.verdict.heading') }}
             </p>
-            <p class="figure verdict__big">
+            <p v-if="!unknown" class="figure verdict__big">
                 {{ autonomyText }}<small>{{ unit }}</small>
             </p>
             <p class="verdict__sentence">
@@ -92,12 +109,26 @@ const unit = computed(() =>
                 }}</strong>
                 {{ sentence }}
             </p>
-            <p class="verdict__aside">{{ noHarvest }} {{ consumption }}</p>
+            <p v-if="plantsMissing && !unknown" class="verdict__qualifier">
+                {{ t('colony.viability.verdict.no_plants') }}
+            </p>
+            <p v-if="unknown" class="verdict__aside">
+                <Link
+                    :href="ColonyController.uplink.url()"
+                    class="verdict__link"
+                >
+                    {{ t('colony.viability.verdict.inspector') }}
+                </Link>
+            </p>
+            <p v-else class="verdict__aside">
+                {{ noHarvest }} {{ consumption }}
+            </p>
         </div>
         <!-- endregion -->
 
         <!-- region Projection -->
         <ProjectionChart
+            v-if="!unknown"
             :scenarios="viability.scenarios"
             :now-cycle="viability.nowCycle"
         />
@@ -129,6 +160,10 @@ const unit = computed(() =>
 
 .verdict--critical {
     --state: var(--bad);
+}
+
+.verdict--unknown {
+    --state: var(--text);
 }
 
 .verdict__eyebrow {
@@ -163,6 +198,20 @@ const unit = computed(() =>
 .verdict__state {
     color: var(--state);
     font-weight: 700;
+}
+
+.verdict__qualifier {
+    max-width: 52ch;
+    margin-top: 6px;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.verdict__link {
+    color: var(--text);
+    text-decoration: underline;
+    text-underline-offset: 3px;
 }
 
 .verdict__aside {

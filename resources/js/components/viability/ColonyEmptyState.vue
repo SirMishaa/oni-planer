@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
+import ColonyController from '@/actions/App/Http/Controllers/ColonyController';
 import { useT } from '@/composables/useT';
 
 // region Props
 
 defineProps<{
-    /** `never`: Uplink has not sent anything; otherwise no colony to show. */
+    /** `never`: Uplink has not sent anything; otherwise messages came but none was stored. */
     state: 'never' | 'no_colony';
 }>();
 
@@ -30,12 +32,20 @@ const { t } = useT();
         </template>
         <!-- endregion -->
 
-        <!-- region No colony loaded -->
+        <!-- region Nothing stored -->
         <template v-else>
             <h2 class="figure empty-state__title">
                 {{ t('colony.viability.empty.no_colony.title') }}
             </h2>
             <p>{{ t('colony.viability.empty.no_colony.body') }}</p>
+            <p>
+                <Link
+                    :href="ColonyController.uplink.url()"
+                    class="empty-state__link"
+                >
+                    {{ t('colony.viability.empty.no_colony.inspector') }}
+                </Link>
+            </p>
         </template>
         <!-- endregion -->
     </section>
@@ -67,6 +77,12 @@ const { t } = useT();
     background: var(--ink-1);
     color: var(--ration);
     font-size: 14px;
+}
+
+.empty-state__link {
+    color: var(--text);
+    text-decoration: underline;
+    text-underline-offset: 3px;
 }
 
 .empty-state__after {

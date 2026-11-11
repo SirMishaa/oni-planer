@@ -31,8 +31,9 @@ return [
                 'after' => 'Then load a save: this page fills itself in.',
             ],
             'no_colony' => [
-                'title' => 'Uplink connected, no colony loaded',
-                'body' => 'Load a save in the game: this page updates as soon as the colony arrives.',
+                'title' => 'Messages arrived, none could be stored',
+                'body' => 'Uplink sent messages to the site, but none of them held a colony the site could store. The inspector shows each message and why it was refused.',
+                'inspector' => 'Open the inspector',
             ],
         ],
         'verdict' => [
@@ -41,7 +42,14 @@ return [
                 'critical' => 'Critical.',
                 'tight' => 'Tight.',
                 'holds' => 'Holding up.',
+                'unknown' => "Can't compute:",
             ],
+            'unknown' => [
+                'duplicants' => 'the duplicants are unreadable in the game.',
+                'food' => 'the food stock is unreadable in the game.',
+            ],
+            'inspector' => 'See what the game sent',
+            'no_plants' => 'Plants are unreadable in the game, so harvests are not counted in this figure.',
             'beyond' => ':count+',
             'unit' => 'cycle|cycles',
             'short' => 'At this rate, :name runs out of food on cycle :cycle.',
@@ -110,6 +118,7 @@ return [
         'reserves' => [
             'title' => 'Reserves, if you choose',
             'intro' => 'None of this is counted in the :autonomy cycles above.',
+            'intro_unknown' => 'None of this is counted in the food autonomy.',
             'wild' => [
                 'title' => 'Wild :name',
                 'body' => ':count wild plant, picked as soon as it ripens|:count wild plants, picked as soon as they ripen',
@@ -182,6 +191,7 @@ return [
             'schema_missing' => 'missing schema',
             'schema_newer' => 'newer schema',
             'colony_missing' => 'missing colony',
+            'wrong_channel' => 'sent on another channel than uplink',
         ],
         'section_errors' => 'unreadable section: :sections|unreadable sections: :sections',
         'detail' => [

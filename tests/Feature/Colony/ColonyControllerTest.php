@@ -6,6 +6,7 @@ use App\Models\Food;
 use App\Models\UplinkMessage;
 use App\Services\Uplink\ColonyIngestor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Inertia\Testing\AssertableInertia;
 
@@ -114,4 +115,35 @@ it('selects nothing for an unknown message id', function (): void {
     $this->get('/colony/uplink?message=999999')
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('selected', null));
+});
+
+it('withholds the verdict when the duplicants could not be read', function (): void {
+    seedFoods();
+    app(ColonyIngestor::class)->ingest(uplinkFixture(['duplicants' => ['error' => 'boom']]));
+
+    $this->get('/colony/viability')
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('viability.verdict', 'unknown')
+            ->where('viability.unavailable', ['duplicants']));
+});
+
+it('keeps the verdict when only the plants could not be read', function (): void {
+    seedFoods();
+    app(ColonyIngestor::class)->ingest(uplinkFixture(['plants' => ['error' => 'boom']]));
+
+    $this->get('/colony/viability')
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('viability.verdict', 'tight')
+            ->where('viability.unavailable', ['plants']));
+});
+
+it('reads the status without loading the colony state', function (): void {
+    app(ColonyIngestor::class)->ingest(uplinkFixture());
+    DB::enableQueryLog();
+
+    $this->get('/colony/uplink')->assertOk();
+
+    $colonyQueries = collect(DB::getQueryLog())->pluck('query')->filter(fn (string $sql): bool => str_contains($sql, '"colonies"'));
+    expect($colonyQueries)->not->toBeEmpty()
+        ->and($colonyQueries->filter(fn (string $sql): bool => str_contains($sql, '*') || str_contains($sql, '"state"')))->toBeEmpty();
 });
