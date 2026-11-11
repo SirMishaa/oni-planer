@@ -26,4 +26,7 @@ return [
      * @var list<string>
      */
     'supported_mods' => ['3557584850'],
+
+    /* Local dev directory (Windows side) the Uplink mod is deployed to. */
+    'uplink_mod_path' => env('UPLINK_MOD_PATH', '/mnt/c/Users/misha/Documents/Klei/OxygenNotIncluded/mods/dev/Uplink'),
 ];

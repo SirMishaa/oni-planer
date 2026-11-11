@@ -1,6 +1,11 @@
 import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { type DefineComponent, createApp, h } from 'vue';
+import { configureEcho } from '@laravel/echo-vue';
+
+configureEcho({
+    broadcaster: 'reverb',
+});
 
 void createInertiaApp({
     resolve: (name: string) =>

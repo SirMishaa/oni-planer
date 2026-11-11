@@ -11,8 +11,9 @@
     "require": {
         "php": "^8.5.0",
         "inertiajs/inertia-laravel": "^3.6.0",
-        "laravel/framework": "^13.39.0",
+        "laravel/framework": "^13.42.0",
         "laravel/octane": "^2.22.0",
+        "laravel/reverb": "^1.13",
         "laravel/wayfinder": "^0.1.23",
         "nunomaduro/essentials": "^1.2.0",
         "spatie/laravel-data": "^4.23.1",
@@ -61,11 +62,11 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "bunx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve --port 8003\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"bun run dev\" --names=server,queue,logs,vite --kill-others"
+            "bunx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74,#86efac\" \"php artisan serve --port 8003\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"bun run dev\" \"php artisan reverb:start\" --names=server,queue,logs,vite,reverb --kill-others"
         ],
         "devWithOctane": [
             "Composer\\Config::disableProcessTimeout",
-            "bunx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan octane:start --watch --server=frankenphp --port=8003 --caddyfile=Caddyfile\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"bun run dev\" --names=server,queue,logs,vite --kill-others"
+            "bunx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74,#86efac\" \"php artisan octane:start --watch --server=frankenphp --port=8003 --caddyfile=Caddyfile\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"bun run dev\" \"php artisan reverb:start\" --names=server,queue,logs,vite,reverb --kill-others"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
