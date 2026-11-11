@@ -39,6 +39,19 @@ it('tolerates null numbers', function (): void {
     expect(HarvestSchedule::build($plants, $this->cal)['harvests'])->toBe([]);
 });
 
+it('treats a plant with a harvest period under one second as stopped', function (array $numbers): void {
+    $plants = [[...['id' => 'Z', 'cropId' => 'Lettuce', 'cropUnits' => 12, 'cropDurationSeconds' => 7200, 'planted' => true,
+        'autoHarvest' => true, 'wilting' => false, 'grown' => false, 'secondsUntilHarvest' => 300, 'growthPerSecond' => 1 / 600], ...$numbers]];
+
+    $r = HarvestSchedule::build($plants, $this->cal);
+
+    expect($r['harvests'])->toBe([])
+        ->and($r['sources'][0])->toMatchArray(['count' => 1, 'stopped' => 1, 'kcalPerCycle' => 0.0]);
+})->with([
+    'huge growth rate' => [['growthPerSecond' => 1e6]],
+    'tiny crop duration' => [['cropDurationSeconds' => 1e-9]],
+]);
+
 it('does not know auto harvest when every wild plant reports null', function (): void {
     $plants = [['id' => 'W', 'cropId' => 'Lettuce', 'cropUnits' => 12, 'cropDurationSeconds' => 7200, 'planted' => false,
         'autoHarvest' => null, 'wilting' => false, 'grown' => true, 'secondsUntilHarvest' => null, 'growthPerSecond' => null]];

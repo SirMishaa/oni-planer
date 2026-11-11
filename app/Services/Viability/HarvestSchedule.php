@@ -24,9 +24,16 @@ final class HarvestSchedule
     private const int WILD_SLOWDOWN = 4;
 
     /**
+     * Shortest believable harvest period (seconds). Below it the reported
+     * numbers are degenerate and would make the harvest loop run (nearly)
+     * forever, so the plant counts as stopped.
+     */
+    private const float MIN_PERIOD_SECONDS = 1.0;
+
+    /**
      * Unknown crops (not in $caloriesPerUnit) are listed and dropped. Stopped
-     * plants (wilting, not growing, or with no known next harvest or crop
-     * size) are counted and yield nothing. A growing plant whose crop duration
+     * plants (wilting, not growing, with no known next harvest or crop size,
+     * or with a harvest period under one second) are counted and yield nothing. A growing plant whose crop duration
      * is unknown yields only its next harvest.
      *
      * @param  list<array<mixed>>  $plants
@@ -81,10 +88,13 @@ final class HarvestSchedule
             $cropUnits = self::finite($plant['cropUnits'] ?? null);
             $cropDurationSeconds = self::finite($plant['cropDurationSeconds'] ?? null);
 
+            $period = self::period($cropDurationSeconds, $growthPerSecond, $planted);
+
             $stopped = ($plant['wilting'] ?? false) === true
                 || (! $grown && ($growthPerSecond === null || $growthPerSecond <= 0))
                 || $secondsUntilHarvest === null
-                || $cropUnits === null;
+                || $cropUnits === null
+                || ($period !== null && $period < self::MIN_PERIOD_SECONDS);
 
             if ($stopped) {
                 $sources[$key]['stopped']++;
@@ -93,7 +103,6 @@ final class HarvestSchedule
             }
 
             $kcal = $cropUnits * $caloriesPerUnit[$cropId] / 1000;
-            $period = self::period($cropDurationSeconds, $growthPerSecond, $planted);
 
             if ($period !== null) {
                 $sources[$key]['kcalPerCycle'] += $kcal / ($period / self::CYCLE_SECONDS);
