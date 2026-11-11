@@ -39,6 +39,33 @@ function something(): void
     // ..
 }
 
+/**
+ * The Uplink colony-state envelope of tests/Fixtures/Uplink/state.json, with
+ * $override merged into its `data` (objects merged key by key, lists and
+ * scalars replaced), re-encoded as the raw message.
+ *
+ * @param  array<string, mixed>  $override
+ */
+function uplinkFixture(array $override = []): string
+{
+    /** @var array{event: string, channel: string, data: array<string, mixed>} $envelope */
+    $envelope = json_decode((string) file_get_contents(base_path('tests/Fixtures/Uplink/state.json')), true, flags: JSON_THROW_ON_ERROR);
+
+    $merge = function (array $base, array $override) use (&$merge): array {
+        foreach ($override as $key => $value) {
+            $base[$key] = is_array($value) && ! array_is_list($value) && is_array($base[$key] ?? null) && ! array_is_list($base[$key])
+                ? $merge($base[$key], $value)
+                : $value;
+        }
+
+        return $base;
+    };
+
+    $envelope['data'] = $merge($envelope['data'], $override);
+
+    return json_encode($envelope, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION | JSON_UNESCAPED_UNICODE);
+}
+
 function makeHatch(): Critter
 {
     Element::factory()->create(['element_id' => 'Sand', 'name' => ['en' => 'Sand']]);

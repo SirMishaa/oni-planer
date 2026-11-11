@@ -1,0 +1,87 @@
+{
+  "event": "client-colony.state",
+  "channel": "uplink",
+  "data": {
+    "schema": 1,
+    "colony": {
+      "id": "guid-deepwater",
+      "name": "DeepWaterGo",
+      "cycle": 59,
+      "cyclePercent": 0.5,
+      "build": "U59-744825",
+      "dlcs": ["DLC5_ID"]
+    },
+    "worlds": [
+      { "id": 0, "name": "dlc5::worlds/AquaticClassicAsteroid", "discovered": true }
+    ],
+    "duplicants": [
+      {
+        "id": "d1",
+        "name": "Ruby",
+        "model": "Minion",
+        "worldId": 0,
+        "calories": { "value": 3000000, "max": 4000000, "deltaPerSecond": -1666.6667 },
+        "forbiddenFoods": [],
+        "traits": ["MinionBaseTrait", "BingeEater"]
+      },
+      {
+        "id": "d2",
+        "name": "Ellie",
+        "model": "Minion",
+        "worldId": 0,
+        "calories": { "value": 3000000, "max": 4000000, "deltaPerSecond": -1666.6667 },
+        "forbiddenFoods": ["FishMeat"],
+        "traits": ["MinionBaseTrait"]
+      }
+    ],
+    "food": [
+      { "id": "Lettuce", "worldId": 0, "units": 10, "calories": 4000000 },
+      { "id": "FishMeat", "worldId": 0, "units": 3, "calories": 3000000 }
+    ],
+    "plants": [
+      {
+        "id": "SeaLettuce", "worldId": 0, "cell": 132236, "cropId": "Lettuce",
+        "cropUnits": 12, "cropDurationSeconds": 7200, "planted": true,
+        "autoHarvest": true, "wilting": false, "grown": false,
+        "secondsUntilHarvest": 300, "growthPerSecond": 0.0016667
+      },
+      {
+        "id": "SeaLettuce", "worldId": 0, "cell": 151004, "cropId": "Lettuce",
+        "cropUnits": 12, "cropDurationSeconds": 7200, "planted": false,
+        "autoHarvest": true, "wilting": false, "grown": false,
+        "secondsUntilHarvest": 1200, "growthPerSecond": 0.00041667
+      },
+      {
+        "id": "SeaLettuce", "worldId": 0, "cell": 151210, "cropId": "Lettuce",
+        "cropUnits": 12, "cropDurationSeconds": 7200, "planted": false,
+        "autoHarvest": false, "wilting": false, "grown": false,
+        "secondsUntilHarvest": 600, "growthPerSecond": 0.00041667
+      },
+      {
+        "id": "SeaLettuce", "worldId": 0, "cell": 137667, "cropId": "Lettuce",
+        "cropUnits": 12, "cropDurationSeconds": 7200, "planted": true,
+        "autoHarvest": true, "wilting": true, "grown": false,
+        "secondsUntilHarvest": null, "growthPerSecond": 0
+      },
+      {
+        "id": "Oxyfern", "worldId": 0, "cell": 140120, "cropId": "NotAFood",
+        "cropUnits": 1, "cropDurationSeconds": 1800, "planted": true,
+        "autoHarvest": true, "wilting": false, "grown": false,
+        "secondsUntilHarvest": 900, "growthPerSecond": 0.0016667
+      }
+    ],
+    "critters": [
+      {
+        "id": "Pacu", "worldId": 0, "cell": 151004, "tame": true,
+        "age": { "value": 12.3, "max": 25 }, "calories": { "value": 0, "max": 0 },
+        "drops": [{ "id": "FishMeat", "units": 1 }]
+      },
+      {
+        "id": "Pacu", "worldId": 0, "cell": 151010, "tame": true,
+        "age": { "value": 4.8, "max": 25 }, "calories": { "value": 0, "max": 0 },
+        "drops": [{ "id": "FishMeat", "units": 1 }]
+      }
+    ],
+    "printingPod": { "secondsUntilNextPrint": 1260.0 }
+  }
+}
