@@ -72,6 +72,35 @@ export function cycleTicks(
 
 // endregion
 
+// region Wheel zoom
+
+/** Zoom change per wheel pixel: one classic notch (100 px) zooms by about 18 %. */
+const WHEEL_ZOOM_PER_PX = 0.002;
+const WHEEL_PX_PER_LINE = 16;
+const WHEEL_PX_PER_PAGE = 400;
+
+/**
+ * Scale multiplier for one wheel event, proportional to its delta so that
+ * trackpad pinches and free-spin wheels (many small events) zoom smoothly.
+ * `deltaMode` follows `WheelEvent`: 0 pixels, 1 lines, 2 pages.
+ */
+export function wheelZoomFactor(deltaY: number, deltaMode: number): number {
+    if (!Number.isFinite(deltaY)) {
+        return 1;
+    }
+
+    const unitPx =
+        deltaMode === 1
+            ? WHEEL_PX_PER_LINE
+            : deltaMode === 2
+              ? WHEEL_PX_PER_PAGE
+              : 1;
+
+    return Math.exp(-deltaY * unitPx * WHEEL_ZOOM_PER_PX);
+}
+
+// endregion
+
 // region Merging
 
 /**

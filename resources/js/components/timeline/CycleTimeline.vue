@@ -11,6 +11,7 @@ import {
     type TimelineEvent,
     type TimelineMark,
     type TimelineRow,
+    wheelZoomFactor,
 } from './timeline';
 
 // region Props
@@ -47,7 +48,6 @@ defineSlots<{
 /** Inset at both ends of the track so marks at the edges are not clipped. */
 const TRACK_INSET_PX = 24;
 const ZOOM_STEP = 1.25;
-const WHEEL_ZOOM_STEP = 1.1;
 
 const scale = computed(() => clampPxPerCycle(pxPerCycleModel.value));
 
@@ -131,9 +131,7 @@ function onWheel(event: WheelEvent): void {
 
     event.preventDefault();
     void setScale(
-        event.deltaY < 0
-            ? scale.value * WHEEL_ZOOM_STEP
-            : scale.value / WHEEL_ZOOM_STEP,
+        scale.value * wheelZoomFactor(event.deltaY, event.deltaMode),
         event.clientX,
     );
 }

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { cycleTicks, cycleToPx, mergeEvents } from './timeline';
+import {
+    cycleTicks,
+    cycleToPx,
+    mergeEvents,
+    wheelZoomFactor,
+} from './timeline';
 
 describe('timeline', () => {
     it('merges close events of the same row and kind', () => {
@@ -35,5 +40,20 @@ describe('timeline', () => {
 
     it('places a cycle in pixels', () => {
         expect(cycleToPx(61, 59.5, 56)).toBe(84);
+    });
+
+    it('scales wheel zoom by the size of the wheel delta', () => {
+        expect(wheelZoomFactor(100, 0)).toBeCloseTo(0.819, 3);
+        expect(wheelZoomFactor(-100, 0)).toBeCloseTo(1.221, 3);
+
+        let pinch = 1;
+        for (let i = 0; i < 30; i++) {
+            pinch *= wheelZoomFactor(1, 0);
+        }
+        expect(pinch).toBeCloseTo(0.942, 3);
+
+        expect(wheelZoomFactor(3, 1)).toBeCloseTo(wheelZoomFactor(48, 0), 10);
+        expect(wheelZoomFactor(1, 2)).toBeCloseTo(wheelZoomFactor(400, 0), 10);
+        expect(wheelZoomFactor(Number.NaN, 0)).toBe(1);
     });
 });
