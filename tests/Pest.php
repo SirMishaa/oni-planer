@@ -66,6 +66,19 @@ function uplinkFixture(array $override = []): string
     return json_encode($envelope, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION | JSON_UNESCAPED_UNICODE);
 }
 
+/**
+ * The colony state (`data`) of tests/Fixtures/Uplink/state.json.
+ *
+ * @return array<string, mixed>
+ */
+function fixtureState(): array
+{
+    /** @var array{data: array<string, mixed>} $envelope */
+    $envelope = json_decode(uplinkFixture(), true, flags: JSON_THROW_ON_ERROR);
+
+    return $envelope['data'];
+}
+
 function makeHatch(): Critter
 {
     Element::factory()->create(['element_id' => 'Sand', 'name' => ['en' => 'Sand']]);
