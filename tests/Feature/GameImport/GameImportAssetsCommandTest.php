@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Building;
 use App\Models\Element;
+use App\Models\Food;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 
@@ -83,6 +84,19 @@ it('does not touch critter, plant and geyser sprites', function (): void {
     foreach (['critters', 'plants', 'geysers'] as $folder) {
         expect(File::get($this->assets.'/'.$folder.'/Keep.webp'))->toBe('untouched');
     }
+});
+
+it('converts food icons and lists the foods without one', function (): void {
+    Food::factory()->create(['food_id' => 'Lettuce']);
+    Food::factory()->create(['food_id' => 'FishMeat']);
+    writePng($this->export.'/ui_image/Lettuce.png');
+
+    $this->artisan('game:import-assets')
+        ->expectsOutputToContain('Missing food icons: FishMeat')
+        ->assertSuccessful();
+
+    expect(getimagesize($this->assets.'/foods/Lettuce.webp')['mime'])->toBe('image/webp')
+        ->and($this->assets.'/foods/FishMeat.webp')->not->toBeFile();
 });
 
 it('only fills missing element icons', function (): void {

@@ -10,6 +10,7 @@ it('discovers game-data tables including codex and model-less pivots', function 
     expect($tables)->toContain('buildings')
         ->toContain('elements')
         ->toContain('codex_entries')
+        ->toContain('foods')
         ->toContain('codexables')
         ->toContain('plant_variant_mutations');
 });
@@ -18,8 +19,8 @@ it('excludes non-game tables such as users', function (): void {
     expect(GameDataTables::all())->not->toContain('users');
 });
 
-it('returns exactly the expected number of game tables (31 models + 2 pivots)', function (): void {
-    // 27 entity models + CodexEntry + PrefabName = 31 #[GameData] models (incl. Mod, RoomType), plus 2 model-less pivots.
+it('returns exactly the expected number of game tables (32 models + 2 pivots)', function (): void {
+    // 28 entity models + CodexEntry + PrefabName = 32 #[GameData] models (incl. Mod, RoomType, Food), plus 2 model-less pivots.
     // A new game model added without #[GameData] would drop this count and fail here.
-    expect(GameDataTables::all())->toHaveCount(33);
+    expect(GameDataTables::all())->toHaveCount(34);
 });

@@ -4,7 +4,46 @@
   "buildVersion": "U59-744825-SCRPAN",
   "foodInfoList": [
     {
-      "Id": "PrickleFruit"
+      "Id": "PrickleFruit",
+      "CaloriesPerUnit": 1600000.0,
+      "Quality": 0,
+      "CanRot": true,
+      "Display": true
+    },
+    {
+      "Id": "Lettuce",
+      "CaloriesPerUnit": 400000.0,
+      "Quality": 0,
+      "CanRot": true,
+      "Display": true
+    },
+    {
+      "Id": "FishMeat",
+      "CaloriesPerUnit": 1000000.0,
+      "Quality": 2,
+      "CanRot": true,
+      "Display": true
+    },
+    {
+      "Id": "SwampFruit",
+      "CaloriesPerUnit": 1840000.0,
+      "Quality": 0,
+      "CanRot": true,
+      "Display": true
+    },
+    {
+      "Id": "Zero",
+      "CaloriesPerUnit": 0.0,
+      "Quality": 0,
+      "CanRot": false,
+      "Display": true
     }
-  ]
+  ],
+  "requiredDlcIdsMap": {
+    "PrickleFruit": null,
+    "Lettuce": null,
+    "FishMeat": null,
+    "SwampFruit": ["EXPANSION1_ID"],
+    "Zero": null
+  }
 }

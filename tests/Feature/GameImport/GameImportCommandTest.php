@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Building;
 use App\Models\Element;
+use App\Models\Food;
 use App\Models\Mod;
 use App\Models\PrefabName;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -129,6 +130,14 @@ it('leaves the previous data and catalogs intact when the import fails midway', 
         ->and(File::get($this->langPath.'/en.json'))->toBe('{"OLD": "catalog"}')
         ->and(File::files($this->langPath))->toHaveCount(1)
         ->and(File::glob($this->workDir.'/*'))->not->toContain($this->langPath.'.staging');
+});
+
+it('imports the foods with their calories and reports their count', function (): void {
+    $this->artisan('game:import', ($this->importOptions)())
+        ->expectsOutputToContain('  Foods: 4')
+        ->assertSuccessful();
+
+    expect(Food::query()->where('food_id', 'Lettuce')->value('calories_per_unit'))->toBe(400000.0);
 });
 
 it('reports the recipes and geysers it skips', function (): void {

@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Models\Building;
 use App\Models\Element;
+use App\Models\Food;
 use App\Services\GameImport\OniExport\AssetConverter;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -62,7 +63,26 @@ final class GameImportAssetsCommand extends Command
             }
         }
 
-        $this->info("Converted {$buildings} building renders, {$connections} connection sprites, {$elements} missing element icons.");
+        $foods = 0;
+        $foodsWithoutIcon = [];
+        foreach (Food::query()->orderBy('food_id')->pluck('food_id') as $foodId) {
+            $foodId = (string) $foodId;
+            $source = "{$export}/ui_image/{$foodId}.png";
+
+            if (! File::isFile($source)) {
+                $foodsWithoutIcon[] = $foodId;
+
+                continue;
+            }
+
+            $foods += (int) $this->convert($converter, $source, "{$assets}/foods/{$foodId}.webp");
+        }
+
+        $this->info("Converted {$buildings} building renders, {$connections} connection sprites, {$elements} missing element icons, {$foods} food icons.");
+
+        if ($foodsWithoutIcon !== []) {
+            $this->warn('Missing food icons: '.implode(', ', $foodsWithoutIcon));
+        }
 
         return self::SUCCESS;
     }

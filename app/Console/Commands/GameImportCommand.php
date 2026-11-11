@@ -9,6 +9,7 @@ use App\Models\CodexEntry;
 use App\Models\Critter;
 use App\Models\CritterMorph;
 use App\Models\Element;
+use App\Models\Food;
 use App\Models\GeyserType;
 use App\Models\Plant;
 use App\Models\PlantVariant;
@@ -18,6 +19,7 @@ use App\Services\GameImport\CodexImporter;
 use App\Services\GameImport\CritterImporter;
 use App\Services\GameImport\DuplicantImporter;
 use App\Services\GameImport\ElementImporter;
+use App\Services\GameImport\FoodImporter;
 use App\Services\GameImport\GameDataTables;
 use App\Services\GameImport\GameTranslationWriter;
 use App\Services\GameImport\GeyserImporter;
@@ -25,6 +27,7 @@ use App\Services\GameImport\OniExport\BuildingReader;
 use App\Services\GameImport\OniExport\CritterReader;
 use App\Services\GameImport\OniExport\DuplicantReader;
 use App\Services\GameImport\OniExport\ElementReader;
+use App\Services\GameImport\OniExport\FoodReader;
 use App\Services\GameImport\OniExport\GeyserReader;
 use App\Services\GameImport\OniExport\ModCatalog;
 use App\Services\GameImport\OniExport\OniExport;
@@ -250,6 +253,9 @@ final class GameImportCommand extends Command
         $geyserImporter = new GeyserImporter($resolver);
         $geyserImporter->importRecords($geysers);
 
+        $this->info('Importing foods...');
+        new FoodImporter()->importRecords(new FoodReader($export)->records());
+
         $this->info('Indexing prefab names...');
         new PrefabNameImporter($resolver, $catalog)->import(compact('buildings', 'critters', 'plants', 'geysers'));
 
@@ -272,6 +278,7 @@ final class GameImportCommand extends Command
                 'Critters' => Critter::query()->count().' species / '.CritterMorph::query()->count().' morphs',
                 'Plants' => Plant::query()->count().' species / '.PlantVariant::query()->count().' variants',
                 'Geysers' => (string) GeyserType::query()->count(),
+                'Foods' => (string) Food::query()->count(),
                 'Codex' => CodexEntry::query()->count().' entries',
             ],
             'skippedMods' => $catalog->skippedReport(),
