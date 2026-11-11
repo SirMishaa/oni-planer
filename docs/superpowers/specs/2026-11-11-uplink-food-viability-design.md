@@ -283,8 +283,10 @@ red for state always paired with a word, Barlow with Barlow Semi Condensed for n
 headings, game sprites at generous size, hairline rules instead of cards. Follow
 `PRODUCT.md`; WCAG AA; light theme is not required for this page yet.
 
-**Language**: French and English UI strings like the rest of the site; game names through
-the existing string catalogs.
+**Language** (user's decision): every user-facing string of this project exists in French and
+English from the start, in `lang/` catalogs: page copy, states, error and validation
+messages, refusal reasons in the inspector, command output. Game names come from the existing
+string catalogs. Translating the older pages and a language switcher are out of scope.
 
 **Known gaps in art**: no duplicant portraits exist (initials until a later project renders
 them from the mod); no icon for fish fillet in the current export (use a neutral food

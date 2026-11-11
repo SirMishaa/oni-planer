@@ -22,7 +22,7 @@
 - Protocol constants (verbatim): channel `uplink`; event `client-colony.state`; `schema: 1`; calories in **cal** (÷1000 for kcal); one cycle = **600 s**; non-finite numbers are `null`.
 - `colonies` and `uplink_messages` are user data: their models must **not** carry `#[GameData]`.
 - Verdict thresholds: critical `< 3` cycles, tight `< 10`, else holds; horizon **50** cycles, displayed `50+` beyond.
-- UI copy in French, hardcoded in templates like the existing pages (the site has no UI string catalog; spec's "French and English" is deferred — planner's call). Game names go through the existing catalogs (`PrefabName` → `__($name_key)`). No em dashes in copy.
+- **Every user-facing string of this project is translated in French and English** (user's decision): page copy, states, verdict sentences, inspector outcomes and refusal reasons, command output and error messages, validation messages. Nothing user-facing is hardcoded in a template, controller or command. Catalogs: `lang/fr/colony.php` and `lang/en/colony.php` (same keys, nested arrays, `:placeholder` syntax, `one|other` pipe for plurals), read in PHP with `__('colony.…')` / `trans_choice` and in Vue with `useT()` (Task 6). Existing pages and the existing `lang/game/*.json` catalogs are not touched. The locale stays the application locale (`APP_LOCALE`); a language switcher is out of scope. Game names go through the existing catalogs (`PrefabName` → `__($name_key)`). No em dashes in copy. The French strings quoted in Tasks 8 and 9 are the `fr` values; write the `en` value next to each.
 - Look: mockup v2 tokens (ink `oklch(16% 0.022 222)` family, ration yellow `oklch(82% 0.13 82)`, Barlow + Barlow Semi Condensed), hairline rules instead of cards, state colour always paired with a word, WCAG AA.
 - Mod: never throw into the game; the game thread never waits on the socket; log prefix `Uplink:`; the mod name/ids must not contain "ONI".
 
@@ -53,6 +53,8 @@ Site:
 | `app/Data/Viability/*.php` | page payload (laravel-data, exported to TS) |
 | `app/Http/Controllers/ColonyController.php` | `viability`, `uplink` actions |
 | `resources/js/components/timeline/CycleTimeline.vue`, `resources/js/components/timeline/timeline.ts` (+ `.test.ts`) | generic timeline |
+| `lang/{fr,en}/colony.php` | UI strings of the colony pages, commands and refusal reasons |
+| `resources/js/composables/useT.ts` (+ `.test.ts`) | `t()` / `tc()` over the shared `translations` prop |
 | `resources/js/composables/useUplink.ts` | Echo subscription + debounced reload + live/stale status |
 | `resources/js/pages/Colony/Viability.vue`, `resources/js/components/viability/*.vue` | the page, one component per block |
 | `resources/js/pages/Colony/Uplink.vue`, `resources/js/components/uplink/JsonTree.vue` | inspector |
@@ -232,7 +234,9 @@ it('is not truncated by the game import', function () {
 
 `path` defaults to `config('game.uplink_mod_path')`; key and port come from `config('reverb.apps.apps.0.key')` and `config('reverb.servers.reverb.port')` (verify the exact config paths in `config/reverb.php`); scheme `wss` when the Reverb scheme is `https`. Host defaults to `127.0.0.1` (the game runs on Windows, Reverb in WSL; the spike proved `127.0.0.1` reaches WSL).
 
-- [ ] **Step 1: Failing tests:** (a) with `--path` = a temp dir, the file exists and decodes to the exact three keys, `url` containing the configured key and `protocol=7`; (b) when the directory does not exist the command fails with exit code 1 and a message telling to build and install the mod first (it does not create the folder); (c) missing Reverb key → failure naming `REVERB_APP_KEY`.
+All command output goes through `__('colony.install.…')` (keys `written`, `folder_missing`, `key_missing`), created here in both `lang/fr/colony.php` and `lang/en/colony.php`.
+
+- [ ] **Step 1: Failing tests:** (a) with `--path` = a temp dir, the file exists and decodes to the exact three keys, `url` containing the configured key and `protocol=7`; (b) when the directory does not exist the command fails with exit code 1 and a message telling to build and install the mod first (it does not create the folder); (c) missing Reverb key → failure naming `REVERB_APP_KEY`; (d) with `app()->setLocale('fr')` the folder-missing message equals `__('colony.install.folder_missing', […], 'fr')` and differs from the `en` one.
 - [ ] **Step 2:** Run → fail. Implement. Run → pass. Pint, commit: `feat(uplink): add the uplink:install command`.
 
 ---
@@ -381,8 +385,9 @@ If a hand-computed number above disagrees with the rules when implemented, the *
 
 **Files:**
 - Create: `app/Http/Controllers/ColonyController.php`, `app/Data/Viability/ViabilityData.php` (+ nested data classes in the same folder), `app/Data/UplinkMessageData.php`, `app/Data/ColonyStatusData.php`
-- Modify: `routes/web.php`, `resources/js/layouts/AppLayout.vue` (nav)
-- Test: `tests/Feature/Colony/ColonyControllerTest.php`
+- Create: `resources/js/composables/useT.ts`, `resources/js/composables/useT.test.ts`; extend `lang/{fr,en}/colony.php`
+- Modify: `routes/web.php`, `resources/js/layouts/AppLayout.vue` (nav), `app/Http/Middleware/HandleInertiaRequests.php`
+- Test: `tests/Feature/Colony/ColonyControllerTest.php`, `tests/Feature/Colony/ColonyTranslationsTest.php`
 
 **Interfaces:**
 - Consumes: `FoodViability::compute`, `Colony`, `UplinkMessage`, `Food`, `PrefabName`.
@@ -394,9 +399,13 @@ If a hand-computed number above disagrees with the rules when implemented, the *
   - `ViabilityData` fields (camelCase in TS): `nowCycle: float`, `verdict: 'critical'|'tight'|'holds'`, `consumptionKcalPerCycle`, `stockKcal`, `scenarios: {none, automatic, all}` each `{autonomy: int|null, firstShort: string|null, stockByCycle: list<float>}` (page shows the first 21 values), `sources[]` (`key`, `plantId`, `plantName`, `plantIcon`, `cropId`, `kind`, `count`, `stopped`, `kcalPerCycle`), `harvests[]` (`sourceKey`, `kind`, `cycle` absolute decimal, `kcal`), `lastComputedCycle: float` (= `nowCycle + 50`), `menu[]` (`foodId`, `name`, `icon: string|null`, `units`, `kcal`, `forbiddenFor: list<string>` duplicant names), `eaters[]` (`id`, `name`, `kcal`, `maxKcal`, `needKcal`, `allowed[]`/`forbidden[]` food ids among stocked foods), `nonEaters[]`, `reserves` (`wildManual[]`, `critters[]` with `name`, `icon`, `printingPod`), `unavailable: list<string>`, `unknownCrops: list<string>`, `autoHarvestKnown: bool`.
   - Names: `__($prefabName->name_key)` with the id as fallback. Icons: `/assets/game/foods/{id}.webp`, `/assets/game/plants/{id}.webp`, `/assets/game/critters/{id}.webp` when the file exists in `config('game.assets_path')`, else `null` (check how existing pages build plant/critter icon URLs and reuse that helper).
   - The colony shown is the most recently seen: `Colony::query()->latest('last_seen_at')->first()`.
+  - Translations: `HandleInertiaRequests::share` adds `locale` (string) and `translations` => `['colony' => trans('colony')]` (whole group for the current locale, a closure so it is resolved per request; Octane-safe, no static cache). `useT(): { t(key: string, replace?: Record<string, string | number>): string; tc(key: string, count: number, replace?: Record<string, string | number>): string }` reads `usePage().props.translations`; keys are dotted paths (`colony.verdict.holds`); `:name` placeholders replaced; `tc` picks the part before `|` when `count === 1` (French: also when `count === 0`, i.e. `count < 2` for locale `fr`), else the part after, and replaces `:count` (formatted with `Intl.NumberFormat(locale)`); a missing key returns the key itself. Pure helpers `translate(dict, key, replace)` and `choose(text, count, locale)` are exported for tests. Numbers and relative times on the pages use `Intl.NumberFormat` / `Intl.RelativeTimeFormat` with `locale`.
+  - Refusal reasons and outcomes are sent as codes (`schema_newer`…) and translated in Vue (`colony.inspector.reason.{code}`); nothing is pre-translated in `UplinkMessageData`.
+  - Nav labels: `colony.nav.group`, `colony.nav.viability`, `colony.nav.uplink`.
   - Nav: a group "Ma colonie" with "Viabilité" and "Uplink", following how `AppLayout.vue` declares items (replace hardcoded hrefs for these two with Wayfinder `.url()`).
 
 - [ ] **Step 1: Failing tests:** (a) no data → `Colony/Viability` renders with `status.state` `never` and `viability` null; (b) after `ingest(uplinkFixture())` with `Food` factory rows for `Lettuce` (400000) and `FishMeat` (1000000) → `viability.stockKcal` 7000, `viability.scenarios.none.autonomy` 3, `status.state` `ok`, `status.colonyName` `DeepWaterGo`; (c) after a `schema: 2` message → `status.state` `newer_schema`; (d) `/colony/uplink` lists messages newest first, each without a `payload` key, and `?message={id}` fills `selected.payload`; an unknown id gives `selected` null (no 404). Use `assertInertia`.
+  Also: `ColonyTranslationsTest` — `Arr::dot(trans('colony', [], 'fr'))` and the `en` one have exactly the same keys, and no value is empty; the Inertia shared props carry `translations.colony.nav.viability`. Vitest `useT.test.ts`: `translate({colony:{a:{b:'Salut :name'}}}, 'colony.a.b', {name:'Ruby'})` → `'Salut Ruby'`; missing key → the key; `choose(':count cycle|:count cycles', 1, 'en')` → `'1 cycle'`, `(…, 0, 'en')` → `'0 cycles'`, `(…, 0, 'fr')` → `'0 cycle'`, `(…, 2, 'fr')` → `'2 cycles'`.
 - [ ] **Step 2:** Run → fail. Implement. Run `php artisan typescript:transform` if that is how `resources/js/types/App/Data/data.d.ts` is generated (check `composer.json` scripts / the provider) and `php artisan wayfinder:generate` if the Vite plugin is not running. Run tests → pass; `bun run typecheck` → clean.
 - [ ] **Step 3:** Pint, commit: `feat(colony): viability and uplink endpoints`.
 
@@ -459,6 +468,8 @@ A merged mark sits at the cycle of its first event. Tick step = smallest integer
 - Consumes: page props of Task 6; `CycleTimeline` of Task 7.
 - Produces: `useUplink(status: MaybeRef<ColonyStatusData>, only: string[]): { live: Ref<boolean>, ageLabel: Ref<string> }` — subscribes with `useEchoPublic(status.echo.channel, status.echo.event, cb)` from `@laravel/echo-vue`; `cb` triggers a debounced (400 ms, trailing) `router.reload({ only })`; `live` is true while `lastSeenAt` is younger than 20 s (re-evaluated every second); `ageLabel` is `en direct` or `vu il y a 2 h` style French relative time. Reused by Task 9.
 
+Every string below is a `fr` catalog value under `colony.viability.*` / `colony.status.*`, with its `en` counterpart; templates only call `t()` / `tc()`. The key-parity test of Task 6 must still pass at the end of this task.
+
 Load `impeccable:impeccable` (product register) and open the mockup file before writing markup; the mockup is the visual reference, the spec's Part 5 the content reference. Blocks top to bottom, one page, no tabs:
 
 1. **Verdict** — autonomy of `scenarios.automatic` as the largest element (`50+` when null), state word (`Critique` / `Juste` / `Ça tient`) with its colour, one plain sentence (e.g. "À ce rythme, Ellie manque de nourriture au cycle 71."), the no-harvest figure, consumption per cycle, and `ProjectionChart`: inline SVG, 21 points per scenario, three lines labelled directly at their end ("Sans récolte", "Automatique", "Avec cueillette sauvage"), a zero baseline, no legend box, values readable by `<title>`/`aria-label`.
@@ -486,11 +497,13 @@ States: `never` → `ColonyEmptyState` explaining to install Uplink and run `php
 
 **Interfaces:**
 - Consumes: props of Task 6 (`status`, `messages`, `selected`), `useUplink`.
-- Produces: `summarize(value: unknown): string` in `jsonTree.ts` — `'6 éléments'` for arrays, `'7 clés'` for objects, the literal otherwise; `JsonTree.vue` props `value: unknown`, `depth?: number`, `openDepth?: number` (default 1: top-level keys visible, sections folded with their `summarize` text).
+- Produces: `summarize(value: unknown): { kind: 'array' | 'object'; count: number } | { kind: 'literal'; text: string }` in `jsonTree.ts`; `JsonTree.vue` props `value: unknown`, `depth?: number`, `openDepth?: number` (default 1: top-level keys visible, sections folded with their `summarize` text).
 
 Content, per the spec's "Message inspector": connection summary (state, last message time, colony, schema); the list newest first with time, event, size (KB), colony + cycle, outcome as a word (`Enregistré` / `Refusé : schéma plus récent` / `Refusé : JSON illisible` / `Refusé : schéma absent` / `Refusé : colonie absente`) and section errors ("sections illisibles : plants"); selecting a row visits `ColonyController.uplink({ query: { message: id } })` with `preserveScroll` and `only: ['selected']`, showing the payload in `JsonTree` (parse failure → raw text in a `<pre>`), with a "Copier le JSON" button; a Pause / Reprendre toggle that stops `useUplink` reloads (`only: ['messages', 'status']` when running). Same tokens as the viability page, plain table, no sprites.
 
-- [ ] **Step 1: Failing Vitest test** for `summarize`: `summarize([1,2,3])` → `'3 éléments'`, `summarize({a:1})` → `'1 clé'`, `summarize({a:1,b:2})` → `'2 clés'`, `summarize(null)` → `'null'`, `summarize('x')` → `'"x"'`, `summarize([])` → `'0 élément'`.
+All strings under `colony.inspector.*` in both catalogs (outcomes, the four reasons, section errors, buttons, summary labels, `items` and `keys` plural strings).
+
+- [ ] **Step 1: Failing Vitest test** for `summarize(value)` returning a structure, not text: `summarize([1,2,3])` → `{ kind: 'array', count: 3 }`, `summarize({a:1})` → `{ kind: 'object', count: 1 }`, `summarize(null)` → `{ kind: 'literal', text: 'null' }`, `summarize('x')` → `{ kind: 'literal', text: '"x"' }`. The component renders counts with `tc('colony.inspector.items', n)` / `tc('colony.inspector.keys', n)`.
 - [ ] **Step 2:** Run → fail; implement; run → pass. Build the page.
 - [ ] **Step 3:** `bun run typecheck`, `bun run lint`. Playwright check at 1440 and 390 px with the fixture messages (ingest the fixture three times with different cycles and one `schema: 2`): list order, a refused row readable, tree opens, pause holds the list while a new message is ingested.
 - [ ] **Step 4:** Commit: `feat(colony): uplink message inspector`.
@@ -614,6 +627,7 @@ If one of the six is not readable: send `null` for that field (or omit `drops`),
   3. the "sans récolte" figure matches a hand check of stock ÷ consumption (compute it from the latest stored state and show both numbers to the user);
   4. toggling auto-harvest on a wild plant in game moves its marks between the two wild styles within seconds;
   5. `/colony/uplink` lists messages as they arrive and opens one as readable JSON;
+  5b. with `APP_LOCALE=en` (then back to the user's value) both pages and `uplink:install` read fully in English, no French left, no raw key shown;
   6. closing the game leaves the page readable with its age shown.
 - [ ] **Step 3:** Remove the spike leftovers: in `/home/mishaa/dev/OniExtract2024` tell the user the branch `spike/colony-sync` and the installed `colony_sync.json` can be discarded (do not delete them without their go-ahead); delete `storage/app/colony-spike/` only with their go-ahead.
-- [ ] **Step 4:** Update the memory note `project_colony_sync_mod.md` (mod repo path, protocol, `uplink:install`) and report what was verified, what was not readable in the game, and the deferred items (English UI strings, duplicant portraits, per-asteroid split, spoilage, licence of the mod repo).
+- [ ] **Step 4:** Update the memory note `project_colony_sync_mod.md` (mod repo path, protocol, `uplink:install`) and report what was verified, what was not readable in the game, and the deferred items (language switcher and translation of the older pages, duplicant portraits, per-asteroid split, spoilage, licence of the mod repo).
