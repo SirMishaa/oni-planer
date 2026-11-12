@@ -46,6 +46,7 @@ final readonly class ElementImporter
                 'low_temp_transition_target' => $raw['lowTempTransitionTarget'] ?? null,
                 'high_temp_transition_target' => $raw['highTempTransitionTarget'] ?? null,
                 'dlc_id' => ($raw['dlcId'] ?? '') ?: null,
+                'ui_color' => null,
                 'specific_heat_capacity' => $raw['specificHeatCapacity'],
                 'thermal_conductivity' => $raw['thermalConductivity'],
                 'low_temp' => $raw['lowTemp'] ?? null,
@@ -91,6 +92,7 @@ final readonly class ElementImporter
                 'name' => ($localizationKey !== null ? $this->stringResolver->resolveToJson($localizationKey) : null) ?? ['en' => $record['element_id']],
                 'description' => $this->resolveSibling($localizationKey, 'DESC'),
                 'dlc_id' => $record['dlc_id'],
+                'ui_color' => $record['ui_color'],
                 'is_disabled' => false,
             ]);
 

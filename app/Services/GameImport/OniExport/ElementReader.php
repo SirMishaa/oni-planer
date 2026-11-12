@@ -54,6 +54,7 @@ final readonly class ElementReader
     public function records(): array
     {
         $records = [];
+        $uiColors = $this->uiColors();
 
         foreach ($this->export->json('planner_extras.json')['elements'] ?? [] as $elementId => $element) {
             $elementId = (string) $elementId;
@@ -76,6 +77,7 @@ final readonly class ElementReader
                 'low_temp_transition_target' => $element['lowTempTransitionTarget'] ?? null,
                 'high_temp_transition_target' => $element['highTempTransitionTarget'] ?? null,
                 'dlc_id' => ($element['dlcId'] ?? '') ?: null,
+                'ui_color' => $uiColors[$elementId] ?? null,
                 'specific_heat_capacity' => (float) $element['specificHeatCapacity'],
                 'thermal_conductivity' => (float) $element['thermalConductivity'],
                 'low_temp' => $this->transitionTemperature($element, 'lowTemp', 'lowTempTransitionTarget'),
@@ -98,6 +100,31 @@ final readonly class ElementReader
         }
 
         return $records;
+    }
+
+    /**
+     * UI colours (24-bit 0xRRGGBB) by element id from `elements.json`; empty
+     * when the export has no such file.
+     *
+     * @return array<string, int>
+     */
+    private function uiColors(): array
+    {
+        try {
+            $table = $this->export->json('elements.json')['elementTable'] ?? [];
+        } catch (OniExportMissing) {
+            return [];
+        }
+
+        $colors = [];
+
+        foreach ($table as $entry) {
+            if (isset($entry['id'], $entry['uiColor'])) {
+                $colors[(string) $entry['id']] = (int) $entry['uiColor'];
+            }
+        }
+
+        return $colors;
     }
 
     /**

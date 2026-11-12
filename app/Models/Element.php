@@ -19,7 +19,7 @@ use Spatie\Translatable\HasTranslations;
 #[Fillable([
     'element_id', 'state', 'molar_mass', 'toxicity', 'material_category',
     'tags', 'low_temp_transition_target', 'high_temp_transition_target',
-    'name', 'description', 'dlc_id', 'is_disabled', 'mod_id',
+    'name', 'description', 'dlc_id', 'is_disabled', 'mod_id', 'ui_color',
 ])]
 final class Element extends Model
 {
@@ -95,11 +95,18 @@ final class Element extends Model
         return $this->hasOne(self::class, 'element_id', 'high_temp_transition_target');
     }
 
+    /** The UI colour as a lowercase `#rrggbb` string, or null when unknown. */
+    public function uiColorHex(): ?string
+    {
+        return $this->ui_color === null ? null : sprintf('#%06x', $this->ui_color);
+    }
+
     public function casts(): array
     {
         return [
             'tags' => 'array',
             'is_disabled' => 'boolean',
+            'ui_color' => 'integer',
             'name' => 'array',
             'description' => 'array',
         ];

@@ -12,6 +12,7 @@ use App\Services\GameImport\OniExport\ModCatalog;
 use App\Services\GameImport\OniExport\OniExport;
 use App\Services\GameImport\StringResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
 
@@ -91,4 +92,28 @@ it('stores no transition temperature when the element has no transition target',
         ->and($oxygen->thermalProperties->low_temp)->toBe(90.19)
         ->and($brick->thermalProperties->low_temp)->toBeNull()
         ->and($brick->thermalProperties->high_temp)->toBe(2000.0);
+});
+
+it('reads the element ui colour from elements.json', function (): void {
+    importFixtureElements();
+
+    expect(Element::query()->where('element_id', 'Oxygen')->value('ui_color'))->toBe(13158600)
+        ->and(Element::query()->where('element_id', 'Brick')->value('ui_color'))->toBeNull()
+        ->and(Element::query()->where('element_id', 'Oxygen')->firstOrFail()->uiColorHex())->toBe('#c8c8c8');
+});
+
+it('gives null ui colours when elements.json is missing', function (): void {
+    $root = sys_get_temp_dir().'/oni-export-'.uniqid();
+    mkdir($root.'/database', recursive: true);
+    foreach (['planner_extras.json', 'building.json'] as $file) {
+        copy(base_path('tests/Fixtures/OniExport/database/'.$file), $root.'/database/'.$file);
+    }
+
+    $export = new OniExport($root);
+    $records = new ElementReader($export, ModCatalog::fromExport($export, $root.'/mods', []))->records();
+
+    expect($records)->not->toBeEmpty()
+        ->and(array_unique(array_column($records, 'ui_color')))->toBe([null]);
+
+    File::deleteDirectory($root);
 });
