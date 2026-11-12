@@ -75,7 +75,10 @@ This project builds the foundation and validates it with **one** reading: plant 
   wants **both** a zone figure (compare farms) and per-plant detail.
 - Send harvests for the whole colony, not just zones.
 - Refresh rates must be controllable: some data needs 5 s, some does not.
-- No message-size cap: sending a whole factory once must work (layouts go over HTTP).
+- No message-size cap: sending a whole factory once must work. **Measure before designing
+  around a limit** (see "Transport, measured").
+- **Everything goes over Reverb** (WebSocket); no HTTP channel from the mod: the UI already
+  needs WebSocket for live updates.
 - Add LaRecipe and start documenting the rules now.
 - The user may be asked to run REA for decompilation; REA (and `ilspycmd`, installed) are
   available to verify game APIs.
@@ -116,12 +119,28 @@ Four kinds of data, each with its own cadence:
 | **Events** | plant harvest / ripe / wilt / recover / **growth conditions changed**, colony-wide | immediately |
 | **Zone list** | ids, names, worlds of every zone in the save | on load and on any create/rename/delete |
 
-- **Two transports** (designer's call, from the direction review): latest-only data (fast
-  and slow states, colony state) and site → mod commands (rates, layout requests) stay on
-  **Reverb**. Ordered or large data (**events, layouts, zone list, session start**) goes by
-  **HTTP POST** to the site (local; served by Octane), which gives acknowledgements, retries
-  and no size cap. `uplink.json` gains the HTTP base URL and a token, written by
-  `uplink:install`. This replaces chunking over the socket.
+- **Transport, measured** (`php artisan uplink:bench`, k6 + Excimer, 2026-11-12, local):
+  with `data` as JSON, Reverb decodes it and its `Validator::make($event, …)` walks the whole
+  decoded array: ~300 ms per MB, blocking the event loop (75 % of Reverb's time in
+  `Validator::parseData`). With `data` sent as `{"payload": "<base64>"}` Reverb keeps the
+  content opaque: 100 KB 7 ms, 1 MB 68 ms, 4.4 MB 275 ms round trip (×4.5). Reverb requires
+  client-event `data` to be an object, hence the one-key wrapper.
+- **Wire format (all new messages)**: `data = {"payload": base64(gzip(json))}`; the site
+  unwraps it (base64, then gzip when the bytes start with `1f 8b`). The colony state may stay
+  as it is (73 KB) or move to the same format; builder's choice. No chunking: gzip makes
+  the 5 MB frame limit (`REVERB_APP_MAX_MESSAGE_SIZE`) far away for cell data; if a real
+  payload exceeds it, raise the limit (measure with `uplink:bench` first).
+- **Channels**: browsers subscribe to `uplink`; client events are fanned out to every other
+  subscriber, so heavy mod data (layouts, states, events, zone list, session start) goes on a
+  dedicated channel **`uplink-data`** that pages never subscribe to. After storing, the site
+  broadcasts a small server event on `uplink` (zone id, kind) so open pages reload their props.
+- **Acknowledgements by correlation id** (at-least-once delivery, idempotent receiver, like
+  MQTT QoS 1): every message the mod must not lose (events, layouts, zone list, session start)
+  carries a message id; the listener stores it, then answers the sender directly
+  (`$event->connection->send(…)`, proven by the bench listener) with `{"id": …}`. The mod keeps
+  each message in its ordered queue until acked and resends unacked ones after a reconnect or
+  a timeout; the site ignores duplicates (unique keys below). Latest-only states are not
+  acked.
 - Only send a state when it changed (as today).
 - **Rates are set from the site**, per zone and per kind, and pushed to the mod over the same
   Reverb channel (an event the mod listens to; it replies with what it applied). Defaults
@@ -158,7 +177,7 @@ Four kinds of data, each with its own cadence:
   game time (cycle + seconds in cycle, and total game seconds), real time, and for a harvest
   the crop id and units.
 - **Events never use the latest-only outbox**: a separate ordered queue, kept in memory while
-  the site is unreachable, posted in batches, removed only once the site acknowledged them,
+  the site is unreachable, sent in batches, removed only once the site acknowledged them,
   capped (drop oldest, log once; the gap shows in the sequence). Lost if the game closes
   while offline: accepted, and visible as a gap.
 - `schema` goes to 2 for the colony state only if its shape changes; zone messages and
@@ -171,7 +190,7 @@ a 128-cell zone ≈ 10 KB; harvests ≈ 5–15 per minute at ×3 speed, ~200 B e
 ~30–40 KB/s: negligible for Reverb. Octane is not on this path (the listener runs in the
 Reverb process). The constraints are storage and the event loop, not bandwidth.
 
-- The Reverb listener only **validates and hands off**: small writes inline (latest zone
+- The Reverb listener only **unwraps, validates and hands off**: small writes inline (latest zone
   state upsert, event insert) or dispatch to the queue; anything that computes (summaries,
   efficiency) runs in **queued jobs** (the queue already runs with the dev stack).
 - Tables (user data, never truncated by `game:import`):
@@ -277,7 +296,7 @@ From mockup v3 (layout and icons), mid-fidelity, with the existing dark tokens.
 - One page per rule set: zone membership, production, consumption, conditions, efficiency
   and its breakdown, event semantics. Each rule states: the formula, the game source it
   relies on (class/method, build), the code that implements it, the test that covers it.
-- Also a page for the Uplink protocol (states, zones, events, sessions, rates, HTTP channel), replacing the
+- Also a page for the Uplink protocol (states, zones, events, sessions, rates, wire format, acknowledgements), replacing the
   spec as the living reference once shipped.
 
 ### 7. Code organisation (designer's call, for the user to confirm)
@@ -296,7 +315,7 @@ From mockup v3 (layout and icons), mid-fidelity, with the existing dark tokens.
 One project, three slices planned and shipped in order (from the direction review; no
 decision of the user is dropped):
 
-- **A. Foundation**: zone tool, save persistence, zone list, sessions, HTTP channel, layout
+- **A. Foundation**: zone tool, save persistence, zone list, sessions, `uplink-data` channel with acks, layout
   and slow/fast state sync, `uiColor` import, zone storage and versions, map tab (layers,
   panel without efficiency) and entities tab. Rates from `uplink.json` defaults.
 - **B. Farm reading**: plant events (harvest, ripe, wilt, recover) with sessions/seq,
@@ -311,13 +330,13 @@ decision of the user is dropped):
 - Ranches will reuse zones, layout/state sync, events (eggs laid, hatch, death, butcher —
   to verify in game code) and the entities tab. Do not hard-code "plant" into zone storage or
   the page frame.
-- Power and factories will need large one-off layouts: the HTTP layout upload must not assume a farm-sized zone.
+- Power and factories will need large one-off layouts: layout messages must not assume a farm-sized zone (measure with `uplink:bench`).
 - Game textures will replace element colours: keep terrain drawing behind one function.
 
 ## Left to the builder
 
 - Exact save hook for zones, tool UI details (picker look, hotkey), tint colours in game.
-- Event queue cap and batch size; HTTP token format.
+- Event queue cap, batch size, ack timeout before resend.
 - Packing of cells in the database; whether layout/states are columns or a side table.
 - Which status items count as "problems" beyond wilt reasons and missing deliveries.
 - Map rendering technique (DOM grid, canvas, SVG) as long as it handles a few thousand cells.
