@@ -4,6 +4,13 @@
 	admin {$CADDY_SERVER_ADMIN_HOST}:{$CADDY_SERVER_ADMIN_PORT}
 
 	frankenphp {
+		# FrankenPHP embeds its own PHP and reads no php.ini: OPcache is on by default, JIT is not.
+		php_ini {
+			opcache.enable 1
+			opcache.jit tracing
+			opcache.jit_buffer_size 128M
+		}
+
 		worker {
 			file "{$APP_PUBLIC_PATH}/frankenphp-worker.php"
 			{$CADDY_SERVER_WORKER_DIRECTIVE}
