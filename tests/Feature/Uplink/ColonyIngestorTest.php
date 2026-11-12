@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Colony;
 use App\Models\UplinkMessage;
+use App\Models\Zone;
 use App\Services\GameImport\GameDataTables;
 use App\Services\Uplink\ColonyIngestor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -96,4 +97,15 @@ it('keeps only the 10 most recently seen colonies', function (): void {
 
     expect(Colony::query()->count())->toBe(10)
         ->and(Colony::query()->pluck('guid')->all())->not->toContain('guid-1')->not->toContain('guid-2')->toContain('guid-12');
+});
+
+it('never prunes a colony that owns zones', function (): void {
+    $oldest = Colony::factory()->create(['last_seen_at' => now()->subDays(30)]);
+    Colony::factory()->count(10)->create();
+    Zone::factory()->create(['colony_guid' => $oldest->guid]);
+
+    app(ColonyIngestor::class)->ingest(uplinkFixture());
+
+    expect(Colony::query()->whereKey($oldest->id)->exists())->toBeTrue()
+        ->and(Colony::query()->count())->toBe(11);
 });

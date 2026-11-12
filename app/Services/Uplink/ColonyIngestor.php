@@ -6,6 +6,7 @@ namespace App\Services\Uplink;
 
 use App\Models\Colony;
 use App\Models\UplinkMessage;
+use App\Models\Zone;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -13,7 +14,7 @@ use Illuminate\Support\Facades\DB;
  * and a journal entry. Messages that are not a colony state are ignored;
  * colony states that cannot be used (including those sent on another channel
  * than Uplink's) are journaled as refused with a reason code. Only the most
- * recently seen colonies are kept.
+ * recently seen colonies are kept, plus any colony that owns zones.
  */
 final class ColonyIngestor
 {
@@ -89,7 +90,10 @@ final class ColonyIngestor
             ]);
 
             $keptIds = Colony::query()->latest('last_seen_at')->latest('id')->limit(self::KEEP_COLONIES)->pluck('id');
-            Colony::query()->whereNotIn('id', $keptIds)->delete();
+            Colony::query()
+                ->whereNotIn('id', $keptIds)
+                ->whereNotIn('guid', Zone::query()->select('colony_guid'))
+                ->delete();
 
             return $this->journal($rawMessage, [
                 ...$identity,
