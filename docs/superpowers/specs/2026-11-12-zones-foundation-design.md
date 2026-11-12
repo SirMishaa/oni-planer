@@ -121,9 +121,10 @@ Four kinds of data, each with its own cadence:
 
 - **Transport, measured** (`php artisan uplink:bench`, k6 + Excimer, 2026-11-12, local):
   with `data` as JSON, Reverb decodes it and its `Validator::make($event, …)` walks the whole
-  decoded array: ~300 ms per MB, blocking the event loop (75 % of Reverb's time in
-  `Validator::parseData`). With `data` sent as `{"payload": "<base64>"}` Reverb keeps the
-  content opaque: 100 KB 7 ms, 1 MB 68 ms, 4.4 MB 275 ms round trip (×4.5). Reverb requires
+  decoded array, blocking the event loop (most of Reverb's time in `Validator::parseData`).
+  Round trips with Reverb started with `XDEBUG_MODE=off` (Xdebug's develop mode roughly
+  doubled every figure): JSON 100 KB 17 ms, 1 MB 165 ms, 4 MB 680 ms; `data` sent as
+  `{"payload": "<base64>"}` (content kept opaque): 8 ms, 61 ms, 260 ms (×2.6). Reverb requires
   client-event `data` to be an object, hence the one-key wrapper.
 - **Wire format (all new messages)**: `data = {"payload": base64(gzip(json))}`; the site
   unwraps it (base64, then gzip when the bytes start with `1f 8b`). The colony state may stay

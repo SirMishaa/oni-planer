@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Process;
  * events and waits for the acknowledgements of
  * {@see \App\Listeners\AnswerUplinkBenchmark}, then prints one row per size.
  * Reverb must be running (and restarted after a change to the listener).
+ * Measure a Reverb started with XDEBUG_MODE=off: Xdebug's develop mode
+ * roughly doubles the times; --profile always starts its server that way.
  */
 #[Description('Benchmark Uplink messages through the local Reverb with k6 (round trip, transit, PHP decode, memory)')]
 #[Signature('uplink:bench
@@ -125,7 +127,7 @@ final class UplinkBenchCommand extends Command
     {
         $port = $this->port();
         $server = Process::forever()
-            ->env(['EXCIMER_OUTPUT' => $profilePrefix])
+            ->env(['EXCIMER_OUTPUT' => $profilePrefix, 'XDEBUG_MODE' => 'off'])
             ->start([PHP_BINARY, '-d', 'auto_prepend_file='.base_path(self::PROFILER), base_path('artisan'), 'reverb:start', '--port='.$port]);
 
         for ($attempt = 0; $attempt < 50; $attempt++) {
