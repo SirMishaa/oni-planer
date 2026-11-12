@@ -21,11 +21,25 @@ final class AppServiceProvider extends ServiceProvider
         $this->app->make('translator')->addJsonPath(lang_path('game'));
 
         if (app()->isLocal()) {
-            DevCommands::artisan('octane:start --watch --server=frankenphp --port=8003 --caddyfile=Caddyfile', 'server')->blue();
-            DevCommands::artisan('reverb:start --debug', 'reverb')->purple();
-            DevCommands::artisan('queue:listen --tries=1 --timeout=0', 'queue')->yellow();
+            DevCommands::register(self::teeToLog('php artisan octane:start --watch --server=frankenphp --port=8003 --caddyfile=Caddyfile', 'server'), 'server')->blue();
+            DevCommands::register(self::teeToLog('php artisan reverb:start --debug', 'reverb'), 'reverb')->purple();
+            DevCommands::register(self::teeToLog('php artisan queue:listen --tries=1 --timeout=0', 'queue'), 'queue')->yellow();
             DevCommands::artisan('pail --timeout=0', 'logs')->orange();
-            DevCommands::nodeExec('bun run dev', 'vite')->green();
+            DevCommands::register(self::teeToLog('bun run dev', 'vite'), 'vite')->green();
         }
+    }
+
+    /**
+     * Wraps a dev command so its output also lands in storage/logs/dev/{name}.log, where tools
+     * that cannot see the `php artisan dev` terminal can read it. pipefail keeps the command's
+     * exit code, so the dev runner still restarts it on a crash.
+     */
+    private static function teeToLog(string $command, string $name): string
+    {
+        $logFile = escapeshellarg(storage_path("logs/dev/{$name}.log"));
+        $script = 'set -o pipefail; mkdir -p '.escapeshellarg(storage_path('logs/dev'))
+            ." && {$command} 2>&1 | tee -a {$logFile}";
+
+        return 'bash -c '.escapeshellarg($script);
     }
 }
