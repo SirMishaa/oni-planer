@@ -354,3 +354,13 @@ it('names the eight temperature bands in the current locale', function (): void 
 
     File::deleteDirectory($dir);
 });
+
+it('drops the previous temperatures when their time is unreadable', function (): void {
+    $zone = Zone::factory()->sodicaneFarm()->create();
+    $zone->update(['previous_slow_temperature' => ['box' => $zone->slow_state['box'], 'temperature' => array_fill(0, 88, 290.0), 'at' => 'not a date']]);
+
+    $terrain = app(ZonePresenter::class)->present($zone->refresh())->map?->terrain;
+
+    expect($terrain?->previousTemperature)->toBeNull()
+        ->and($terrain?->previousSeconds)->toBeNull();
+});

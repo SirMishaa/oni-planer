@@ -20,6 +20,7 @@ use App\Models\Zone;
 use App\Services\GameText;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Carbon\Exceptions\InvalidFormatException;
 use Closure;
 
 /**
@@ -272,6 +273,15 @@ final class ZonePresenter
         return is_scalar($value) && (string) $value !== '' ? (string) $value : null;
     }
 
+    private static function dateOrNull(string $value): ?Carbon
+    {
+        try {
+            return Carbon::parse($value);
+        } catch (InvalidFormatException) {
+            return null;
+        }
+    }
+
     private static function floatOrNull(mixed $value): ?float
     {
         return is_numeric($value) ? (float) $value : null;
@@ -423,9 +433,11 @@ final class ZonePresenter
         $previousSeconds = null;
         $previousList = $previous['temperature'] ?? null;
         if (is_array($previousList) && count($previousList) === $cellCount && self::box($previous['box'] ?? null)->toArray() === $box->toArray()) {
-            $previousTemperature = array_map(self::floatOrNull(...), array_values($previousList));
-            $previousAt = is_string($previous['at'] ?? null) ? Carbon::parse($previous['at']) : null;
-            $previousSeconds = $previousAt !== null && $slowAt !== null ? (float) $previousAt->diffInSeconds($slowAt, true) : null;
+            $previousAt = is_string($previous['at'] ?? null) ? self::dateOrNull($previous['at']) : null;
+            if ($previousAt !== null && $slowAt !== null) {
+                $previousTemperature = array_map(self::floatOrNull(...), array_values($previousList));
+                $previousSeconds = (float) $previousAt->diffInSeconds($slowAt, true);
+            }
         }
 
         return new ZoneTerrainData(
