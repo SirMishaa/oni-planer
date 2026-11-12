@@ -78,11 +78,15 @@ final class ZonePresenter
     /** @var array<string, string|null> sprite URL by "category/prefab", for one present() call */
     private array $sprites = [];
 
+    /** @var array<string, string>|null element id by lower-cased name in any locale, for one present() call */
+    private ?array $elementsByName = null;
+
     public function __construct(private readonly GameText $text) {}
 
     public function present(Zone $zone): ZoneShowData
     {
         $this->sprites = [];
+        $this->elementsByName = null;
         $layout = $zone->layout;
         $gridWidth = self::int($layout['gridWidth'] ?? null, 0);
         $placed = $layout !== null && $gridWidth > 0;
@@ -111,6 +115,7 @@ final class ZonePresenter
         return new ZoneShowData(
             zone: new ZoneData(
                 id: $zone->id,
+                guid: $zone->zone_guid,
                 name: $zone->name,
                 worldId: $zone->world_id,
                 version: $zone->version,
@@ -290,6 +295,7 @@ final class ZonePresenter
         $prefabId = self::string($plant['id'] ?? null);
         $wilting = (bool) ($plant['wilting'] ?? false);
         $grown = (bool) ($plant['grown'] ?? false);
+        $problems = $this->plantProblems($plant);
 
         return new ZoneEntityData(
             kind: 'plant',
@@ -304,10 +310,11 @@ final class ZonePresenter
                 $grown => 'grown',
                 default => 'growing',
             },
-            problems: $this->plantProblems($plant),
+            problems: $problems,
             growth: self::growth($plant),
             secondsUntilHarvest: self::floatOrNull($plant['secondsUntilHarvest'] ?? null),
             autoHarvest: isset($plant['autoHarvest']) ? (bool) $plant['autoHarvest'] : null,
+            neededItemSprite: $this->neededItemSprite($problems),
         );
     }
 
@@ -321,6 +328,7 @@ final class ZonePresenter
         $prefabId = self::string($building['prefabId'] ?? null);
         $instanceId = self::stringOrNull($building['instanceId'] ?? null);
         $cell = $position($instanceId === null ? null : ($anchorsByInstance[$instanceId] ?? null));
+        $problems = $this->buildingProblems($building);
 
         return new ZoneEntityData(
             kind: 'building',
@@ -331,7 +339,8 @@ final class ZonePresenter
             x: $cell[0] ?? null,
             y: $cell[1] ?? null,
             state: ($building['operational'] ?? null) === false ? 'not_operational' : 'operational',
-            problems: $this->buildingProblems($building),
+            problems: $problems,
+            neededItemSprite: $this->neededItemSprite($problems),
         );
     }
 
@@ -392,7 +401,7 @@ final class ZonePresenter
             fn (mixed $elementId): ?string => is_string($elementId) && $elementId !== '' ? $elementId : null,
             (array) ($slow['palette'] ?? []),
         ));
-        $colours = $this->elementColours(array_filter($palette, is_string(...)));
+        $elements = $this->paletteElements(array_filter($palette, is_string(...)));
         /** @var Closure(array<mixed>): list<mixed> $fit one value per cell of the box, missing ones null */
         $fit = fn (array $values): array => array_pad(array_slice(array_values($values), 0, $cellCount), $cellCount, null);
 
@@ -400,7 +409,9 @@ final class ZonePresenter
             box: $box,
             palette: array_map(fn (?string $elementId): ZoneTerrainElementData => new ZoneTerrainElementData(
                 elementId: $elementId,
-                colour: $elementId === null ? null : ($colours[$elementId] ?? null),
+                colour: $elementId === null ? null : $elements[$elementId]?->uiColorHex(),
+                name: $elementId === null ? null : $elements[$elementId]?->name,
+                state: $elementId === null ? null : $elements[$elementId]?->state,
             ), $palette),
             element: is_array($element) ? array_map(fn (mixed $index): int => is_int($index) && array_key_exists($index, $palette) ? $index : -1, $fit($element)) : null,
             mass: is_array($mass) ? array_map(self::floatOrNull(...), $fit($mass)) : null,
@@ -410,16 +421,60 @@ final class ZonePresenter
 
     /**
      * @param  array<string>  $elementIds
-     * @return array<string, string> element id => `#rrggbb`
+     * @return array<string, Element|null> the game data of each palette element, null when unknown
      */
-    private function elementColours(array $elementIds): array
+    private function paletteElements(array $elementIds): array
     {
-        return Element::query()
+        $elements = Element::query()
             ->whereIn('element_id', $elementIds)
-            ->get(['element_id', 'ui_color'])
-            ->mapWithKeys(fn (Element $element): array => [$element->element_id => $element->uiColorHex()])
-            ->filter()
-            ->all();
+            ->get(['element_id', 'ui_color', 'name', 'state'])
+            ->keyBy('element_id');
+
+        return array_combine($elementIds, array_map(fn (string $elementId): ?Element => $elements->get($elementId), $elementIds));
+    }
+
+    /**
+     * Sprite of the first element a problem names after its colon, as the
+     * game words a missing delivery (`Insufficient Resources: Fertilizer`,
+     * in the game's language), so the page can show what to bring.
+     *
+     * @param  list<string>  $problems
+     */
+    private function neededItemSprite(array $problems): ?string
+    {
+        foreach ($problems as $problem) {
+            $colon = mb_strrpos($problem, ':');
+            if ($colon === false) {
+                continue;
+            }
+
+            foreach (explode(',', strip_tags(mb_substr($problem, $colon + 1))) as $name) {
+                $elementId = $this->elementsByName()[mb_strtolower(mb_trim($name))] ?? null;
+                $sprite = $elementId === null ? null : $this->sprite('elements', $elementId);
+                if ($sprite !== null) {
+                    return $sprite;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /** @return array<string, string> element id by lower-cased name, in every stored locale */
+    private function elementsByName(): array
+    {
+        if ($this->elementsByName === null) {
+            $this->elementsByName = [];
+            foreach (Element::query()->get(['element_id', 'name']) as $element) {
+                foreach ($element->getTranslations('name') as $name) {
+                    if (is_string($name) && $name !== '') {
+                        $this->elementsByName[mb_strtolower(strip_tags($name))] ??= $element->element_id;
+                    }
+                }
+            }
+        }
+
+        return $this->elementsByName;
     }
 
     /** @param  array<mixed>  $building */

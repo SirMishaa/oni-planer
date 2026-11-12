@@ -205,6 +205,7 @@ export type ZoneCountsData = {
 };
 export type ZoneData = {
     id: number;
+    guid: string;
     name: string;
     worldId: number;
     version: number;
@@ -227,6 +228,7 @@ export type ZoneEntityData = {
     growth: number | null;
     secondsUntilHarvest: number | null;
     autoHarvest: boolean | null;
+    neededItemSprite: string | null;
 };
 export type ZoneListItemData = {
     id: number;
@@ -279,6 +281,8 @@ export type ZoneTerrainData = {
 export type ZoneTerrainElementData = {
     elementId: string | null;
     colour: string | null;
+    name: string | null;
+    state: 'solid' | 'liquid' | 'gas' | 'special' | null;
 };
 export type ZoneTileData = {
     x: number;

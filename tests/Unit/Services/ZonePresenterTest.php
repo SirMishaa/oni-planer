@@ -74,14 +74,16 @@ it('places the buildings of the layout by their footprint', function (): void {
 });
 
 it('colours the terrain of the box with the element ui colours', function (): void {
-    Element::factory()->create(['element_id' => 'Dirt', 'ui_color' => 0x8A5A2B]);
-    Element::factory()->create(['element_id' => 'Oxygen', 'ui_color' => null]);
+    Element::factory()->solid()->create(['element_id' => 'Dirt', 'ui_color' => 0x8A5A2B, 'name' => ['en' => 'Dirt']]);
+    Element::factory()->gas()->create(['element_id' => 'Oxygen', 'ui_color' => null, 'name' => ['en' => 'Oxygen']]);
 
     $terrain = presentZone()->map?->terrain;
 
     expect([$terrain?->box->x, $terrain?->box->y, $terrain?->box->width, $terrain?->box->height])->toBe([99, 200, 22, 4])
         ->and(array_map(fn (ZoneTerrainElementData $entry): array => [$entry->elementId, $entry->colour], $terrain->palette ?? []))
         ->toBe([['Oxygen', null], ['Dirt', '#8a5a2b']])
+        ->and(array_map(fn (ZoneTerrainElementData $entry): array => [$entry->name, $entry->state], $terrain->palette ?? []))
+        ->toBe([['Oxygen', 'gas'], ['Dirt', 'solid']])
         ->and($terrain?->element)->toHaveCount(88)
         ->and($terrain?->element[0])->toBe(1)
         ->and($terrain?->element[22])->toBe(0)
@@ -213,6 +215,33 @@ it('links sprites only when the asset file exists', function (): void {
     expect($shown->map?->plants[0]->sprite)->toBe('/assets/game/plants/SaltySticksPlant.webp')
         ->and($shown->map?->buildings[0]->sprite)->toBe('/assets/game/buildings/FarmStation.webp')
         ->and($shown->problems[0]->sprite)->toBe('/assets/game/buildings/FarmStation.webp');
+
+    File::deleteDirectory($assets);
+});
+
+it('shows the element a missing delivery names, in any stored language', function (): void {
+    $assets = sys_get_temp_dir().'/zone-assets-'.uniqid();
+    File::ensureDirectoryExists("{$assets}/elements");
+    File::put("{$assets}/elements/Fertilizer.webp", '');
+    config(['game.assets_path' => $assets]);
+    Element::factory()->create(['element_id' => 'Fertilizer', 'name' => ['en' => 'Fertilizer', 'fr' => 'Engrais']]);
+
+    $withStatus = function (string $name): App\Data\ZoneShowData {
+        $zone = Zone::factory()->sodicaneFarm()->create();
+        $fast = $zone->fast_state;
+        $fast['buildings'][0]['statusItems'] = [['id' => 'MaterialsUnavailable', 'name' => $name]];
+        $zone->update(['fast_state' => $fast]);
+
+        return app(ZonePresenter::class)->present($zone);
+    };
+
+    $english = presentZone();
+    $french = $withStatus('Ressources insuffisantes : <link="FERTILIZER">Engrais</link>');
+    $unknown = $withStatus('Insufficient Resources: Moonbeams');
+
+    expect($english->problems[0]->neededItemSprite)->toBe('/assets/game/elements/Fertilizer.webp')
+        ->and($french->problems[0]->neededItemSprite)->toBe('/assets/game/elements/Fertilizer.webp')
+        ->and($unknown->problems[0]->neededItemSprite)->toBeNull();
 
     File::deleteDirectory($assets);
 });

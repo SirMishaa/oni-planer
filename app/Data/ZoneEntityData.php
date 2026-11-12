@@ -30,5 +30,7 @@ final class ZoneEntityData extends Data
         public ?float $growth = null,
         public ?float $secondsUntilHarvest = null,
         public ?bool $autoHarvest = null,
+        /** Sprite of the element a problem names (`Insufficient Resources: Fertilizer`), when one is recognised. */
+        public ?string $neededItemSprite = null,
     ) {}
 }

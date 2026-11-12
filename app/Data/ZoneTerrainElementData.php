@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Data;
 
 use Spatie\LaravelData\Data;
+use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
 
 /** One entry of the terrain palette. */
 final class ZoneTerrainElementData extends Data
@@ -14,5 +15,10 @@ final class ZoneTerrainElementData extends Data
         public ?string $elementId,
         /** `#rrggbb` ui colour of the element; null when unknown to the game data. */
         public ?string $colour,
+        /** Display name in the current locale; null when unknown to the game data. */
+        public ?string $name = null,
+        #[LiteralTypeScriptType("'solid' | 'liquid' | 'gas' | 'special' | null")]
+        /** @var 'solid'|'liquid'|'gas'|'special'|null */
+        public ?string $state = null,
     ) {}
 }

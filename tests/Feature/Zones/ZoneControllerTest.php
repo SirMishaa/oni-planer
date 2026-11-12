@@ -17,7 +17,7 @@ it('lists the active zones of the most recently seen colony', function (): void 
     $this->get(route('zones.index'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('Zones/Index', false)
+            ->component('Zones/Index')
             ->where('colonyName', 'DeepWaterGo')
             ->where('echo', ['channel' => 'uplink', 'event' => '.zone.updated'])
             ->has('zones', 2)
@@ -39,7 +39,7 @@ it('lists no zone before any colony was seen', function (): void {
     $this->get(route('zones.index'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('Zones/Index', false)
+            ->component('Zones/Index')
             ->where('colonyName', null)
             ->where('zones', []));
 });
@@ -50,8 +50,9 @@ it('renders a zone page', function (): void {
     $this->get(route('zones.show', $zone))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('Zones/Show', false)
+            ->component('Zones/Show')
             ->where('zone.name', 'Ferme sodicane')
+            ->where('zone.guid', $zone->zone_guid)
             ->where('zone.orphaned', true)
             ->where('map.gridWidth', 606)
             ->has('entities', 14)

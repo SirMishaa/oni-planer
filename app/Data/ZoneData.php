@@ -11,6 +11,8 @@ final class ZoneData extends Data
 {
     public function __construct(
         public int $id,
+        /** The game's zone id, as `ZoneUpdated` broadcasts it. */
+        public string $guid,
         public string $name,
         public int $worldId,
         public int $version,

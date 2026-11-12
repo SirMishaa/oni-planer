@@ -2,6 +2,7 @@
 import { Link, usePage } from '@inertiajs/vue3';
 import { computed, ref, onMounted } from 'vue';
 import ColonyController from '@/actions/App/Http/Controllers/ColonyController';
+import ZoneController from '@/actions/App/Http/Controllers/ZoneController';
 import CodexPanel from '@/components/codex/CodexPanel.vue';
 import { useCodex } from '@/composables/useCodex';
 import { useT } from '@/composables/useT';
@@ -60,6 +61,13 @@ const navItems: NavItem[] = [
         key: 'viability',
         label: t('colony.nav.viability'),
         href: ColonyController.viability.url(),
+        available: true,
+        group: t('colony.nav.group'),
+    },
+    {
+        key: 'zones',
+        label: t('zones.nav.zones'),
+        href: ZoneController.index.url(),
         available: true,
         group: t('colony.nav.group'),
     },
@@ -394,6 +402,31 @@ function isActive(item: NavItem): boolean {
                                     stroke="currentColor"
                                     stroke-width="1.2"
                                     stroke-linecap="round"
+                                />
+                            </svg>
+                            <!-- Zones icon: marked area -->
+                            <svg
+                                v-else-if="item.key === 'zones'"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 18 18"
+                                fill="none"
+                            >
+                                <path
+                                    d="M2.5 6V2.5H6M12 2.5h3.5V6M15.5 12v3.5H12M6 15.5H2.5V12"
+                                    stroke="currentColor"
+                                    stroke-width="1.3"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                />
+                                <rect
+                                    x="6"
+                                    y="6"
+                                    width="6"
+                                    height="6"
+                                    rx="1"
+                                    stroke="currentColor"
+                                    stroke-width="1.3"
                                 />
                             </svg>
                             <!-- Uplink icon: antenna -->
@@ -882,6 +915,31 @@ function isActive(item: NavItem): boolean {
                                 stroke="currentColor"
                                 stroke-width="1.2"
                                 stroke-linecap="round"
+                            />
+                        </svg>
+                        <!-- Zones icon: marked area -->
+                        <svg
+                            v-else-if="item.key === 'zones'"
+                            width="18"
+                            height="18"
+                            viewBox="0 0 18 18"
+                            fill="none"
+                        >
+                            <path
+                                d="M2.5 6V2.5H6M12 2.5h3.5V6M15.5 12v3.5H12M6 15.5H2.5V12"
+                                stroke="currentColor"
+                                stroke-width="1.3"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                            <rect
+                                x="6"
+                                y="6"
+                                width="6"
+                                height="6"
+                                rx="1"
+                                stroke="currentColor"
+                                stroke-width="1.3"
                             />
                         </svg>
                         <svg
