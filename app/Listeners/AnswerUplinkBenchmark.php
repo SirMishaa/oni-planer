@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
+use App\Services\Uplink\UplinkPayload;
 use Laravel\Reverb\Events\MessageReceived;
 use Throwable;
 
@@ -31,20 +32,14 @@ final class AnswerUplinkBenchmark
         try {
             $decodeStartedAt = hrtime(true);
             $envelope = json_decode($event->message, true, flags: JSON_THROW_ON_ERROR);
-            $data = $envelope['data'] ?? [];
-            if (is_array($data) && is_string($data['payload'] ?? null)) {
-                $data = $data['payload'];
-            }
-            if (is_string($data)) {
-                $data = json_decode($this->unwrap($data), true, flags: JSON_THROW_ON_ERROR);
-            }
+            $data = UplinkPayload::decode($envelope['data'] ?? []);
             $decodeMs = (hrtime(true) - $decodeStartedAt) / 1e6;
 
             $event->connection->send((string) json_encode([
                 'event' => self::ACK_EVENT,
                 'channel' => $envelope['channel'] ?? null,
                 'data' => json_encode([
-                    'id' => is_array($data) ? ($data['id'] ?? null) : null,
+                    'id' => $data['id'] ?? null,
                     'bytes' => mb_strlen($event->message, '8bit'),
                     'listenerStartedAt' => $listenerStartedAt,
                     'decodeMs' => $decodeMs,
@@ -54,21 +49,5 @@ final class AnswerUplinkBenchmark
         } catch (Throwable $exception) {
             report($exception);
         }
-    }
-
-    /**
-     * `data` sent as JSON text is decoded by Reverb itself and then walked by
-     * its event validator; sent as `{"payload": "<base64, optionally of gzip>"}`,
-     * Reverb keeps the content as an opaque string. Returns the JSON text in both cases.
-     */
-    private function unwrap(string $data): string
-    {
-        if ($data === '' || $data[0] === '{' || $data[0] === '[') {
-            return $data;
-        }
-
-        $bytes = (string) base64_decode($data, true);
-
-        return str_starts_with($bytes, "\x1f\x8b") ? (string) gzdecode($bytes) : $bytes;
     }
 }
