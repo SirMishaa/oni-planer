@@ -15,8 +15,10 @@ final class ZoneListItemData extends Data
         public int $worldId,
         public int $cellCount,
         public bool $orphaned,
-        /** Entities with at least one problem; null until a fast state arrived. */
+        /** Entities with at least one problem; null while unknown (no fast state, or neither plants nor buildings read). */
         public ?int $problemCount,
+        /** The count covers only plants or only buildings: the game could not read the other. */
+        public bool $problemsPartial,
         /** ISO 8601 time of the latest layout or state received, null when none was. */
         public ?string $updatedAt,
     ) {}

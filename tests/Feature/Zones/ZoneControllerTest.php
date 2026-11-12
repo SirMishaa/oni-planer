@@ -24,10 +24,12 @@ it('lists the active zones of the most recently seen colony', function (): void 
             ->where('zones.0.name', 'Abandoned rocket')
             ->where('zones.0.orphaned', true)
             ->where('zones.0.problemCount', null)
+            ->where('zones.0.problemsPartial', false)
             ->where('zones.0.updatedAt', null)
             ->where('zones.1.id', $farm->id)
             ->where('zones.1.cellCount', 40)
             ->where('zones.1.problemCount', 1)
+            ->where('zones.1.problemsPartial', false)
             ->where('zones.1.updatedAt', now()->toIso8601String()));
 });
 

@@ -21,8 +21,8 @@ final class ZoneMapData extends Data
         /** @var list<array{0: int, 1: int}> the zone's own cells as [x, y] */
         #[LiteralTypeScriptType('Array<[number, number]>')]
         public array $zoneCells,
-        /** @var list<ZoneTerrainCellData>|null */
-        public ?array $terrain,
+        /** Null when no slow state arrived or none of its layers could be read. */
+        public ?ZoneTerrainData $terrain,
         /** @var list<ZoneTileData>|null */
         public ?array $tiles,
         /** @var list<ZoneBuildingData>|null */

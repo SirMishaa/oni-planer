@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Data\ZoneEntityData;
+use App\Data\ZoneTerrainElementData;
 use App\Data\ZoneTileData;
 use App\Models\Element;
 use App\Models\PrefabName;
@@ -76,13 +77,16 @@ it('colours the terrain of the box with the element ui colours', function (): vo
     Element::factory()->create(['element_id' => 'Dirt', 'ui_color' => 0x8A5A2B]);
     Element::factory()->create(['element_id' => 'Oxygen', 'ui_color' => null]);
 
-    $terrain = presentZone()->map?->terrain ?? [];
+    $terrain = presentZone()->map?->terrain;
 
-    expect($terrain)->toHaveCount(88)
-        ->and([$terrain[0]->x, $terrain[0]->y, $terrain[0]->elementId, $terrain[0]->colour])->toBe([99, 200, 'Dirt', '#8a5a2b'])
-        ->and([$terrain[22]->x, $terrain[22]->y, $terrain[22]->elementId, $terrain[22]->colour])->toBe([99, 201, 'Oxygen', null])
-        ->and($terrain[22]->mass)->toBe(1.5)
-        ->and($terrain[22]->temperature)->toBe(295.15);
+    expect([$terrain?->box->x, $terrain?->box->y, $terrain?->box->width, $terrain?->box->height])->toBe([99, 200, 22, 4])
+        ->and(array_map(fn (ZoneTerrainElementData $entry): array => [$entry->elementId, $entry->colour], $terrain->palette ?? []))
+        ->toBe([['Oxygen', null], ['Dirt', '#8a5a2b']])
+        ->and($terrain?->element)->toHaveCount(88)
+        ->and($terrain?->element[0])->toBe(1)
+        ->and($terrain?->element[22])->toBe(0)
+        ->and($terrain?->mass[22])->toBe(1.5)
+        ->and($terrain?->temperature[22])->toBe(295.15);
 });
 
 it('masks each tile with its same-prefab neighbours', function (): void {
@@ -131,14 +135,14 @@ it('keeps sections the game could not read unknown', function (): void {
     expect($shown->map?->tiles)->toBeNull()
         ->and($shown->map?->buildings)->toBeNull()
         ->and($shown->map?->plants)->toBeNull()
-        ->and($shown->map?->terrain)->toHaveCount(88)
-        ->and($shown->map?->terrain[0]->elementId)->toBeNull()
-        ->and($shown->map?->terrain[0]->colour)->toBeNull()
-        ->and($shown->map?->terrain[0]->mass)->toBe(1.5)
+        ->and($shown->map?->terrain?->palette)->toBe([])
+        ->and($shown->map?->terrain?->element)->toBeNull()
+        ->and($shown->map?->terrain?->mass)->toHaveCount(88)
+        ->and($shown->map?->terrain?->mass[0])->toBe(1.5)
         ->and($shown->entities)->toBe([])
         ->and($shown->plantsKnown)->toBeFalse()
         ->and($shown->buildingStatesKnown)->toBeFalse()
-        ->and(app(ZonePresenter::class)->problemCount($zone))->toBe(0);
+        ->and(app(ZonePresenter::class)->problemSummary($zone))->toBe(['count' => null, 'partial' => false]);
 });
 
 it('has no terrain when no layer of the slow state was read', function (): void {
@@ -158,7 +162,7 @@ it('presents a zone known only from the zone list', function (): void {
         ->and($shown->zone->orphaned)->toBeTrue()
         ->and($shown->zone->layoutAt)->toBeNull()
         ->and($shown->plantsKnown)->toBeFalse()
-        ->and(app(ZonePresenter::class)->problemCount($zone))->toBeNull();
+        ->and(app(ZonePresenter::class)->problemSummary($zone))->toBe(['count' => null, 'partial' => false]);
 });
 
 it('reports wilting plants and buildings the game stopped', function (): void {
@@ -180,7 +184,7 @@ it('reports wilting plants and buildings the game stopped', function (): void {
         ->and($problems['8001']->state)->toBe('not_operational')
         ->and($problems['8001']->problems)->toBe(['Not operational'])
         ->and($problems['8002']->problems)->toBe(['NeedPower'])
-        ->and($presenter->problemCount($zone))->toBe(3);
+        ->and($presenter->problemSummary($zone))->toBe(['count' => 3, 'partial' => false]);
 });
 
 it('falls back to the prefab id and no position for what the data does not know', function (): void {
@@ -211,4 +215,41 @@ it('links sprites only when the asset file exists', function (): void {
         ->and($shown->problems[0]->sprite)->toBe('/assets/game/buildings/FarmStation.webp');
 
     File::deleteDirectory($assets);
+});
+
+it('marks the problem count partial when only plants or buildings were read', function (): void {
+    $zone = Zone::factory()->sodicaneFarm()->create();
+    $zone->update(['fast_state' => [...$zone->fast_state, 'plants' => null]]);
+
+    expect(app(ZonePresenter::class)->problemSummary($zone))->toBe(['count' => 1, 'partial' => true]);
+});
+
+it('reads unknown terrain cells as -1 and fits each layer to the box', function (): void {
+    $zone = Zone::factory()->sodicaneFarm()->create();
+    $zone->update(['slow_state' => [...$zone->slow_state, 'palette' => ['', 'Dirt'], 'element' => [0, 7, 'x'], 'mass' => array_fill(0, 100, 2.0), 'temperature' => null]]);
+
+    $terrain = app(ZonePresenter::class)->present($zone)->map?->terrain;
+
+    expect($terrain?->palette[0]->elementId)->toBeNull()
+        ->and(array_slice($terrain->element ?? [], 0, 4))->toBe([0, -1, -1, -1])
+        ->and($terrain?->element)->toHaveCount(88)
+        ->and($terrain?->mass)->toHaveCount(88)
+        ->and($terrain?->temperature)->toBeNull();
+});
+
+it('skips layout entries it cannot place', function (): void {
+    $zone = Zone::factory()->sodicaneFarm()->create();
+    $zone->update([
+        'layout' => [...$zone->layout,
+            'tiles' => [['prefabId' => 'Tile'], ['cell' => 'x', 'prefabId' => 'Tile'], ['cell' => zoneCell(5, 5), 'prefabId' => 'Tile']],
+            'buildings' => [['instanceId' => '9', 'prefabId' => 'FarmStation', 'width' => 2, 'height' => 2]],
+        ],
+        'fast_state' => [...$zone->fast_state, 'plants' => [['id' => 'SaltySticksPlant', 'instanceId' => '1']]],
+    ]);
+
+    $map = app(ZonePresenter::class)->present($zone)->map;
+
+    expect(array_map(fn (ZoneTileData $tile): array => [$tile->x, $tile->y], $map->tiles ?? []))->toBe([[5, 5]])
+        ->and($map?->buildings)->toBe([])
+        ->and($map?->plants)->toBe([]);
 });

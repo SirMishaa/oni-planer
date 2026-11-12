@@ -235,13 +235,14 @@ export type ZoneListItemData = {
     cellCount: number;
     orphaned: boolean;
     problemCount: number | null;
+    problemsPartial: boolean;
     updatedAt: string | null;
 };
 export type ZoneMapData = {
     gridWidth: number;
     box: ZoneBoxData;
     zoneCells: Array<[number, number]>;
-    terrain: ZoneTerrainCellData[] | null;
+    terrain: ZoneTerrainData | null;
     tiles: ZoneTileData[] | null;
     buildings: ZoneBuildingData[] | null;
     plants: ZonePlantData[] | null;
@@ -268,13 +269,16 @@ export type ZoneShowData = {
     buildingStatesKnown: boolean;
     echo: { channel: 'uplink'; event: '.zone.updated' };
 };
-export type ZoneTerrainCellData = {
-    x: number;
-    y: number;
+export type ZoneTerrainData = {
+    box: ZoneBoxData;
+    palette: ZoneTerrainElementData[];
+    element: number[] | null;
+    mass: (number | null)[] | null;
+    temperature: (number | null)[] | null;
+};
+export type ZoneTerrainElementData = {
     elementId: string | null;
     colour: string | null;
-    mass: number | null;
-    temperature: number | null;
 };
 export type ZoneTileData = {
     x: number;

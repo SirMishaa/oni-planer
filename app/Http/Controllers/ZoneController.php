@@ -32,15 +32,20 @@ final readonly class ZoneController
 
         return Inertia::render('Zones/Index', [
             'colonyName' => $colony?->name,
-            'zones' => $zones->map(fn (Zone $zone): ZoneListItemData => new ZoneListItemData(
-                id: $zone->id,
-                name: $zone->name,
-                worldId: $zone->world_id,
-                cellCount: $zone->cell_count,
-                orphaned: $zone->orphaned,
-                problemCount: $this->presenter->problemCount($zone),
-                updatedAt: collect([$zone->layout_at, $zone->slow_state_at, $zone->fast_state_at])->filter()->max()?->toIso8601String(),
-            ))->all(),
+            'zones' => $zones->map(function (Zone $zone): ZoneListItemData {
+                $problems = $this->presenter->problemSummary($zone);
+
+                return new ZoneListItemData(
+                    id: $zone->id,
+                    name: $zone->name,
+                    worldId: $zone->world_id,
+                    cellCount: $zone->cell_count,
+                    orphaned: $zone->orphaned,
+                    problemCount: $problems['count'],
+                    problemsPartial: $problems['partial'],
+                    updatedAt: collect([$zone->layout_at, $zone->slow_state_at, $zone->fast_state_at])->filter()->max()?->toIso8601String(),
+                );
+            })->all(),
             'echo' => ['channel' => 'uplink', 'event' => '.zone.updated'],
         ]);
     }

@@ -12,11 +12,13 @@ use App\Data\ZoneEntityData;
 use App\Data\ZoneMapData;
 use App\Data\ZonePlantData;
 use App\Data\ZoneShowData;
-use App\Data\ZoneTerrainCellData;
+use App\Data\ZoneTerrainData;
+use App\Data\ZoneTerrainElementData;
 use App\Data\ZoneTileData;
 use App\Models\Element;
 use App\Models\Zone;
 use App\Services\GameText;
+use Closure;
 
 /**
  * Turns the stored layout, slow state and fast state of a zone into what the
@@ -27,7 +29,7 @@ use App\Services\GameText;
  * null) stays null: unknown, never an empty list. Malformed entries are read
  * with defaults rather than failing the page.
  */
-final readonly class ZonePresenter
+final class ZonePresenter
 {
     /**
      * Status item ids that make a building (or, later, a plant) a problem.
@@ -73,10 +75,14 @@ final readonly class ZonePresenter
 
     private const int DOWN = 8;
 
-    public function __construct(private GameText $text) {}
+    /** @var array<string, string|null> sprite URL by "category/prefab", for one present() call */
+    private array $sprites = [];
+
+    public function __construct(private readonly GameText $text) {}
 
     public function present(Zone $zone): ZoneShowData
     {
+        $this->sprites = [];
         $layout = $zone->layout;
         $gridWidth = self::int($layout['gridWidth'] ?? null, 0);
         $placed = $layout !== null && $gridWidth > 0;
@@ -87,10 +93,17 @@ final readonly class ZonePresenter
         $fastPlants = self::listOrNull($zone->fast_state['plants'] ?? null);
         $fastBuildings = self::listOrNull($zone->fast_state['buildings'] ?? null);
         $layoutBuildings = self::listOrNull($layout['buildings'] ?? null);
+        $anchorsByInstance = [];
+        foreach ($layoutBuildings ?? [] as $building) {
+            $instanceId = self::stringOrNull($building['instanceId'] ?? null);
+            if ($instanceId !== null) {
+                $anchorsByInstance[$instanceId] = $building['anchorCell'] ?? null;
+            }
+        }
 
         $entities = [
             ...array_map(fn (array $plant): ZoneEntityData => $this->plantEntity($plant, $position($plant['cell'] ?? null)), $fastPlants ?? []),
-            ...array_map(fn (array $building): ZoneEntityData => $this->buildingEntity($building, $layoutBuildings ?? [], $position), $fastBuildings ?? []),
+            ...array_map(fn (array $building): ZoneEntityData => $this->buildingEntity($building, $anchorsByInstance, $position), $fastBuildings ?? []),
         ];
         usort($entities, fn (ZoneEntityData $a, ZoneEntityData $b): int => [$a->problems === [], $a->secondsUntilHarvest ?? INF] <=> [$b->problems === [], $b->secondsUntilHarvest ?? INF]);
         $problems = array_values(array_filter($entities, fn (ZoneEntityData $entity): bool => $entity->problems !== []));
@@ -113,8 +126,14 @@ final readonly class ZonePresenter
                 zoneCells: array_values(array_filter(array_map($position, (array) ($layout['cells'] ?? [])))),
                 terrain: $this->terrain($zone->slow_state),
                 tiles: self::tiles(self::listOrNull($layout['tiles'] ?? null), $gridWidth),
-                buildings: $layoutBuildings === null ? null : array_map(fn (array $building): ZoneBuildingData => $this->layoutBuilding($building, $gridWidth), $layoutBuildings),
-                plants: $fastPlants === null ? null : array_map(fn (array $plant): ZonePlantData => $this->plant($plant, $gridWidth), $fastPlants),
+                buildings: $layoutBuildings === null ? null : array_map(
+                    fn (array $building): ZoneBuildingData => $this->layoutBuilding($building, $gridWidth),
+                    array_values(array_filter($layoutBuildings, fn (array $building): bool => is_numeric($building['anchorCell'] ?? null))),
+                ),
+                plants: $fastPlants === null ? null : array_map(
+                    fn (array $plant): ZonePlantData => $this->plant($plant, $gridWidth),
+                    array_values(array_filter($fastPlants, fn (array $plant): bool => is_numeric($plant['cell'] ?? null))),
+                ),
             ) : null,
             entities: $entities,
             problems: $problems,
@@ -128,17 +147,26 @@ final readonly class ZonePresenter
         );
     }
 
-    /** Entities of the zone with at least one problem; null until a fast state arrived. */
-    public function problemCount(Zone $zone): ?int
+    /**
+     * Entities of the zone with at least one problem. The count is null
+     * while unknown (no fast state, or neither its plants nor its buildings
+     * were read) and partial when only one of the two was read.
+     *
+     * @return array{count: int|null, partial: bool}
+     */
+    public function problemSummary(Zone $zone): array
     {
-        if ($zone->fast_state === null) {
-            return null;
+        $plants = self::listOrNull($zone->fast_state['plants'] ?? null);
+        $buildings = self::listOrNull($zone->fast_state['buildings'] ?? null);
+
+        if ($plants === null && $buildings === null) {
+            return ['count' => null, 'partial' => false];
         }
 
-        $plants = array_filter(self::listOrNull($zone->fast_state['plants'] ?? null) ?? [], fn (array $plant): bool => $this->plantProblems($plant) !== []);
-        $buildings = array_filter(self::listOrNull($zone->fast_state['buildings'] ?? null) ?? [], fn (array $building): bool => $this->buildingProblems($building) !== []);
+        $withProblems = count(array_filter($plants ?? [], fn (array $plant): bool => $this->plantProblems($plant) !== []))
+            + count(array_filter($buildings ?? [], fn (array $building): bool => $this->buildingProblems($building) !== []));
 
-        return count($plants) + count($buildings);
+        return ['count' => $withProblems, 'partial' => $plants === null || $buildings === null];
     }
 
     /**
@@ -179,7 +207,9 @@ final readonly class ZonePresenter
 
         $prefabs = [];
         foreach ($tiles as $tile) {
-            $prefabs[self::int($tile['cell'] ?? null, -1)] = self::string($tile['prefabId'] ?? null);
+            if (is_numeric($tile['cell'] ?? null)) {
+                $prefabs[(int) $tile['cell']] = self::string($tile['prefabId'] ?? null);
+            }
         }
 
         $result = [];
@@ -207,14 +237,6 @@ final readonly class ZonePresenter
             width: max(0, self::int($box['width'] ?? null, 0)),
             height: max(0, self::int($box['height'] ?? null, 0)),
         );
-    }
-
-    /** Root-relative URL of a game sprite, or null when it was not imported. */
-    private static function sprite(string $category, string $id): ?string
-    {
-        $relative = sprintf('%s/%s.webp', $category, $id);
-
-        return $id !== '' && file_exists(config()->string('game.assets_path').'/'.$relative) ? '/assets/game/'.$relative : null;
     }
 
     /**
@@ -247,6 +269,18 @@ final readonly class ZonePresenter
         return self::stringOrNull($value) ?? '';
     }
 
+    /** Root-relative URL of a game sprite, or null when it was not imported; checked once per prefab. */
+    private function sprite(string $category, string $id): ?string
+    {
+        $relative = sprintf('%s/%s.webp', $category, $id);
+
+        if (! array_key_exists($relative, $this->sprites)) {
+            $this->sprites[$relative] = $id !== '' && file_exists(config()->string('game.assets_path').'/'.$relative) ? '/assets/game/'.$relative : null;
+        }
+
+        return $this->sprites[$relative];
+    }
+
     /**
      * @param  array<mixed>  $plant
      * @param  array{0: int, 1: int}|null  $position
@@ -262,7 +296,7 @@ final readonly class ZonePresenter
             instanceId: self::stringOrNull($plant['instanceId'] ?? null),
             prefabId: $prefabId,
             name: $this->text->name($prefabId),
-            sprite: self::sprite('plants', $prefabId),
+            sprite: $this->sprite('plants', $prefabId),
             x: $position[0] ?? null,
             y: $position[1] ?? null,
             state: match (true) {
@@ -279,22 +313,21 @@ final readonly class ZonePresenter
 
     /**
      * @param  array<mixed>  $building  a fast-state building
-     * @param  list<array<mixed>>  $layoutBuildings
+     * @param  array<string, mixed>  $anchorsByInstance  anchor cell of each layout building, by instance id
      * @param  callable(mixed): (array{0: int, 1: int}|null)  $position
      */
-    private function buildingEntity(array $building, array $layoutBuildings, callable $position): ZoneEntityData
+    private function buildingEntity(array $building, array $anchorsByInstance, callable $position): ZoneEntityData
     {
         $prefabId = self::string($building['prefabId'] ?? null);
         $instanceId = self::stringOrNull($building['instanceId'] ?? null);
-        $placed = array_find($layoutBuildings, fn (array $candidate): bool => $instanceId !== null && ($candidate['instanceId'] ?? null) === $instanceId);
-        $cell = $position($placed['anchorCell'] ?? null);
+        $cell = $position($instanceId === null ? null : ($anchorsByInstance[$instanceId] ?? null));
 
         return new ZoneEntityData(
             kind: 'building',
             instanceId: $instanceId,
             prefabId: $prefabId,
             name: $this->text->name($prefabId),
-            sprite: self::sprite('buildings', $prefabId),
+            sprite: $this->sprite('buildings', $prefabId),
             x: $cell[0] ?? null,
             y: $cell[1] ?? null,
             state: ($building['operational'] ?? null) === false ? 'not_operational' : 'operational',
@@ -337,43 +370,42 @@ final readonly class ZonePresenter
     }
 
     /**
-     * The terrain of the slow state's box; its arrays are row-major from the
-     * box's bottom-left cell. Null when no slow state arrived or none of its
-     * layers could be read.
+     * The terrain of the slow state, kept columnar: one value per cell of its
+     * box, row-major from the bottom-left cell. Null when no slow state
+     * arrived or none of its layers could be read.
      *
      * @param  array<mixed>|null  $slow
-     * @return list<ZoneTerrainCellData>|null
      */
-    private function terrain(?array $slow): ?array
+    private function terrain(?array $slow): ?ZoneTerrainData
     {
-        $palette = $slow['palette'] ?? null;
         $element = $slow['element'] ?? null;
         $mass = $slow['mass'] ?? null;
         $temperature = $slow['temperature'] ?? null;
 
-        if ($element === null && $mass === null && $temperature === null) {
+        if (! is_array($element) && ! is_array($mass) && ! is_array($temperature)) {
             return null;
         }
 
         $box = self::box($slow['box'] ?? null);
-        $colours = $this->elementColours(array_filter((array) $palette, is_string(...)));
-        $cells = [];
+        $cellCount = $box->width * $box->height;
+        $palette = array_values(array_map(
+            fn (mixed $elementId): ?string => is_string($elementId) && $elementId !== '' ? $elementId : null,
+            (array) ($slow['palette'] ?? []),
+        ));
+        $colours = $this->elementColours(array_filter($palette, is_string(...)));
+        /** @var Closure(array<mixed>): list<mixed> $fit one value per cell of the box, missing ones null */
+        $fit = fn (array $values): array => array_pad(array_slice(array_values($values), 0, $cellCount), $cellCount, null);
 
-        for ($index = 0; $index < $box->width * $box->height; $index++) {
-            $elementId = ((array) $palette)[self::int(((array) $element)[$index] ?? null, -1)] ?? null;
-            $elementId = is_string($elementId) && $elementId !== '' ? $elementId : null;
-
-            $cells[] = new ZoneTerrainCellData(
-                x: $box->x + $index % $box->width,
-                y: $box->y + intdiv($index, $box->width),
+        return new ZoneTerrainData(
+            box: $box,
+            palette: array_map(fn (?string $elementId): ZoneTerrainElementData => new ZoneTerrainElementData(
                 elementId: $elementId,
                 colour: $elementId === null ? null : ($colours[$elementId] ?? null),
-                mass: self::floatOrNull(((array) $mass)[$index] ?? null),
-                temperature: self::floatOrNull(((array) $temperature)[$index] ?? null),
-            );
-        }
-
-        return $cells;
+            ), $palette),
+            element: is_array($element) ? array_map(fn (mixed $index): int => is_int($index) && array_key_exists($index, $palette) ? $index : -1, $fit($element)) : null,
+            mass: is_array($mass) ? array_map(self::floatOrNull(...), $fit($mass)) : null,
+            temperature: is_array($temperature) ? array_map(self::floatOrNull(...), $fit($temperature)) : null,
+        );
     }
 
     /**
@@ -405,7 +437,7 @@ final readonly class ZonePresenter
             orientation: self::stringOrNull($building['orientation'] ?? null),
             prefabId: $prefabId,
             name: $this->text->name($prefabId),
-            sprite: self::sprite('buildings', $prefabId),
+            sprite: $this->sprite('buildings', $prefabId),
         );
     }
 
@@ -421,7 +453,7 @@ final readonly class ZonePresenter
             instanceId: self::stringOrNull($plant['instanceId'] ?? null),
             prefabId: $prefabId,
             name: $this->text->name($prefabId),
-            sprite: self::sprite('plants', $prefabId),
+            sprite: $this->sprite('plants', $prefabId),
             growth: self::growth($plant),
             secondsUntilHarvest: self::floatOrNull($plant['secondsUntilHarvest'] ?? null),
             wilting: (bool) ($plant['wilting'] ?? false),
