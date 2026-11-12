@@ -216,7 +216,7 @@ Run all Core tests with `dotnet test Uplink.Core.Tests`; build with `./build-and
 - Produces:
   - `ZoneTool : DragTool` (`GetMode()` → `Mode.Box` for paint/erase); registered by a postfix on `PlayerController.OnPrefabInit` (append an instance to `tools`) and a postfix on `ToolMenu.CreateBasicTools` (add `ToolMenu.CreateToolCollection(…, "ZoneTool", …)`); verified: `DragTool.Mode { Brush, Box, Line }`, `OnDragTool(int cell, int distFromOrigin)`, `OnDragComplete(Vector3, Vector3)`.
   - Modes chosen with the tool parameter menu: **Paint**, **Erase**, **Room**. Room: on click, `Game.Instance.roomProber.GetCavityForCell(cell)`; if the cavity's `room != null`, add all `cavity.cells` to the selected zone; otherwise a hover-card message "Not a room".
-  - `ZonePicker`: choose the active zone, "New zone", rename, delete (with confirm). **UI library: PLib (MIT, already used by the user's OniExtract fork), merged into `Uplink.dll` with ILRepack or bundled; needs the user's go-ahead (dependency).**
+  - `ZonePicker`: choose the active zone, "New zone", rename, delete (with confirm). **UI library: PLib (MIT, approved by the user 2026-11-12), merged into `Uplink.dll` with ILRepack or shipped next to it like OniExtract does.**
   - `ZoneOverlay`: while the tool is active, one mesh of translucent quads per zone plus an outline, the selected zone brighter; rebuilt on `Zones.Changed`; hidden when the tool closes.
 - [ ] **Step 1: Build and install.**
 - [ ] **Step 2: Manual check** in DeepWaterGo: Room mode on the sodicane room fills it (cell count = the room's "Taille de la pièce" in the game's room tooltip); Erase removes a cell; Paint adds; rename to "Ferme sodicane"; the site's zone list follows each change within a second.
@@ -372,3 +372,7 @@ Run tests with `php artisan test --compact <path>`.
 - [ ] **Step 2:** Walk the spec's "Verification with the user" items that belong to slice A (zone by room click, erase a cell, reload the save, the site follows; zone page correct) with the user, in the game.
 - [ ] **Step 3:** `php artisan uplink:bench --encoding=base64 --sizes=100,1000,4000` and note the numbers in the plan's PR description.
 - [ ] **Step 4:** Update `~/dev/uplink/README.md` (protocol: channels, events, wire format, acks, settings) and commit in both repos.
+
+## Notes for later slices
+
+- **Redis or another store** (user's offer, 2026-11-12): not used in slice A. Measured volumes are tiny (a few small messages per second) and writes are SQLite upserts. Introduce it only if `uplink:bench` or Reverb logs show the listener falling behind with many zones (e.g. throttling `zone.updated`, buffering fast states); measure first.
