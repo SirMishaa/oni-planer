@@ -6,6 +6,7 @@ import {
     type MaybeRefOrGetter,
     onBeforeUnmount,
     onMounted,
+    type Ref,
     ref,
     toValue,
 } from 'vue';
@@ -25,33 +26,81 @@ type ZoneUpdatedPayload = {
     kind: 'list' | 'layout' | 'slow' | 'fast';
 };
 
+/** Options of `router.reload`, typed through `@inertiajs/vue3` (core is not a direct dependency). */
+type ReloadOptions = NonNullable<Parameters<typeof router.reload>[0]>;
+
+/** Statuses that mean the reloaded page no longer exists (the zone was archived or deleted). */
+const GONE_STATUSES = [404, 410];
+
+/** The channel and event the page was given by the server (`echo` prop). */
+export type ZoneEcho = { channel: string; event: string };
+
 /**
- * Listens to `.zone.updated` on the public `uplink` channel and reloads the
- * given props (debounced) when the event is about `zoneGuid`, or about any
- * zone when it is null (the zones list). `updatedAt` is the latest time the
- * page's data was received; it drives the live dot and the age label.
+ * Reload options for a live refresh: a 404 or 410 calls `onGone` and
+ * returns false, so Inertia shows no error dialog; any other error keeps
+ * Inertia's default handling.
  */
-export function useZoneLive(
-    zoneGuid: MaybeRefOrGetter<string | null>,
+export function liveReloadOptions(
     only: string[],
-    updatedAt: MaybeRefOrGetter<string | null>,
-): { live: ComputedRef<boolean>; ageLabel: ComputedRef<string> } {
+    onGone: () => void,
+): ReloadOptions {
+    return {
+        only,
+        onHttpException: (response) => {
+            if (!GONE_STATUSES.includes(response.status)) {
+                return;
+            }
+
+            onGone();
+
+            return false;
+        },
+    };
+}
+
+/**
+ * Listens to the zone event of `echo` and reloads the given props
+ * (debounced) when the event is about `zoneGuid`, or about any zone when it
+ * is null (the zones list). `updatedAt` is the latest time the page's data
+ * was received; it drives the live dot and the age label. When a reload
+ * finds the page gone, `gone` turns true, `onGone` runs and the events are
+ * ignored from then on.
+ */
+export function useZoneLive(options: {
+    echo: MaybeRefOrGetter<ZoneEcho>;
+    zoneGuid: MaybeRefOrGetter<string | null>;
+    only: string[];
+    updatedAt: MaybeRefOrGetter<string | null>;
+    onGone?: () => void;
+}): {
+    live: ComputedRef<boolean>;
+    ageLabel: ComputedRef<string>;
+    gone: Ref<boolean>;
+    now: Ref<number>;
+} {
+    const { zoneGuid, only, updatedAt } = options;
     const i18n = useT();
     const format = useFormat();
 
     // region Reload on events
     let pendingReload: ReturnType<typeof setTimeout> | undefined;
+    const gone = ref(false);
+    const reloadOptions = liveReloadOptions(only, () => {
+        gone.value = true;
+        options.onGone?.();
+    });
+    const { channel, event } = toValue(options.echo);
 
-    useEchoPublic<ZoneUpdatedPayload>('uplink', '.zone.updated', (payload) => {
+    useEchoPublic<ZoneUpdatedPayload>(channel, event, (payload) => {
         const guid = toValue(zoneGuid);
 
-        if (guid !== null && payload.zoneGuid !== guid) {
+        if (gone.value || (guid !== null && payload.zoneGuid !== guid)) {
             return;
         }
 
         clearTimeout(pendingReload);
         pendingReload = setTimeout(
-            () => router.reload({ only }),
+            () => router.reload(reloadOptions),
             RELOAD_DEBOUNCE_MS,
         );
     });
@@ -96,7 +145,7 @@ export function useZoneLive(
     });
     // endregion
 
-    return { live, ageLabel };
+    return { live, ageLabel, gone, now };
 }
 
 /** Latest of several ISO times, null when none is set. */

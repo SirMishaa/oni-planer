@@ -24,6 +24,7 @@ return [
         'orphaned' => 'The world of this zone no longer exists in the game. The zone is kept as it was last seen.',
         'no_layout' => 'The game has not sent the layout of this zone yet.',
         'unknown' => 'The game could not read this part of the zone.',
+        'removed' => 'This zone no longer exists in the game. The page shows its last known state.',
         'back' => 'All zones',
         'world' => 'world :id',
         'tabs' => [
@@ -57,6 +58,7 @@ return [
             'issues' => 'Running, :count thing to fix|Running, :count things to fix',
             'unknown' => 'State unknown',
             'partial' => 'Partly read',
+            'partial_clear' => 'No problem seen, partly read',
         ],
         'summary' => [
             'plants' => ':count plant|:count plants',
@@ -69,6 +71,8 @@ return [
         ],
         'todo' => 'To fix',
         'nothing_todo' => 'Nothing to fix.',
+        'nothing_todo_partial' => 'Nothing to fix in what the game read: the list is partial.',
+        'todo_partial' => 'Partial list: the game did not read everything.',
         'todo_unknown' => 'Unknown until the game sends the state of the zone.',
         'show' => 'show',
         'contents' => 'Contents',
@@ -83,6 +87,7 @@ return [
         'yes' => 'yes',
         'no' => 'no',
         'size' => 'Size',
+        'state_unknown' => 'state unknown',
     ],
     'entities' => [
         'filters' => [

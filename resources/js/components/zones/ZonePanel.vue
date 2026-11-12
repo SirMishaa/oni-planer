@@ -4,7 +4,12 @@ import GameSprite from '@/components/viability/GameSprite.vue';
 import ZoneIcon from '@/components/zones/ZoneIcon.vue';
 import { useT } from '@/composables/useT';
 import { useZoneText } from '@/composables/useZoneText';
-import type { ZoneCountsData, ZoneEntityData } from '@/types/App/Data/data.d';
+import type {
+    ZoneBuildingData,
+    ZoneCountsData,
+    ZoneEntityData,
+} from '@/types/App/Data/data.d';
+import { zoneVerdict } from './zoneVerdict';
 
 // region Props
 
@@ -18,6 +23,8 @@ const props = defineProps<{
     /** Sprite of the zone's most common plant, the panel's illustration. */
     crest: string | null;
     selected: ZoneEntityData | null;
+    /** A selected layout building whose state the game has not sent (shown as unknown). */
+    selectedBuilding?: ZoneBuildingData | null;
 }>();
 
 const emit = defineEmits<{
@@ -36,19 +43,22 @@ const partial = computed(
     () => known.value && !(props.plantsKnown && props.buildingStatesKnown),
 );
 
-/** `unknown` never reads as "all fine": nothing was received to judge on. */
-const verdict = computed<'ok' | 'issues' | 'unknown'>(() => {
-    if (!known.value) {
-        return 'unknown';
-    }
-
-    return props.problems.length > 0 ? 'issues' : 'ok';
-});
+const verdict = computed(() =>
+    zoneVerdict(
+        props.problems.length,
+        props.plantsKnown,
+        props.buildingStatesKnown,
+    ),
+);
 
 const verdictText = computed(() =>
     verdict.value === 'issues'
         ? tc('zones.panel.verdict.issues', props.problems.length)
-        : t(`zones.panel.verdict.${verdict.value}`),
+        : t(
+              verdict.value === 'partial'
+                  ? 'zones.panel.verdict.partial_clear'
+                  : `zones.panel.verdict.${verdict.value}`,
+          ),
 );
 
 const plantStates = computed(() => {
@@ -141,9 +151,18 @@ function select(entity: ZoneEntityData): void {
                 {{ t('zones.panel.todo_unknown') }}
             </p>
             <p v-else-if="problems.length === 0" class="zone-panel__muted">
-                {{ t('zones.panel.nothing_todo') }}
+                {{
+                    t(
+                        partial
+                            ? 'zones.panel.nothing_todo_partial'
+                            : 'zones.panel.nothing_todo',
+                    )
+                }}
             </p>
-            <ul v-else class="zone-issues">
+            <p v-else-if="partial" class="zone-panel__muted zone-issues__note">
+                {{ t('zones.panel.todo_partial') }}
+            </p>
+            <ul v-if="known && problems.length > 0" class="zone-issues">
                 <li
                     v-for="(entity, index) in problems"
                     :key="entity.instanceId ?? `problem-${index}`"
@@ -225,7 +244,28 @@ function select(entity: ZoneEntityData): void {
             <h2 class="zone-panel__heading">
                 {{ t('zones.panel.selection') }}
             </h2>
-            <p v-if="!selected" class="zone-panel__muted">
+            <template v-if="!selected && selectedBuilding">
+                <div class="zone-selected">
+                    <GameSprite
+                        :src="selectedBuilding.sprite"
+                        kind="building"
+                        :size="28"
+                    />
+                    <b class="zone-selected__name">{{
+                        selectedBuilding.name
+                    }}</b>
+                    <span class="zone-panel__muted">{{
+                        text.position(selectedBuilding.x, selectedBuilding.y)
+                    }}</span>
+                </div>
+                <dl class="zone-kv">
+                    <dt>{{ t('zones.panel.state') }}</dt>
+                    <dd class="zone-panel__unknown">
+                        {{ t('zones.panel.state_unknown') }}
+                    </dd>
+                </dl>
+            </template>
+            <p v-else-if="!selected" class="zone-panel__muted">
                 {{ t('zones.panel.selection_hint') }}
             </p>
             <template v-else>
@@ -357,6 +397,10 @@ function select(entity: ZoneEntityData): void {
 
 .zone-hero--issues {
     --state: var(--warn);
+}
+
+.zone-hero--partial {
+    --state: var(--text);
 }
 
 .zone-hero--unknown {

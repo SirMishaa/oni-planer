@@ -28,6 +28,7 @@ import {
     type ZoneMapInks,
     type ZoneMapLayer,
 } from './zoneMapPainter';
+import { entityProblemMark } from './zoneVerdict';
 
 // region Props
 
@@ -249,6 +250,11 @@ function entityStyle(entity: MapEntity): Record<string, string> {
     };
 }
 
+/** Problem mark; a building the fast state does not cover is unknown, never problem-free. */
+function problemMark(entity: MapEntity): 'problem' | 'clear' | 'unknown' {
+    return entityProblemMark(entity.problems.length, entity.state !== null);
+}
+
 function select(entity: MapEntity): void {
     if (entity.instanceId !== null) {
         emit('select', entity.instanceId);
@@ -384,9 +390,11 @@ const hoverStyle = computed(() => {
 function entityLabel(entity: MapEntity): string {
     const parts = [entity.name, text.position(entity.x, entity.y)];
 
-    if (entity.state) {
-        parts.push(t(`zones.states.${entity.state}`));
-    }
+    parts.push(
+        entity.state
+            ? t(`zones.states.${entity.state}`)
+            : t('zones.panel.state_unknown'),
+    );
 
     return [...parts, ...entity.problems].join(', ');
 }
@@ -469,7 +477,7 @@ const temperatureLegend = computed(() => {
                             entity.instanceId === selectedId,
                         'zone-entity--dimmed':
                             layer === 'problems' &&
-                            entity.problems.length === 0,
+                            problemMark(entity) === 'clear',
                         'zone-entity--faint': layer === 'temperature',
                     }"
                     :style="entityStyle(entity)"
@@ -513,10 +521,19 @@ const temperatureLegend = computed(() => {
                         <i :style="{ width: `${entity.growth * 100}%` }" />
                     </span>
                     <span
-                        v-if="entity.problems.length > 0"
+                        v-if="problemMark(entity) === 'problem'"
                         class="zone-entity__pin"
                         aria-hidden="true"
                         >!</span
+                    >
+                    <span
+                        v-else-if="
+                            layer === 'problems' &&
+                            problemMark(entity) === 'unknown'
+                        "
+                        class="zone-entity__pin zone-entity__pin--unknown"
+                        aria-hidden="true"
+                        >?</span
                     >
                 </button>
                 <!-- endregion -->
@@ -535,7 +552,12 @@ const temperatureLegend = computed(() => {
                                 text.position(hoveredEntity.x, hoveredEntity.y)
                             }}</strong
                         >
-                        <span v-if="hoveredEntity.state">{{
+                        <span
+                            v-if="!hoveredEntity.state"
+                            class="zone-map__hover-unknown"
+                            >{{ t('zones.panel.state_unknown') }}</span
+                        >
+                        <span v-else>{{
                             t(`zones.states.${hoveredEntity.state}`)
                         }}</span>
                         <span
@@ -618,6 +640,13 @@ const temperatureLegend = computed(() => {
             <span v-if="layer === 'problems'" class="zone-map__key">
                 <i class="zone-map__swatch zone-map__swatch--pin">!</i>
                 {{ t('zones.layers.problems') }}
+            </span>
+            <span v-if="layer === 'problems'" class="zone-map__key">
+                <i
+                    class="zone-map__swatch zone-map__swatch--pin zone-map__swatch--unknown-state"
+                    >?</i
+                >
+                {{ t('zones.panel.state_unknown') }}
             </span>
         </div>
         <p v-if="!map.terrain" class="zone-map__note">
@@ -743,6 +772,11 @@ const temperatureLegend = computed(() => {
     background: var(--warn);
 }
 
+.zone-entity__pin.zone-entity__pin--unknown {
+    background: var(--ink-3);
+    color: var(--text);
+}
+
 .zone-entity__pin {
     position: absolute;
     top: -7px;
@@ -840,6 +874,11 @@ const temperatureLegend = computed(() => {
     color: oklch(98% 0.01 25);
     font: 700 10px/1 var(--font-text);
     font-style: normal;
+}
+
+.zone-map__swatch.zone-map__swatch--unknown-state {
+    background: var(--ink-3);
+    color: var(--text);
 }
 
 .zone-map__scale {

@@ -22,9 +22,13 @@ const props = defineProps<{
 
 // region Live link
 
-const { live, ageLabel } = useZoneLive(null, ['colonyName', 'zones'], () =>
-    latestTime(props.zones.map((zone) => zone.updatedAt)),
-);
+/** `now` ticks every second: the header and every card age share it. */
+const { live, ageLabel, now } = useZoneLive({
+    echo: () => props.echo,
+    zoneGuid: null,
+    only: ['colonyName', 'zones'],
+    updatedAt: () => latestTime(props.zones.map((zone) => zone.updatedAt)),
+});
 
 // endregion
 
@@ -58,7 +62,7 @@ function updatedText(zone: ZoneListItemData): string {
     return Number.isNaN(at)
         ? t('zones.index.never_updated')
         : t('zones.index.updated', {
-              age: format.age(Math.max(0, Date.now() - at)),
+              age: format.age(Math.max(0, now.value - at)),
           });
 }
 

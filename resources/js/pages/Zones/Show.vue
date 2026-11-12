@@ -33,9 +33,11 @@ const props = defineProps<{
 
 // region Live link
 
-const { live, ageLabel } = useZoneLive(
-    () => props.zone.guid,
-    [
+/** `gone`: a live reload found the zone archived (removed in the game); the page keeps its last state. */
+const { live, ageLabel, gone } = useZoneLive({
+    echo: () => props.echo,
+    zoneGuid: () => props.zone.guid,
+    only: [
         'zone',
         'map',
         'entities',
@@ -44,13 +46,13 @@ const { live, ageLabel } = useZoneLive(
         'plantsKnown',
         'buildingStatesKnown',
     ],
-    () =>
+    updatedAt: () =>
         latestTime([
             props.zone.layoutAt,
             props.zone.slowStateAt,
             props.zone.fastStateAt,
         ]),
-);
+});
 
 // endregion
 
@@ -111,6 +113,15 @@ const selected = computed(
         ) ?? null,
 );
 
+/** A building drawn from the layout whose state the game has not sent: shown with an unknown state. */
+const selectedBuilding = computed(() =>
+    selected.value === null && selectedId.value !== null
+        ? (props.map?.buildings?.find(
+              (building) => building.instanceId === selectedId.value,
+          ) ?? null)
+        : null,
+);
+
 function showOnMap(instanceId: string): void {
     selectedId.value = instanceId;
     tab.value = 'map';
@@ -150,6 +161,12 @@ function showOnMap(instanceId: string): void {
                 </div>
             </header>
 
+            <p v-if="gone" class="zone-banner zone-banner--gone" role="alert">
+                {{ t('zones.show.removed') }}
+                <Link :href="ZoneController.index.url()">{{
+                    t('zones.show.back')
+                }}</Link>
+            </p>
             <p v-if="zone.orphaned" class="zone-banner" role="status">
                 {{ t('zones.show.orphaned') }}
             </p>
@@ -237,6 +254,7 @@ function showOnMap(instanceId: string): void {
                         :building-states-known="buildingStatesKnown"
                         :crest="crest"
                         :selected="selected"
+                        :selected-building="selectedBuilding"
                         @select="selectedId = $event"
                     />
                 </div>
@@ -333,6 +351,17 @@ function showOnMap(instanceId: string): void {
     border-color: var(--live);
     background: var(--live);
     box-shadow: 0 0 0 3px oklch(78% 0.15 150 / 0.2);
+}
+
+.zone-banner.zone-banner--gone {
+    border-color: oklch(72% 0.17 25 / 0.55);
+    background: oklch(72% 0.17 25 / 0.1);
+}
+
+.zone-banner--gone a {
+    margin-left: 6px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
 }
 
 .zone-banner {

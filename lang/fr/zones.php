@@ -24,6 +24,7 @@ return [
         'orphaned' => "Le monde de cette zone n'existe plus dans le jeu. La zone est gardée telle qu'elle a été vue la dernière fois.",
         'no_layout' => "Le jeu n'a pas encore envoyé le plan de cette zone.",
         'unknown' => "Le jeu n'a pas pu lire cette partie de la zone.",
+        'removed' => "Cette zone n'existe plus dans le jeu. La page montre son dernier état connu.",
         'back' => 'Toutes les zones',
         'world' => 'monde :id',
         'tabs' => [
@@ -57,6 +58,7 @@ return [
             'issues' => 'Tourne, :count point à régler|Tourne, :count points à régler',
             'unknown' => 'État inconnu',
             'partial' => 'Lecture partielle',
+            'partial_clear' => 'Aucun problème vu, lecture partielle',
         ],
         'summary' => [
             'plants' => ':count plante|:count plantes',
@@ -69,6 +71,8 @@ return [
         ],
         'todo' => 'À régler',
         'nothing_todo' => 'Rien à régler.',
+        'nothing_todo_partial' => "Rien à régler dans ce que le jeu a lu : la liste est partielle.",
+        'todo_partial' => 'Liste partielle : le jeu n\'a pas tout lu.',
         'todo_unknown' => 'Inconnu tant que le jeu n\'a pas envoyé l\'état de la zone.',
         'show' => 'voir',
         'contents' => 'Contenu',
@@ -83,6 +87,7 @@ return [
         'yes' => 'oui',
         'no' => 'non',
         'size' => 'Taille',
+        'state_unknown' => 'état inconnu',
     ],
     'entities' => [
         'filters' => [
