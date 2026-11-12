@@ -1,0 +1,7 @@
+{
+  "groups": [
+    { "group": "Démarrer", "pages": ["index", "product/getting-started"] },
+    { "group": "Utiliser le planner", "pages": ["product/elements", "product/buildings", "product/critters-and-ranch", "product/codex", "product/colony"] },
+    { "group": "Développement", "pages": ["development/architecture", "development/local-setup", "development/game-data-import", "development/uplink", "development/data-model", "development/testing-and-performance"] }
+  ]
+}

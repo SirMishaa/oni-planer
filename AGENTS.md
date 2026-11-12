@@ -87,7 +87,7 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Always use curly braces for control structures, even for single-line bodies.
 - Use PHP 8 constructor property promotion: `public function __construct(public GitHub $github) { }`. Do not leave empty zero-parameter `__construct()` methods unless the constructor is private.
 - Use explicit return type declarations and type hints for all method parameters: `function isAccessible(User $user, ?string $path = null): bool`
-- Use TitleCase for Enum keys: `FavoritePerson`, `BestLake`, `Monthly`.
+- Follow existing application Enum naming conventions.
 - Prefer PHPDoc blocks over inline comments. Only add inline comments for exceptionally complex logic.
 - Use array shape type definitions in PHPDoc blocks.
 
@@ -202,5 +202,53 @@ Use Wayfinder to generate TypeScript functions for Laravel routes. Import from `
 
 Vue components must have a single root element.
 - IMPORTANT: Activate `inertia-vue-development` when working with Inertia Vue client-side patterns.
+
+=== larecipe/larecipe/core rules ===
+
+## Documentation (LaRecipe)
+
+This app's docs live in `docs/site/` and are served by LaRecipe. Docs ship in the same push as the code they describe.
+
+Before you push a branch or open a pull request:
+
+1. Run `php artisan larecipe:affected --uncommitted --base=main` to list the docs pages your change affects.
+2. Update each affected page with the `larecipe-update-docs` skill. Keep unrelated text untouched.
+3. Run `php artisan larecipe:validate` and fix what it reports.
+4. Commit the docs with the code and push them together.
+
+Review mode is `required`: show the user the docs diff and wait for approval before committing it.
+
+Write docs for people first: open each page with the common case in a few short lines, then put options, edge cases and internals after it (in an `<Accordion>` or on a linked page). Order pages from easy to advanced. Agents still read everything in the Markdown twin.
+
+Search and read the docs with the `larecipe` MCP server. Never write configuration or environment values into docs.
+
+### Docs index: ONI Planner
+
+13 pages. One line per page: path, title, description. Read a page with the `read_page` tool of the `larecipe` MCP server, or open its file in `docs/site/`. Refresh this index with `php artisan larecipe:agents-md`.
+
+- `index`: Introduction. What ONI Planner is, where its data comes from and how these docs are organised.
+- `development/architecture`: Architecture. How game data and live colony data reach the planner, and which process does what.
+- `development/data-model`: Data model. The reference tables imported from the game and the colony tables filled by Uplink.
+- `development/game-data-import`: Game data import. Turn the OniExtract export into the reference tables, translation catalogs and WebP assets.
+- `development/local-setup`: Local setup. Install the app, import the game data and run the dev stack with Octane and Reverb.
+- `development/testing-and-performance`: Testing and performance. Run the test suites and measure Uplink message handling with the k6 benchmark and Excimer.
+- `development/uplink`: Uplink. How the Uplink mod talks to the planner over Reverb, what each listener stores and the rules they follow.
+- `product/buildings`: Buildings. Find a building by category or by name and read its construction, footprint, heat and production.
+- `product/codex`: Codex. Read the game's in-game database entries, with links to the matching building and element pages.
+- `product/colony`: My colony. Link the game to the planner with the Uplink mod, then follow your colony's food viability and see what the game sends.
+- `product/critters-and-ranch`: Critters and the ranch planner. Read each critter family and its morphs, then balance a ranch's food, outputs and eggs per cycle.
+- `product/elements`: Elements. Browse every element of the game and read its state, category, thermal properties and phase changes.
+- `product/getting-started`: Getting started. Find your way around the planner's sections and link it to your game.
+
+For docs work, use the LaRecipe skills: `larecipe-write-docs` to write new pages (and run onboarding), `larecipe-update-docs` to update the pages a change made stale, `larecipe-audit-docs` to review the whole set, and `larecipe-upgrade-v2` to finish a LaRecipe 2.x upgrade.
+
+- Every docs page has `title`, `description` (one sentence) and `sources:` frontmatter; `sources:` lists the code the page documents, so `php artisan larecipe:affected` can tell when it goes stale.
+- Write route, command, model and event facts with live references (`<Route name="...">`, `<Artisan command="...">`, `<Model name="...">`, `<Event name="...">`) instead of pasting values.
+- Use only the components in the skills' component catalog, and link pages with relative `.md` paths.
+- Never write configuration or environment values into docs. Name a config key in inline code; never print its value.
+- Run `php artisan larecipe:validate` after editing docs and fix what it reports.
+
+- Docs migrations are written by the LaRecipe MCP author tools (`write_page`, `move_page`, `update_navigation`). Never hand-write or hand-edit one, and never write SQL for docs.
+- The branch's docs migration is part of the change: commit it with the code and push them together.
 
 </laravel-boost-guidelines>

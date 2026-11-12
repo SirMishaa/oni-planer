@@ -14,7 +14,8 @@
     "mcp": true,
     "nightwatch_mcp": false,
     "packages": [
-        "spatie/laravel-translatable"
+        "spatie/laravel-translatable",
+        "larecipe/larecipe"
     ],
     "sail": false,
     "skills": [
@@ -24,7 +25,12 @@
         "octane-development",
         "wayfinder-development",
         "inertia-vue-development",
+        "echo-vue-development",
         "tailwindcss-development",
+        "larecipe-audit-docs",
+        "larecipe-update-docs",
+        "larecipe-upgrade-v2",
+        "larecipe-write-docs",
         "translatable-development"
     ]
 }

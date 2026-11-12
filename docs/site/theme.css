@@ -1,0 +1,110 @@
+/*
+ * ONI Planner touches on LaRecipe's default theme: the site's Barlow face,
+ * the ONI amber as accent and, in dark mode, the blue-slate
+ * ink neutrals of the colony pages instead of the default violet-tinted black.
+ */
+@import url('https://fonts.bunny.net/css?family=barlow:400,500,600,700&display=swap');
+
+:root {
+    /* Set here, not in larecipe.json: the token <style> comes before LaRecipe's CSS and loses to it. */
+    --lr-accent: oklch(55% 0.13 52);
+    --lr-accent-dark: oklch(75% 0.1 52);
+    --lr-paper: oklch(98.5% 0.004 85);
+    --lr-hairline: oklch(91% 0.008 85);
+    --lr-hairline-strong: oklch(85% 0.01 85);
+}
+
+:root[data-theme='dark'] {
+    --lr-paper: oklch(16% 0.022 222);
+    --lr-sidebar-bg: oklch(17.5% 0.024 222);
+    --lr-sidebar-hover: oklch(22% 0.028 222);
+    --lr-surface: oklch(20% 0.026 222);
+    --lr-surface-2: oklch(24% 0.03 222);
+    --lr-table-bg: oklch(20% 0.026 222);
+    --lr-hairline: oklch(26% 0.03 222);
+    --lr-hairline-strong: oklch(33% 0.03 222);
+    --lr-ink-solid: oklch(93% 0.014 90);
+    --lr-ink: oklch(93% 0.014 90 / 0.92);
+    --lr-ink-muted: oklch(77% 0.02 200);
+    --lr-ink-faint: oklch(66% 0.022 210);
+}
+
+/*
+ * Mermaid: LaRecipe hard-codes its diagram colours, so diagrams are re-skinned
+ * here with the theme variables (they follow light and dark). Nodes take a
+ * role with `class X game|site|store` in the diagram.
+ */
+.lr-mermaid-render {
+    --oni-game: oklch(from var(--lr-accent-current) l c h);
+    --oni-site: oklch(62% 0.13 222);
+    --oni-store: oklch(66% 0.12 150);
+    padding: 28px 20px;
+    background: var(--lr-surface);
+}
+
+.lr-mermaid-render svg {
+    font-family: var(--lr-font-sans) !important;
+}
+
+.lr-mermaid-render svg .label,
+.lr-mermaid-render svg .nodeLabel,
+.lr-mermaid-render svg .edgeLabel,
+.lr-mermaid-render svg .cluster-label {
+    font-family: var(--lr-font-sans) !important;
+    color: var(--lr-ink-solid) !important;
+}
+
+.lr-mermaid-render svg .node rect,
+.lr-mermaid-render svg .node path,
+.lr-mermaid-render svg .node polygon {
+    fill: var(--lr-paper) !important;
+    stroke: var(--lr-hairline-strong) !important;
+    stroke-width: 1.5px !important;
+}
+
+.lr-mermaid-render svg .node rect {
+    rx: 8px;
+    ry: 8px;
+}
+
+.lr-mermaid-render svg .node.game :is(rect, path, polygon) {
+    fill: oklch(from var(--oni-game) l c h / 0.14) !important;
+    stroke: var(--oni-game) !important;
+}
+
+.lr-mermaid-render svg .node.site :is(rect, path, polygon) {
+    fill: oklch(from var(--oni-site) l c h / 0.14) !important;
+    stroke: var(--oni-site) !important;
+}
+
+.lr-mermaid-render svg .node.store :is(rect, path, polygon) {
+    fill: oklch(from var(--oni-store) l c h / 0.14) !important;
+    stroke: var(--oni-store) !important;
+}
+
+.lr-mermaid-render svg .cluster rect {
+    fill: transparent !important;
+    stroke: var(--lr-hairline-strong) !important;
+    stroke-dasharray: 5 4;
+    rx: 12px;
+    ry: 12px;
+}
+
+.lr-mermaid-render svg .flowchart-link {
+    stroke: var(--lr-ink-faint) !important;
+    stroke-width: 1.5px !important;
+}
+
+.lr-mermaid-render svg marker path {
+    fill: var(--lr-ink-faint) !important;
+    stroke: var(--lr-ink-faint) !important;
+}
+
+.lr-mermaid-render svg .edgeLabel,
+.lr-mermaid-render svg .edgeLabel rect,
+.lr-mermaid-render svg .edgeLabel p {
+    background-color: var(--lr-surface) !important;
+    fill: var(--lr-surface) !important;
+    color: var(--lr-ink-muted) !important;
+    font-size: 14px;
+}

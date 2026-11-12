@@ -1,0 +1,23 @@
+{
+    "$schema": "https://larecipe.saleem.dev/schemas/3.x/larecipe.json",
+    "name": "ONI Planner",
+    "description": "Planifier et suivre une colonie d'Oxygen Not Included avec des données extraites du jeu lui-même.",
+    "locales": [
+        {
+            "code": "fr",
+            "label": "Français",
+            "default": true
+        }
+    ],
+    "theme": {
+        "fonts": {
+            "sans": "Barlow"
+        },
+        "mode": "system"
+    },
+    "assets": {
+        "css": [
+            "theme.css"
+        ]
+    }
+}
