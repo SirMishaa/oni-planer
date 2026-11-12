@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 #[Fillable([
     'colony_guid', 'zone_guid', 'name', 'world_id', 'version', 'cell_count', 'orphaned', 'archived_at',
-    'layout', 'slow_state', 'fast_state', 'layout_at', 'slow_state_at', 'fast_state_at',
+    'layout', 'slow_state', 'fast_state', 'layout_at', 'slow_state_at', 'fast_state_at', 'previous_slow_temperature',
 ])]
 final class Zone extends Model
 {
@@ -38,6 +38,7 @@ final class Zone extends Model
             'archived_at' => 'datetime',
             'layout' => 'array',
             'slow_state' => 'array',
+            'previous_slow_temperature' => 'array',
             'fast_state' => 'array',
             'layout_at' => 'datetime',
             'slow_state_at' => 'datetime',

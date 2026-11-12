@@ -31,7 +31,17 @@ final class StoreZoneState
             return;
         }
 
-        $updated->update(["{$kind}_state" => $message, "{$kind}_state_at" => now()]);
+        $attributes = ["{$kind}_state" => $message, "{$kind}_state_at" => now()];
+
+        if ($kind === 'slow' && $updated->slow_state_at !== null) {
+            $attributes['previous_slow_temperature'] = [
+                'box' => $updated->slow_state['box'] ?? null,
+                'temperature' => $updated->slow_state['temperature'] ?? null,
+                'at' => $updated->slow_state_at->toIso8601String(),
+            ];
+        }
+
+        $updated->update($attributes);
 
         if ($kind === 'fast' && ! Cache::lock("zone-updated:{$message['zoneId']}", self::FAST_BROADCAST_SECONDS)->get()) {
             return;

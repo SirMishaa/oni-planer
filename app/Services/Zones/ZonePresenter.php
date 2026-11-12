@@ -18,6 +18,8 @@ use App\Data\ZoneTileData;
 use App\Models\Element;
 use App\Models\Zone;
 use App\Services\GameText;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Closure;
 
 /**
@@ -65,6 +67,13 @@ final class ZonePresenter
 
     /** Game seconds in a cycle; a plant's maturity is counted in cycles. */
     private const float CYCLE_SECONDS = 600.0;
+
+    /**
+     * Keys of the game's temperature overlay bands, coldest first.
+     *
+     * @var list<string>
+     */
+    private const array TEMPERATURE_BANDS = ['EXTREMECOLD', 'VERYCOLD', 'COLD', 'TEMPERATE', 'HOT', 'VERYHOT', 'EXTREMEHOT', 'MAXHOT'];
 
     /** Connection sprite mask bits (OniExtract ExportConnectionSprites). */
     private const int LEFT = 1;
@@ -129,7 +138,7 @@ final class ZonePresenter
                 gridWidth: $gridWidth,
                 box: self::box($layout['box'] ?? null),
                 zoneCells: array_values(array_filter(array_map($position, (array) ($layout['cells'] ?? [])))),
-                terrain: $this->terrain($zone->slow_state),
+                terrain: $this->terrain($zone->slow_state, $zone->previous_slow_temperature, $zone->slow_state_at),
                 tiles: self::tiles(self::listOrNull($layout['tiles'] ?? null), $gridWidth),
                 buildings: $layoutBuildings === null ? null : array_map(
                     fn (array $building): ZoneBuildingData => $this->layoutBuilding($building, $gridWidth),
@@ -138,6 +147,10 @@ final class ZonePresenter
                 plants: $fastPlants === null ? null : array_map(
                     fn (array $plant): ZonePlantData => $this->plant($plant, $gridWidth),
                     array_values(array_filter($fastPlants, fn (array $plant): bool => is_numeric($plant['cell'] ?? null))),
+                ),
+                temperatureBands: array_map(
+                    fn (string $band): string => $this->text->translate('STRINGS.UI.OVERLAYS.TEMPERATURE.'.$band) ?? $band,
+                    self::TEMPERATURE_BANDS,
                 ),
             ) : null,
             entities: $entities,
@@ -384,8 +397,9 @@ final class ZonePresenter
      * arrived or none of its layers could be read.
      *
      * @param  array<mixed>|null  $slow
+     * @param  array<mixed>|null  $previous  the slow reading before the current one: box, temperature and ISO 8601 time
      */
-    private function terrain(?array $slow): ?ZoneTerrainData
+    private function terrain(?array $slow, ?array $previous, ?CarbonInterface $slowAt): ?ZoneTerrainData
     {
         $element = $slow['element'] ?? null;
         $mass = $slow['mass'] ?? null;
@@ -405,18 +419,50 @@ final class ZonePresenter
         /** @var Closure(array<mixed>): list<mixed> $fit one value per cell of the box, missing ones null */
         $fit = fn (array $values): array => array_pad(array_slice(array_values($values), 0, $cellCount), $cellCount, null);
 
+        $previousTemperature = null;
+        $previousSeconds = null;
+        $previousList = $previous['temperature'] ?? null;
+        if (is_array($previousList) && count($previousList) === $cellCount && self::box($previous['box'] ?? null)->toArray() === $box->toArray()) {
+            $previousTemperature = array_map(self::floatOrNull(...), array_values($previousList));
+            $previousAt = is_string($previous['at'] ?? null) ? Carbon::parse($previous['at']) : null;
+            $previousSeconds = $previousAt !== null && $slowAt !== null ? (float) $previousAt->diffInSeconds($slowAt, true) : null;
+        }
+
         return new ZoneTerrainData(
             box: $box,
-            palette: array_map(fn (?string $elementId): ZoneTerrainElementData => new ZoneTerrainElementData(
-                elementId: $elementId,
-                colour: $elementId === null ? null : $elements[$elementId]?->uiColorHex(),
-                name: $elementId === null ? null : $elements[$elementId]?->name,
-                state: $elementId === null ? null : $elements[$elementId]?->state,
-            ), $palette),
+            palette: array_map(function (?string $elementId) use ($elements): ZoneTerrainElementData {
+                $element = $elementId === null ? null : $elements[$elementId];
+
+                return new ZoneTerrainElementData(
+                    elementId: $elementId,
+                    colour: $element?->uiColorHex(),
+                    name: $element?->name,
+                    state: $element?->state,
+                    renderColour: $element?->renderColorHex(),
+                    substanceTexture: $element?->substance_texture,
+                    usesCaustics: (bool) $element?->uses_caustics,
+                    glows: (bool) $element?->glows,
+                    metallic: (bool) $element?->is_metallic,
+                    opaqueLiquid: (bool) $element?->is_opaque_liquid,
+                    scrollSpeed: $element?->liquid_scroll_speed,
+                    maxMass: $element?->max_mass,
+                    terrainTexture: $this->terrainTexture($element?->terrain_texture),
+                    lowTemp: $element?->thermalProperties?->low_temp,
+                    highTemp: $element?->thermalProperties?->high_temp,
+                );
+            }, $palette),
             element: is_array($element) ? array_map(fn (mixed $index): int => is_int($index) && array_key_exists($index, $palette) ? $index : -1, $fit($element)) : null,
             mass: is_array($mass) ? array_map(self::floatOrNull(...), $fit($mass)) : null,
             temperature: is_array($temperature) ? array_map(self::floatOrNull(...), $fit($temperature)) : null,
+            previousTemperature: $previousTemperature,
+            previousSeconds: $previousSeconds,
         );
+    }
+
+    /** Root-relative URL of a terrain texture, or null when the element has none. */
+    private function terrainTexture(?string $name): ?string
+    {
+        return $name === null || $name === '' ? null : "/assets/game/terrain/{$name}.webp";
     }
 
     /**
@@ -427,7 +473,11 @@ final class ZonePresenter
     {
         $elements = Element::query()
             ->whereIn('element_id', $elementIds)
-            ->get(['element_id', 'ui_color', 'name', 'state'])
+            ->with('thermalProperties:element_id,low_temp,high_temp')
+            ->get([
+                'element_id', 'ui_color', 'name', 'state', 'render_color', 'substance_texture', 'uses_caustics',
+                'glows', 'is_metallic', 'is_opaque_liquid', 'liquid_scroll_speed', 'max_mass', 'terrain_texture',
+            ])
             ->keyBy('element_id');
 
         return array_combine($elementIds, array_map(fn (string $elementId): ?Element => $elements->get($elementId), $elementIds));

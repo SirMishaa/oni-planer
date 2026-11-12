@@ -29,5 +29,7 @@ final class ZoneMapData extends Data
         public ?array $buildings,
         /** @var list<ZonePlantData>|null */
         public ?array $plants,
+        /** @var list<string> names of the eight temperature bands, coldest first, in the current locale */
+        public array $temperatureBands = [],
     ) {}
 }

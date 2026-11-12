@@ -25,5 +25,9 @@ final class ZoneTerrainData extends Data
         public ?array $mass,
         /** @var list<float|null>|null kelvin per cell, null when not finite */
         public ?array $temperature,
+        /** @var list<float|null>|null kelvin per cell of the previous slow reading; null when none, or its box or length differs */
+        public ?array $previousTemperature = null,
+        /** Seconds between the previous and the current reading. */
+        public ?float $previousSeconds = null,
     ) {}
 }

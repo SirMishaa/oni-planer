@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Data\ZoneEntityData;
 use App\Data\ZoneTerrainElementData;
 use App\Data\ZoneTileData;
+use App\Enums\SubstanceTexture;
 use App\Models\Element;
 use App\Models\PrefabName;
 use App\Models\Zone;
@@ -281,4 +282,75 @@ it('skips layout entries it cannot place', function (): void {
     expect(array_map(fn (ZoneTileData $tile): array => [$tile->x, $tile->y], $map->tiles ?? []))->toBe([[5, 5]])
         ->and($map?->buildings)->toBe([])
         ->and($map?->plants)->toBe([]);
+});
+
+it('gives each palette entry its render properties', function (): void {
+    Element::factory()->liquid()->create([
+        'element_id' => 'Water', 'render_color' => 0x55BED2FF, 'max_mass' => 1000.0,
+        'substance_texture' => SubstanceTexture::None,
+    ])->thermalProperties()->create([
+        'specific_heat_capacity' => 4.18, 'thermal_conductivity' => 0.6, 'low_temp' => 273.15, 'high_temp' => 373.15,
+        'default_temperature' => 293.15, 'light_absorption_factor' => 0, 'radiation_absorption_factor' => 0, 'radiation_per_1000_mass' => 0,
+    ]);
+    Element::factory()->solid()->create(['element_id' => 'SandStone', 'terrain_texture' => 'sand_stone', 'glows' => true]);
+    $zone = Zone::factory()->sodicaneFarm()->create();
+    $zone->update(['slow_state' => [...$zone->slow_state, 'palette' => ['Water', 'SandStone', 'Nope']]]);
+
+    [$water, $stone, $unknown] = app(ZonePresenter::class)->present($zone)->map?->terrain?->palette;
+
+    expect($water->renderColour)->toBe('#55bed2ff')
+        ->and($water->maxMass)->toBe(1000.0)
+        ->and($water->substanceTexture)->toBe(SubstanceTexture::None)
+        ->and($water->lowTemp)->toEqualWithDelta(273.15, 0.001)
+        ->and($water->highTemp)->toEqualWithDelta(373.15, 0.001)
+        ->and($water->terrainTexture)->toBeNull()
+        ->and($stone->terrainTexture)->toBe('/assets/game/terrain/sand_stone.webp')
+        ->and($stone->glows)->toBeTrue()
+        ->and($stone->lowTemp)->toBeNull()
+        ->and($unknown->renderColour)->toBeNull()
+        ->and($unknown->glows)->toBeFalse();
+});
+
+it('gives the previous temperatures and the seconds between readings', function (): void {
+    $zone = Zone::factory()->sodicaneFarm()->create();
+    $box = $zone->slow_state['box'];
+    $zone->update([
+        'slow_state_at' => now(),
+        'previous_slow_temperature' => ['box' => $box, 'temperature' => array_fill(0, 88, 290.0), 'at' => now()->subSeconds(30)->toIso8601String()],
+    ]);
+
+    $terrain = app(ZonePresenter::class)->present($zone->refresh())->map?->terrain;
+
+    expect($terrain?->previousSeconds)->toBe(30.0)
+        ->and($terrain?->previousTemperature)->toHaveCount(88)
+        ->and($terrain?->previousTemperature[0])->toBe(290.0);
+});
+
+it('drops the previous temperatures when the box changed', function (): void {
+    $zone = Zone::factory()->sodicaneFarm()->create();
+    $zone->update([
+        'previous_slow_temperature' => ['box' => [...$zone->slow_state['box'], 'width' => 21], 'temperature' => array_fill(0, 84, 290.0), 'at' => now()->subSeconds(30)->toIso8601String()],
+    ]);
+    $terrain = app(ZonePresenter::class)->present($zone->refresh())->map?->terrain;
+
+    expect($terrain?->previousTemperature)->toBeNull()
+        ->and($terrain?->previousSeconds)->toBeNull();
+
+    $zone->update(['previous_slow_temperature' => ['box' => $zone->slow_state['box'], 'temperature' => [1.0], 'at' => now()->toIso8601String()]]);
+    expect(app(ZonePresenter::class)->present($zone->refresh())->map?->terrain?->previousTemperature)->toBeNull();
+});
+
+it('names the eight temperature bands in the current locale', function (): void {
+    $dir = sys_get_temp_dir().'/oni-bands-'.uniqid();
+    File::ensureDirectoryExists($dir);
+    File::put($dir.'/fr.json', json_encode(['STRINGS.UI.OVERLAYS.TEMPERATURE.TEMPERATE' => 'Tempéré']));
+    app('translator')->addJsonPath($dir);
+    app()->setLocale('fr');
+
+    $bands = presentZone()->map?->temperatureBands;
+
+    expect($bands)->toHaveCount(8)
+        ->and($bands[3])->toBe('Tempéré');
+
+    File::deleteDirectory($dir);
 });
