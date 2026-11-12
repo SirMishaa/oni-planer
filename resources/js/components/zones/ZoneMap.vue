@@ -123,10 +123,20 @@ onMounted(() => {
     }
 
     if (scroller.value) {
-        availableWidth.value = scroller.value.clientWidth;
+        availableWidth.value = Math.round(scroller.value.clientWidth);
+        // Resizing the canvas can resize the scroller (scrollbar): apply the
+        // new width next frame, and only on a real change, so the observer
+        // never loops within one frame.
         resizeObserver = new ResizeObserver(([entry]) => {
-            availableWidth.value =
-                entry?.contentRect.width ?? availableWidth.value;
+            const width = Math.round(
+                entry?.contentRect.width ?? availableWidth.value,
+            );
+
+            if (width !== availableWidth.value) {
+                requestAnimationFrame(() => {
+                    availableWidth.value = width;
+                });
+            }
         });
         resizeObserver.observe(scroller.value);
     }

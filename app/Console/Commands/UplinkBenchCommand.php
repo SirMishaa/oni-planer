@@ -10,6 +10,7 @@ use Illuminate\Console\Command;
 use Illuminate\Process\InvokedProcess;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Sleep;
 
 /**
  * Measures how the local Reverb handles Uplink-sized messages: runs the k6
@@ -88,7 +89,7 @@ final class UplinkBenchCommand extends Command
             ->run(['k6', 'run', '--quiet', '--no-color', base_path(self::SCRIPT)]);
 
         if ($server instanceof InvokedProcess) {
-            usleep(1_500_000);
+            Sleep::for(1500)->milliseconds();
             $server->signal(SIGTERM);
             $server->wait();
         }
@@ -138,7 +139,7 @@ final class UplinkBenchCommand extends Command
                 return $server;
             }
 
-            usleep(200_000);
+            Sleep::for(200)->milliseconds();
         }
 
         $server->signal(SIGTERM);

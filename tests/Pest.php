@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
+use OpenTelemetry\Context\Context;
+use OpenTelemetry\Context\ContextStorage;
 use Tests\TestCase;
 
 pest()->extend(TestCase::class)
@@ -31,6 +33,12 @@ pest()->extend(TestCase::class)
 pest()->beforeEach(function (): void {
     $this->withoutVite();
 })->in('Feature', 'Unit');
+
+// The browser plugin serves requests from amphp fibers; OpenTelemetry's default
+// fiber-bound context storage refuses fibers it did not see start.
+pest()->beforeEach(function (): void {
+    Context::setStorage(new ContextStorage);
+})->in('Browser');
 
 expect()->extend('toBeOne', fn () => $this->toBe(1));
 
