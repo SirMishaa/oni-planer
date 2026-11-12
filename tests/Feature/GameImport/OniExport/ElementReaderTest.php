@@ -109,11 +109,13 @@ it('gives null ui colours when elements.json is missing', function (): void {
         copy(base_path('tests/Fixtures/OniExport/database/'.$file), $root.'/database/'.$file);
     }
 
-    $export = new OniExport($root);
-    $records = new ElementReader($export, ModCatalog::fromExport($export, $root.'/mods', []))->records();
+    try {
+        $export = new OniExport($root);
+        $records = new ElementReader($export, ModCatalog::fromExport($export, $root.'/mods', []))->records();
 
-    expect($records)->not->toBeEmpty()
-        ->and(array_unique(array_column($records, 'ui_color')))->toBe([null]);
-
-    File::deleteDirectory($root);
+        expect($records)->not->toBeEmpty()
+            ->and(array_unique(array_column($records, 'ui_color')))->toBe([null]);
+    } finally {
+        File::deleteDirectory($root);
+    }
 });

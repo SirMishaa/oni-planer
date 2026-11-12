@@ -26,6 +26,7 @@ namespace App\Services\GameImport\OniExport;
  *     low_temp_transition_target: string|null,
  *     high_temp_transition_target: string|null,
  *     dlc_id: string|null,
+ *     ui_color: int|null,
  *     specific_heat_capacity: float,
  *     thermal_conductivity: float,
  *     low_temp: float|null,
