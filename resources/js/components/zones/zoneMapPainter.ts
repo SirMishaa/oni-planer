@@ -3,17 +3,14 @@ import type {
     ZoneTerrainData,
     ZoneTileData,
 } from '@/types/App/Data/data.d';
+import { layerIndex, type Rgb, rgbCss, cellToLocal } from './zoneMapGeometry';
 import {
-    hexToRgb,
-    layerIndex,
-    mixSrgb,
-    type Rgb,
-    rgbCss,
-    temperatureColour,
-    temperatureRange,
-    terrainMix,
-    cellToLocal,
-} from './zoneMapGeometry';
+    absoluteColour,
+    type OverlayPalette,
+    parseRenderJson,
+    parseRgba,
+    type Rgba,
+} from './zoneTemperature';
 
 export type ZoneMapLayer = 'growth' | 'materials' | 'temperature' | 'problems';
 
@@ -40,9 +37,6 @@ type TileGeometry = {
 };
 
 const TILE_ASSETS = '/assets/game/connections';
-/** Share of the temperature colour over the ink. */
-const TEMPERATURE_MIX = 0.75;
-const TEMPERATURE_BUCKETS = 64;
 /** Tiles stay faint under the temperature layer so the colours read. */
 const TILE_ALPHA_ON_TEMPERATURE = 0.3;
 /** Problems layer: veil over the terrain so the pins stand out. */
@@ -139,30 +133,47 @@ function hatchPattern(
     return ctx.createPattern(tile, 'repeat') ?? rgbCss(inks.unknown);
 }
 
-/** Fill style of each palette entry, computed once per paint rather than per cell. */
+function rgbaCss([red, green, blue, alpha]: Rgba): string {
+    return `rgb(${red} ${green} ${blue} / ${alpha / 255})`;
+}
+
+/** Fill style of each palette entry (its game render colour), computed once per paint rather than per cell. */
 function paletteStyles(terrain: ZoneTerrainData, inks: ZoneMapInks): string[] {
     return terrain.palette.map((entry) => {
-        const colour = hexToRgb(entry.colour);
+        const colour = parseRgba(entry.renderColour);
 
-        return rgbCss(
-            colour === null
-                ? inks.neutral
-                : mixSrgb(colour, inks.base, terrainMix(entry.state)),
-        );
+        return colour === null ? rgbCss(inks.neutral) : rgbaCss(colour);
     });
 }
 
-function temperatureStyles(inks: ZoneMapInks): string[] {
-    return Array.from({ length: TEMPERATURE_BUCKETS }, (_, bucket) =>
-        rgbCss(
-            mixSrgb(
-                temperatureColour(bucket / (TEMPERATURE_BUCKETS - 1)),
-                inks.base,
-                TEMPERATURE_MIX,
-            ),
-        ),
-    );
+// region Overlay palette
+
+let overlayPalette: OverlayPalette | null = null;
+let overlayPaletteRequest: Promise<void> | null = null;
+
+/** Loads the temperature overlay palette once; `onReady` repaints with it. */
+export function loadOverlayPalette(onReady: () => void): void {
+    if (overlayPalette !== null) {
+        return;
+    }
+
+    overlayPaletteRequest ??= fetch('/assets/game/render.json')
+        .then((response) => (response.ok ? response.json() : null))
+        .then((json: unknown) => {
+            overlayPalette = parseRenderJson(json);
+        })
+        .catch(() => {
+            overlayPalette = null;
+        });
+
+    void overlayPaletteRequest.then(onReady);
 }
+
+export function getOverlayPalette(): OverlayPalette | null {
+    return overlayPalette;
+}
+
+// endregion
 
 /**
  * Paints the terrain (element colours, or temperatures on that layer),
@@ -211,15 +222,9 @@ export function paintZoneMap(
     const values =
         layer === 'temperature' ? terrain?.temperature : terrain?.element;
 
-    if (terrain && values) {
-        const range =
-            layer === 'temperature'
-                ? temperatureRange(terrain.temperature)
-                : null;
+    if (terrain && values && (layer !== 'temperature' || overlayPalette)) {
         const styles =
-            layer === 'temperature'
-                ? temperatureStyles(inks)
-                : paletteStyles(terrain, inks);
+            layer === 'temperature' ? [] : paletteStyles(terrain, inks);
         const cells = terrain.box.width * terrain.box.height;
 
         for (let index = 0; index < cells; index++) {
@@ -236,20 +241,18 @@ export function paintZoneMap(
                 continue;
             }
 
-            const style = range
-                ? styles[
-                      Math.round(
-                          ((value - range.min) / (range.max - range.min)) *
-                              (TEMPERATURE_BUCKETS - 1),
-                      )
-                  ]
-                : styles[value];
+            const style =
+                layer === 'temperature' && overlayPalette
+                    ? rgbaCss(absoluteColour(value, overlayPalette).colour)
+                    : styles[value];
 
             if (style === undefined) {
                 continue;
             }
 
             const { column, row } = cellToLocal(x, y, box);
+            ctx.fillStyle = rgbCss(inks.base);
+            fillCell(column, row);
             ctx.fillStyle = style;
             fillCell(column, row);
         }

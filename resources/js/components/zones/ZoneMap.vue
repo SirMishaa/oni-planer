@@ -15,19 +15,23 @@ import type { ZoneEntityData, ZoneMapData } from '@/types/App/Data/data.d';
 import {
     layerIndex,
     localToCell,
-    rgbCss,
-    temperatureColour,
-    temperatureRange,
     zoneOutlinePath,
     cellToLocal,
 } from './zoneMapGeometry';
 import {
+    getOverlayPalette,
+    loadOverlayPalette,
     loadTileGeometry,
     paintZoneMap,
     readInks,
     type ZoneMapInks,
     type ZoneMapLayer,
 } from './zoneMapPainter';
+import {
+    legendStops,
+    type OverlayPalette,
+    temperatureRange,
+} from './zoneTemperature';
 import { entityProblemMark } from './zoneVerdict';
 
 // region Props
@@ -142,6 +146,10 @@ onMounted(() => {
     }
 
     loadTileGeometry(schedulePaint);
+    loadOverlayPalette(() => {
+        overlayPalette.value = getOverlayPalette();
+        schedulePaint();
+    });
     void nextTick(schedulePaint);
 });
 
@@ -413,21 +421,24 @@ function entityLabel(entity: MapEntity): string {
 
 // region Legend
 
+const overlayPalette = shallowRef<OverlayPalette | null>(null);
+
 const temperatureLegend = computed(() => {
+    const palette = overlayPalette.value;
     const range = temperatureRange(props.map.terrain?.temperature ?? null);
 
-    if (!range) {
+    if (!palette || !range) {
         return null;
     }
 
-    const stops = [0, 0.25, 0.5, 0.75, 1]
-        .map((position) => rgbCss(temperatureColour(position)))
-        .join(', ');
+    const stops = legendStops('absolute', palette, range);
+    const css = ([r, g, b, a]: number[]): string =>
+        `rgb(${r} ${g} ${b} / ${(a ?? 255) / 255})`;
 
     return {
-        gradient: `linear-gradient(90deg, ${stops})`,
-        min: text.celsius(range.min),
-        max: text.celsius(range.max),
+        gradient: `linear-gradient(90deg, ${stops.map((stop) => css(stop.colour)).join(', ')})`,
+        min: stops[0]?.label ?? '',
+        max: stops[stops.length - 1]?.label ?? '',
     };
 });
 

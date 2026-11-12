@@ -3,26 +3,7 @@ import type { ZoneBoxData } from '@/types/App/Data/data.d';
 /** An sRGB colour, 0 to 255 per channel. */
 export type Rgb = [number, number, number];
 
-export type ElementState = 'solid' | 'liquid' | 'gas' | 'special' | null;
-
-/** Share of the element colour mixed into the map ink, by matter state. */
-export const TERRAIN_MIX: Record<'solid' | 'liquid' | 'gas', number> = {
-    solid: 0.45,
-    liquid: 0.35,
-    gas: 0.1,
-};
-
-/** Smallest span of the temperature scale, so a uniform room does not look striped. */
-export const MIN_TEMPERATURE_SPAN_K = 10;
-
 const KELVIN_OFFSET = 273.15;
-
-/** Cold blue, neutral grey, warm amber: never the only signal (legend and hover carry the value). */
-const TEMPERATURE_STOPS: [Rgb, Rgb, Rgb] = [
-    [59, 120, 201],
-    [154, 167, 160],
-    [224, 138, 50],
-];
 
 // region Colours
 
@@ -48,48 +29,6 @@ export function mixSrgb(colour: Rgb, base: Rgb, amount: number): Rgb {
 
 export function rgbCss([red, green, blue]: Rgb): string {
     return `rgb(${red} ${green} ${blue})`;
-}
-
-/** Share of the element colour for a state; special elements (vacuum) read like a gas. */
-export function terrainMix(state: ElementState): number {
-    return state === 'solid' || state === 'liquid'
-        ? TERRAIN_MIX[state]
-        : TERRAIN_MIX.gas;
-}
-
-/** Colour of a position on the temperature scale, 0 (coldest) to 1 (warmest). */
-export function temperatureColour(position: number): Rgb {
-    const [cold, mild, warm] = TEMPERATURE_STOPS;
-    const scaled = Math.min(1, Math.max(0, position)) * 2;
-
-    return scaled <= 1
-        ? mixSrgb(mild, cold, scaled)
-        : mixSrgb(warm, mild, scaled - 1);
-}
-
-/** Range of the known temperatures (K), widened around its middle to the minimum span; null when none is known. */
-export function temperatureRange(
-    values: readonly (number | null)[] | null,
-): { min: number; max: number } | null {
-    let min = Infinity;
-    let max = -Infinity;
-
-    for (const value of values ?? []) {
-        if (value !== null && Number.isFinite(value)) {
-            min = Math.min(min, value);
-            max = Math.max(max, value);
-        }
-    }
-
-    if (min === Infinity) {
-        return null;
-    }
-
-    const missing = MIN_TEMPERATURE_SPAN_K - (max - min);
-
-    return missing > 0
-        ? { min: min - missing / 2, max: max + missing / 2 }
-        : { min, max };
 }
 
 export function kelvinToCelsius(kelvin: number): number {

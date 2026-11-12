@@ -5,9 +5,6 @@ import {
     layerIndex,
     localToCell,
     mixSrgb,
-    temperatureColour,
-    temperatureRange,
-    terrainMix,
     zoneOutlinePath,
 } from './zoneMapGeometry';
 
@@ -59,34 +56,5 @@ describe('colours', () => {
 
     it('mixes in sRGB by the share of the first colour', () => {
         expect(mixSrgb([200, 100, 0], [0, 0, 100], 0.45)).toEqual([90, 45, 55]);
-    });
-
-    it('mixes solids, liquids and gases at 45, 35 and 10 percent', () => {
-        expect([
-            terrainMix('solid'),
-            terrainMix('liquid'),
-            terrainMix('gas'),
-            terrainMix('special'),
-            terrainMix(null),
-        ]).toEqual([0.45, 0.35, 0.1, 0.1, 0.1]);
-    });
-
-    it('runs the temperature scale from blue to amber', () => {
-        const [coldRed, , coldBlue] = temperatureColour(0);
-        const [hotRed, , hotBlue] = temperatureColour(1);
-
-        expect(coldBlue).toBeGreaterThan(coldRed);
-        expect(hotRed).toBeGreaterThan(hotBlue);
-        expect(temperatureColour(2)).toEqual(temperatureColour(1));
-    });
-
-    it('widens a uniform temperature range and ignores unknown cells', () => {
-        expect(temperatureRange([308.15, null, 308.15])).toEqual({
-            min: 303.15,
-            max: 313.15,
-        });
-        expect(temperatureRange([280, 320])).toEqual({ min: 280, max: 320 });
-        expect(temperatureRange([null])).toBeNull();
-        expect(temperatureRange(null)).toBeNull();
     });
 });
