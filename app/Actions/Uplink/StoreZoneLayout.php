@@ -17,11 +17,11 @@ final class StoreZoneLayout
 {
     /**
      * @param  array{colonyId: string, zoneId: string, version: int, gameSeconds: int|float, cells: list<int>}  $message
-     * @return bool false when the zone is unknown (the list arrives first), true once stored
+     * @return bool false when the zone is unknown (the list arrives first), true once stored or when stale (older version, kept as is)
      */
     public function handle(array $message): bool
     {
-        $stored = DB::transaction(function () use ($message): bool {
+        $stored = DB::transaction(function () use ($message): ?bool {
             $zone = Zone::query()
                 ->where('colony_guid', $message['colonyId'])
                 ->where('zone_guid', $message['zoneId'])
@@ -32,12 +32,25 @@ final class StoreZoneLayout
                 return false;
             }
 
-            $cells = array_map('intval', $message['cells']);
-            $latest = $zone->versions()->orderByDesc('version')->first();
+            $version = (int) $message['version'];
 
-            if ($latest === null || $latest->cells !== $cells) {
+            if ($version < $zone->version) {
+                return null;
+            }
+
+            $cells = array_map('intval', $message['cells']);
+            sort($cells);
+            $message['cells'] = $cells;
+
+            $existing = $zone->versions()->where('version', $version)->first();
+
+            if ($existing !== null) {
+                if ($existing->cells !== $cells) {
+                    $existing->update(['cells' => $cells, 'valid_from_game_seconds' => (float) $message['gameSeconds']]);
+                }
+            } elseif ($zone->versions()->orderByDesc('version')->first()?->cells !== $cells) {
                 $zone->versions()->create([
-                    'version' => (int) $message['version'],
+                    'version' => $version,
                     'cells' => $cells,
                     'valid_from_game_seconds' => (float) $message['gameSeconds'],
                 ]);
@@ -53,10 +66,10 @@ final class StoreZoneLayout
             return true;
         });
 
-        if ($stored) {
+        if ($stored === true) {
             ZoneUpdated::dispatch($message['zoneId'], $message['colonyId'], 'layout');
         }
 
-        return $stored;
+        return $stored !== false;
     }
 }

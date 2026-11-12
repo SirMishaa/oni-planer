@@ -230,3 +230,36 @@ it('broadcasts zone.updated on the uplink channel', function (): void {
             && $event->broadcastWith() === ['zoneGuid' => 'zone-a', 'colonyGuid' => 'colony-1', 'kind' => 'layout'];
     });
 });
+
+it('acks a layout with the same version and reordered cells without a new row', function (): void {
+    receiveUplinkData(uplinkData('client-zone.list', zoneListMessage([zoneEntry('zone-a')])));
+    receiveUplinkData(uplinkData('client-zone.layout', zoneLayoutMessage([10, 11, 12])));
+
+    $sent = receiveUplinkData(uplinkData('client-zone.layout', zoneLayoutMessage([12, 10, 11], 'msg-layout-2')));
+
+    expect($sent)->toBe([ackFrame('msg-layout-2')])
+        ->and(ZoneVersion::query()->count())->toBe(1)
+        ->and(ZoneVersion::query()->sole()->cells)->toBe([10, 11, 12]);
+});
+
+it('acks a layout with the same version and changed cells and updates that row', function (): void {
+    receiveUplinkData(uplinkData('client-zone.list', zoneListMessage([zoneEntry('zone-a')])));
+    receiveUplinkData(uplinkData('client-zone.layout', zoneLayoutMessage([10, 11, 12])));
+
+    $sent = receiveUplinkData(uplinkData('client-zone.layout', zoneLayoutMessage([10, 11, 13], 'msg-layout-2')));
+
+    expect($sent)->toBe([ackFrame('msg-layout-2')])
+        ->and(ZoneVersion::query()->sole()->cells)->toBe([10, 11, 13]);
+});
+
+it('acks a stale layout without storing it', function (): void {
+    receiveUplinkData(uplinkData('client-zone.list', zoneListMessage([zoneEntry('zone-a')])));
+    receiveUplinkData(uplinkData('client-zone.layout', zoneLayoutMessage([10, 11, 12, 13], 'msg-layout-2', 2)));
+
+    $sent = receiveUplinkData(uplinkData('client-zone.layout', zoneLayoutMessage([10, 11], 'msg-layout-1', 1)));
+
+    expect($sent)->toBe([ackFrame('msg-layout-1')])
+        ->and(ZoneVersion::query()->count())->toBe(1)
+        ->and(Zone::query()->sole()->version)->toBe(2)
+        ->and(Zone::query()->sole()->layout['cells'])->toBe([10, 11, 12, 13]);
+});
