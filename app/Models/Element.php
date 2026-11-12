@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\SubstanceTexture;
 use App\Models\Attributes\GameData;
 use App\Models\Concerns\HasCodexEntries;
 use Database\Factories\ElementFactory;
@@ -20,6 +21,8 @@ use Spatie\Translatable\HasTranslations;
     'element_id', 'state', 'molar_mass', 'toxicity', 'material_category',
     'tags', 'low_temp_transition_target', 'high_temp_transition_target',
     'name', 'description', 'dlc_id', 'is_disabled', 'mod_id', 'ui_color',
+    'render_color', 'substance_texture', 'uses_caustics', 'glows', 'is_metallic',
+    'is_opaque_liquid', 'liquid_scroll_speed', 'max_mass', 'terrain_texture',
 ])]
 final class Element extends Model
 {
@@ -101,12 +104,26 @@ final class Element extends Model
         return $this->ui_color === null ? null : sprintf('#%06x', $this->ui_color);
     }
 
+    /** The render colour as a lowercase `#rrggbbaa` string, or null when unknown. */
+    public function renderColorHex(): ?string
+    {
+        return $this->render_color === null ? null : sprintf('#%08x', $this->render_color);
+    }
+
     public function casts(): array
     {
         return [
             'tags' => 'array',
             'is_disabled' => 'boolean',
             'ui_color' => 'integer',
+            'render_color' => 'integer',
+            'substance_texture' => SubstanceTexture::class,
+            'uses_caustics' => 'boolean',
+            'glows' => 'boolean',
+            'is_metallic' => 'boolean',
+            'is_opaque_liquid' => 'boolean',
+            'liquid_scroll_speed' => 'float',
+            'max_mass' => 'float',
             'name' => 'array',
             'description' => 'array',
         ];

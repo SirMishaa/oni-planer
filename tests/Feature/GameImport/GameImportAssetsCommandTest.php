@@ -100,8 +100,8 @@ it('converts food icons and lists the foods without one', function (): void {
 });
 
 it('only fills missing element icons', function (): void {
-    Element::factory()->create(['element_id' => 'Water']);
-    Element::factory()->create(['element_id' => 'Algae']);
+    Element::factory()->liquid()->create(['element_id' => 'Water']);
+    Element::factory()->liquid()->create(['element_id' => 'Algae']);
     writePng($this->export.'/ui_image/Water.png');
     writePng($this->export.'/ui_image/Algae.png');
     File::ensureDirectoryExists($this->assets.'/elements');
@@ -111,4 +111,29 @@ it('only fills missing element icons', function (): void {
 
     expect(File::get($this->assets.'/elements/Water.webp'))->toBe('existing')
         ->and(getimagesize($this->assets.'/elements/Algae.webp')['mime'])->toBe('image/webp');
+});
+
+it('publishes terrain textures, the mask atlas and render.json', function (): void {
+    $fixtures = base_path('tests/Fixtures/OniExport');
+    File::copyDirectory($fixtures.'/render', $this->export.'/render');
+    File::ensureDirectoryExists($this->export.'/database');
+    File::copy($fixtures.'/database/planner_render.json', $this->export.'/database/planner_render.json');
+    Element::factory()->solid()->create(['element_id' => 'SandStone', 'terrain_texture' => 'sand_stone']);
+
+    $this->artisan('game:import-assets')->assertSuccessful();
+
+    expect(getimagesize($this->assets.'/terrain/sand_stone.webp')['mime'])->toBe('image/webp')
+        ->and(getimagesize($this->assets.'/terrain/mask_atlas.webp')['mime'])->toBe('image/webp')
+        ->and(File::get($this->assets.'/render.json'))->toBe(File::get($fixtures.'/database/planner_render.json'));
+});
+
+it('fails and lists solids without a terrain texture asset', function (): void {
+    Element::factory()->solid()->create(['element_id' => 'Granite', 'terrain_texture' => 'granite']);
+    Element::factory()->solid()->create(['element_id' => 'Obsidian', 'terrain_texture' => null]);
+    Element::factory()->gas()->create(['element_id' => 'Oxygen']);
+
+    $this->artisan('game:import-assets')
+        ->expectsOutputToContain('Granite (granite)')
+        ->expectsOutputToContain('Obsidian')
+        ->assertFailed();
 });

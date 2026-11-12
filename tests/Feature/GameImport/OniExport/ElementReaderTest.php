@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\SubstanceTexture;
 use App\Models\Element;
 use App\Models\ElementGasProperty;
 use App\Models\ElementSolidProperty;
@@ -115,6 +116,54 @@ it('gives null ui colours when elements.json is missing', function (): void {
 
         expect($records)->not->toBeEmpty()
             ->and(array_unique(array_column($records, 'ui_color')))->toBe([null]);
+    } finally {
+        File::deleteDirectory($root);
+    }
+});
+
+it('reads the element render properties from planner extras', function (): void {
+    importFixtureElements();
+
+    $water = Element::query()->where('element_id', 'Water')->firstOrFail();
+    $sandStone = Element::query()->where('element_id', 'SandStone')->firstOrFail();
+
+    expect($water->render_color)->toBe(0x55BED2FF)
+        ->and($water->substance_texture)->toBe(SubstanceTexture::None)
+        ->and($water->uses_caustics)->toBeTrue()
+        ->and($water->liquid_scroll_speed)->toBe(0.5)
+        ->and($water->max_mass)->toBe(1000.0)
+        ->and($water->renderColorHex())->toBe('#55bed2ff')
+        ->and($sandStone->terrain_texture)->toBe('sand_stone');
+});
+
+it('stores null render properties for an element without a render block', function (): void {
+    importFixtureElements();
+
+    $brick = Element::query()->where('element_id', 'Brick')->firstOrFail();
+
+    expect($brick->render_color)->toBeNull()
+        ->and($brick->substance_texture)->toBeNull()
+        ->and($brick->terrain_texture)->toBeNull()
+        ->and($brick->max_mass)->toBeNull()
+        ->and($brick->uses_caustics)->toBeFalse()
+        ->and($brick->renderColorHex())->toBeNull();
+});
+
+it('drops an unknown substance texture family and reports it', function (): void {
+    $root = sys_get_temp_dir().'/oni-export-'.uniqid();
+    mkdir($root.'/database', recursive: true);
+    $extras = json_decode((string) file_get_contents(base_path('tests/Fixtures/OniExport/database/planner_extras.json')), true);
+    $extras['elements']['Water']['render']['substanceTexture'] = 'Glitter';
+    file_put_contents($root.'/database/planner_extras.json', json_encode($extras));
+    copy(base_path('tests/Fixtures/OniExport/database/building.json'), $root.'/database/building.json');
+
+    try {
+        $export = new OniExport($root);
+        $reader = new ElementReader($export, ModCatalog::fromExport($export, $root.'/mods', []));
+        $water = collect($reader->records())->firstWhere('element_id', 'Water');
+
+        expect($water['substance_texture'])->toBeNull()
+            ->and($reader->unknownSubstanceTextures())->toBe(['Glitter']);
     } finally {
         File::deleteDirectory($root);
     }

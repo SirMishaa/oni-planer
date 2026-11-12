@@ -78,13 +78,59 @@ final class GameImportAssetsCommand extends Command
             $foods += (int) $this->convert($converter, $source, "{$assets}/foods/{$foodId}.webp");
         }
 
-        $this->info("Converted {$buildings} building renders, {$connections} connection sprites, {$elements} missing element icons, {$foods} food icons.");
+        [$terrains, $solidsWithoutTexture, $solidsWithoutAsset] = $this->importTerrain($converter, $export, $assets);
+
+        $this->info("Converted {$buildings} building renders, {$connections} connection sprites, {$elements} missing element icons, {$foods} food icons, {$terrains} terrain textures.");
 
         if ($foodsWithoutIcon !== []) {
             $this->warn('Missing food icons: '.implode(', ', $foodsWithoutIcon));
         }
 
-        return self::SUCCESS;
+        if ($solidsWithoutTexture !== []) {
+            $this->error('Solid elements without a terrain texture: '.implode(', ', $solidsWithoutTexture));
+        }
+
+        if ($solidsWithoutAsset !== []) {
+            $this->error('Solid elements whose terrain texture asset is missing: '.implode(', ', $solidsWithoutAsset));
+        }
+
+        return $solidsWithoutTexture === [] && $solidsWithoutAsset === [] ? self::SUCCESS : self::FAILURE;
+    }
+
+    /**
+     * Publishes the terrain textures, the biome mask atlas and `render.json`.
+     *
+     * @return array{int, list<string>, list<string>} converted textures, solids without a
+     *                                                terrain texture, solids whose texture has no webp
+     */
+    private function importTerrain(AssetConverter $converter, string $export, string $assets): array
+    {
+        $converted = 0;
+
+        foreach (File::glob("{$export}/render/terrain/*.png") ?: [] as $source) {
+            $converted += (int) $this->convert($converter, $source, "{$assets}/terrain/".pathinfo($source, PATHINFO_FILENAME).'.webp');
+        }
+
+        $converted += (int) $this->convert($converter, "{$export}/render/mask_atlas.png", "{$assets}/terrain/mask_atlas.webp");
+
+        $renderJson = "{$export}/database/planner_render.json";
+        if (File::isFile($renderJson) && $this->isStale($renderJson, "{$assets}/render.json")) {
+            File::ensureDirectoryExists($assets);
+            File::copy($renderJson, "{$assets}/render.json");
+        }
+
+        $withoutTexture = [];
+        $withoutAsset = [];
+
+        foreach (Element::query()->where('state', 'solid')->orderBy('element_id')->get(['element_id', 'terrain_texture']) as $solid) {
+            if ($solid->terrain_texture === null) {
+                $withoutTexture[] = $solid->element_id;
+            } elseif (! File::isFile("{$assets}/terrain/{$solid->terrain_texture}.webp")) {
+                $withoutAsset[] = $solid->element_id.' ('.$solid->terrain_texture.')';
+            }
+        }
+
+        return [$converted, $withoutTexture, $withoutAsset];
     }
 
     private function convert(AssetConverter $converter, string $source, string $destination): bool

@@ -18,7 +18,7 @@ final class TypeScriptTransformerServiceProvider extends BaseTypeScriptTransform
             ->outputDirectory(resource_path('js'))
             ->extension(new LaravelDataTypeScriptTransformerExtension())
             ->transformer(EnumTransformer::class)
-            ->transformDirectories(app_path('Data'))
+            ->transformDirectories(app_path('Data'), app_path('Enums'))
             ->writer(new ModuleWriter('types', 'data.d.ts'));
     }
 }

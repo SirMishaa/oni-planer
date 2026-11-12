@@ -222,7 +222,11 @@ final class GameImportCommand extends Command
         $catalog->persist();
 
         $this->info('Importing elements...');
-        new ElementImporter($resolver)->importRecords(new ElementReader($export, $catalog)->records());
+        $elementReader = new ElementReader($export, $catalog);
+        new ElementImporter($resolver)->importRecords($elementReader->records());
+        if ($elementReader->unknownSubstanceTextures() !== []) {
+            $this->warn('Unknown substance texture families (stored as null): '.implode(', ', $elementReader->unknownSubstanceTextures()));
+        }
 
         $this->info('Importing buildings...');
         $buildingReader = new BuildingReader($export, $catalog);

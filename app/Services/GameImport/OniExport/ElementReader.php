@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\GameImport\OniExport;
 
+use App\Enums\SubstanceTexture;
+
 /**
  * Turns the `elements` map of `planner_extras.json` into element records for
  * {@see \App\Services\GameImport\ElementImporter::importRecords()}.
@@ -27,6 +29,15 @@ namespace App\Services\GameImport\OniExport;
  *     high_temp_transition_target: string|null,
  *     dlc_id: string|null,
  *     ui_color: int|null,
+ *     render_color: int|null,
+ *     substance_texture: SubstanceTexture|null,
+ *     uses_caustics: bool,
+ *     glows: bool,
+ *     is_metallic: bool,
+ *     is_opaque_liquid: bool,
+ *     liquid_scroll_speed: float|null,
+ *     max_mass: float|null,
+ *     terrain_texture: string|null,
  *     specific_heat_capacity: float,
  *     thermal_conductivity: float,
  *     low_temp: float|null,
@@ -47,14 +58,29 @@ namespace App\Services\GameImport\OniExport;
  *     is_refined_metal: bool,
  * }
  */
-final readonly class ElementReader
+final class ElementReader
 {
-    public function __construct(private OniExport $export, private ModCatalog $catalog) {}
+    /** @var list<string> */
+    private array $unknownSubstanceTextures = [];
+
+    public function __construct(private readonly OniExport $export, private readonly ModCatalog $catalog) {}
+
+    /**
+     * The substance texture families met by {@see self::records()} that the
+     * app does not know; their records store a null texture.
+     *
+     * @return list<string>
+     */
+    public function unknownSubstanceTextures(): array
+    {
+        return $this->unknownSubstanceTextures;
+    }
 
     /** @return list<ElementRecord> */
     public function records(): array
     {
         $records = [];
+        $this->unknownSubstanceTextures = [];
         $uiColors = $this->uiColors();
 
         foreach ($this->export->json('planner_extras.json')['elements'] ?? [] as $elementId => $element) {
@@ -65,6 +91,7 @@ final readonly class ElementReader
             }
 
             $tags = array_map(strval(...), $element['tags'] ?? []);
+            $render = is_array($element['render'] ?? null) ? $element['render'] : null;
 
             $records[] = [
                 'element_id' => $elementId,
@@ -79,6 +106,15 @@ final readonly class ElementReader
                 'high_temp_transition_target' => $element['highTempTransitionTarget'] ?? null,
                 'dlc_id' => ($element['dlcId'] ?? '') ?: null,
                 'ui_color' => $uiColors[$elementId] ?? null,
+                'render_color' => $this->renderColor($render),
+                'substance_texture' => $this->substanceTexture($render),
+                'uses_caustics' => (bool) ($render['usesCaustics'] ?? false),
+                'glows' => (bool) ($render['glows'] ?? false),
+                'is_metallic' => (bool) ($render['metallic'] ?? false),
+                'is_opaque_liquid' => (bool) ($render['opaqueLiquid'] ?? false),
+                'liquid_scroll_speed' => isset($render['scrollSpeed']) ? (float) $render['scrollSpeed'] : null,
+                'max_mass' => isset($render['maxMass']) ? (float) $render['maxMass'] : null,
+                'terrain_texture' => is_string($render['terrainTexture'] ?? null) ? $render['terrainTexture'] : null,
                 'specific_heat_capacity' => (float) $element['specificHeatCapacity'],
                 'thermal_conductivity' => (float) $element['thermalConductivity'],
                 'low_temp' => $this->transitionTemperature($element, 'lowTemp', 'lowTempTransitionTarget'),
@@ -101,6 +137,40 @@ final readonly class ElementReader
         }
 
         return $records;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $render
+     */
+    private function renderColor(?array $render): ?int
+    {
+        $color = $render['color'] ?? null;
+
+        if (! is_string($color) || preg_match('/^#[0-9a-f]{8}$/i', $color) !== 1) {
+            return null;
+        }
+
+        return (int) hexdec(mb_substr($color, 1));
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $render
+     */
+    private function substanceTexture(?array $render): ?SubstanceTexture
+    {
+        $name = $render['substanceTexture'] ?? null;
+
+        if (! is_string($name)) {
+            return null;
+        }
+
+        $texture = SubstanceTexture::tryFrom($name);
+
+        if ($texture === null && ! in_array($name, $this->unknownSubstanceTextures, true)) {
+            $this->unknownSubstanceTextures[] = $name;
+        }
+
+        return $texture;
     }
 
     /**

@@ -1,0 +1,32 @@
+{
+  "temperatureThresholds": [
+    {
+      "colorName": "cold",
+      "value": 273.15,
+      "color": "#2f6fdfff"
+    }
+  ],
+  "heatFlowThresholds": [
+    {
+      "colorName": "hot",
+      "value": 1.0,
+      "color": "#df3f2fff"
+    }
+  ],
+  "maskAtlas": {
+    "width": 8,
+    "height": 4,
+    "fallbackBiome": "Default",
+    "items": [
+      {
+        "name": "Default",
+        "uvBox": [
+          0,
+          0,
+          0.5,
+          0.5
+        ]
+      }
+    ]
+  }
+}
