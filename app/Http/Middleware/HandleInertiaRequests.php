@@ -33,7 +33,7 @@ final class HandleInertiaRequests extends Middleware
      *
      * @see https://inertiajs.com/shared-data
      *
-     * The colony catalog is resolved per request (closures), in the current
+     * The colony and zones catalogs are resolved per request (closures), in the current
      * locale, for `useT()` on the pages.
      *
      * @return array<string, mixed>
@@ -43,7 +43,7 @@ final class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'locale' => fn (): string => app()->getLocale(),
-            'translations' => fn (): array => ['colony' => trans('colony')],
+            'translations' => fn (): array => ['colony' => trans('colony'), 'zones' => trans('zones')],
         ];
     }
 }

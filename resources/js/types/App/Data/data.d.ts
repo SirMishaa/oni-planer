@@ -181,3 +181,104 @@ export type UplinkMessageData = {
     sectionErrors: string[];
     receivedAt: string;
 };
+export type ZoneBoxData = {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+};
+export type ZoneBuildingData = {
+    instanceId: string | null;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    orientation: string | null;
+    prefabId: string;
+    name: string;
+    sprite: string | null;
+};
+export type ZoneCountsData = {
+    plants: number;
+    buildings: number;
+    problems: number;
+};
+export type ZoneData = {
+    id: number;
+    name: string;
+    worldId: number;
+    version: number;
+    cellCount: number;
+    orphaned: boolean;
+    layoutAt: string | null;
+    slowStateAt: string | null;
+    fastStateAt: string | null;
+};
+export type ZoneEntityData = {
+    kind: 'plant' | 'building';
+    instanceId: string | null;
+    prefabId: string;
+    name: string;
+    sprite: string | null;
+    x: number | null;
+    y: number | null;
+    state: 'growing' | 'grown' | 'wilting' | 'operational' | 'not_operational';
+    problems: string[];
+    growth: number | null;
+    secondsUntilHarvest: number | null;
+    autoHarvest: boolean | null;
+};
+export type ZoneListItemData = {
+    id: number;
+    name: string;
+    worldId: number;
+    cellCount: number;
+    orphaned: boolean;
+    problemCount: number | null;
+    updatedAt: string | null;
+};
+export type ZoneMapData = {
+    gridWidth: number;
+    box: ZoneBoxData;
+    zoneCells: Array<[number, number]>;
+    terrain: ZoneTerrainCellData[] | null;
+    tiles: ZoneTileData[] | null;
+    buildings: ZoneBuildingData[] | null;
+    plants: ZonePlantData[] | null;
+};
+export type ZonePlantData = {
+    x: number;
+    y: number;
+    instanceId: string | null;
+    prefabId: string;
+    name: string;
+    sprite: string | null;
+    growth: number | null;
+    secondsUntilHarvest: number | null;
+    wilting: boolean;
+    grown: boolean;
+};
+export type ZoneShowData = {
+    zone: ZoneData;
+    map: ZoneMapData | null;
+    entities: ZoneEntityData[];
+    problems: ZoneEntityData[];
+    counts: ZoneCountsData;
+    plantsKnown: boolean;
+    buildingStatesKnown: boolean;
+    echo: { channel: 'uplink'; event: '.zone.updated' };
+};
+export type ZoneTerrainCellData = {
+    x: number;
+    y: number;
+    elementId: string | null;
+    colour: string | null;
+    mass: number | null;
+    temperature: number | null;
+};
+export type ZoneTileData = {
+    x: number;
+    y: number;
+    prefabId: string;
+    connections: number;
+};
