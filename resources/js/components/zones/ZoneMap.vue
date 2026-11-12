@@ -19,8 +19,6 @@ import {
     cellToLocal,
 } from './zoneMapGeometry';
 import {
-    getOverlayPalette,
-    loadOverlayPalette,
     loadTileGeometry,
     paintZoneMap,
     readInks,
@@ -28,8 +26,14 @@ import {
     type ZoneMapLayer,
 } from './zoneMapPainter';
 import {
+    getOverlayPalette,
+    getRenderAssets,
+    loadRenderAssets,
+} from './zoneRenderAssets';
+import {
     legendStops,
     type OverlayPalette,
+    type TemperatureMode,
     temperatureRange,
 } from './zoneTemperature';
 import { entityProblemMark } from './zoneVerdict';
@@ -83,6 +87,12 @@ const root = ref<HTMLElement | null>(null);
 const canvas = ref<HTMLCanvasElement | null>(null);
 const inks = shallowRef<ZoneMapInks | null>(null);
 const paintMs = ref<number | null>(null);
+/** Controls arrive with the layer bar work; until then the defaults. */
+const temperatureMode = ref<TemperatureMode>('absolute');
+const showGrid = ref<boolean>(false);
+const fluidsAnimated = ref<boolean>(false);
+/** Game temperature overlay colours, null until `render.json` loads (or when it is missing). */
+const overlayPalette = shallowRef<OverlayPalette | null>(null);
 let frame = 0;
 
 function paint(): void {
@@ -101,6 +111,11 @@ function paint(): void {
         layer: props.layer,
         inks: inks.value,
         onSpriteLoad: schedulePaint,
+        temperatureMode: temperatureMode.value,
+        palette: overlayPalette.value,
+        assets: getRenderAssets(schedulePaint),
+        fluidsAnimated: fluidsAnimated.value,
+        showGrid: showGrid.value,
     });
 }
 
@@ -117,6 +132,9 @@ watch(
         props.map.tiles,
         props.layer,
         cellPx.value,
+        temperatureMode.value,
+        showGrid.value,
+        fluidsAnimated.value,
     ],
     schedulePaint,
 );
@@ -146,7 +164,7 @@ onMounted(() => {
     }
 
     loadTileGeometry(schedulePaint);
-    loadOverlayPalette(() => {
+    loadRenderAssets(() => {
         overlayPalette.value = getOverlayPalette();
         schedulePaint();
     });
@@ -420,8 +438,6 @@ function entityLabel(entity: MapEntity): string {
 // endregion
 
 // region Legend
-
-const overlayPalette = shallowRef<OverlayPalette | null>(null);
 
 const temperatureLegend = computed(() => {
     const palette = overlayPalette.value;

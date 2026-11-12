@@ -23,11 +23,11 @@ export function liquidFill(
     mass: number | null,
     maxMass: number | null,
 ): number {
-    if (mass === null) {
+    if (mass === null || !Number.isFinite(mass)) {
         return 0;
     }
 
-    if (maxMass === null || maxMass <= 0) {
+    if (maxMass === null || !Number.isFinite(maxMass) || maxMass <= 0) {
         return 1;
     }
 
@@ -35,7 +35,9 @@ export function liquidFill(
 }
 
 export function gasStrength(mass: number | null): number {
-    return mass === null ? 0 : clamp01(mass / GAS_FULL_TINT_KG);
+    return mass === null || !Number.isFinite(mass)
+        ? 0
+        : clamp01(mass / GAS_FULL_TINT_KG);
 }
 
 // endregion

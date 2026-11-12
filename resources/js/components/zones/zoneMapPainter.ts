@@ -3,26 +3,47 @@ import type {
     ZoneTerrainData,
     ZoneTileData,
 } from '@/types/App/Data/data.d';
-import { layerIndex, type Rgb, rgbCss, cellToLocal } from './zoneMapGeometry';
+import { patternFor } from './substanceTexturePatterns';
+import { fluidCells } from './zoneFluids';
+import {
+    cellToLocal,
+    layerIndex,
+    localToCell,
+    type Rgb,
+    rgbCss,
+} from './zoneMapGeometry';
+import type { RenderAssets } from './zoneRenderAssets';
 import {
     absoluteColour,
+    adaptiveColour,
+    heatFlowColour,
     type OverlayPalette,
-    parseRenderJson,
     parseRgba,
     type Rgba,
+    stateChangeColour,
+    type TemperatureMode,
+    temperatureRange,
 } from './zoneTemperature';
+import { variation } from './zoneTerrainEdges';
+import {
+    forEachKnownCell,
+    paintFallbackCells,
+    paintSolidTerrain,
+    stripePattern,
+    type TerrainPaint,
+} from './zoneTerrainPainter';
 
 export type ZoneMapLayer = 'growth' | 'materials' | 'temperature' | 'problems';
 
 /** Map inks read from the page's colour tokens. */
 export type ZoneMapInks = {
-    /** `--ink-0`: what element colours are mixed into. */
+    /** `--ink-0`: the problems veil. */
     base: Rgb;
     /** `--ink-1`: background of unknown cells. */
     unknown: Rgb;
-    /** `--line`: hatching of unknown cells. */
+    /** `--line`: hatching of unknown cells, fallback stripes and the grid. */
     hatch: Rgb;
-    /** `--ink-2`: a known element without a colour. */
+    /** `--ink-2`: a known element without render data. */
     neutral: Rgb;
     /** `--ink-3`: a tile without a sprite. */
     tile: Rgb;
@@ -41,6 +62,9 @@ const TILE_ASSETS = '/assets/game/connections';
 const TILE_ALPHA_ON_TEMPERATURE = 0.3;
 /** Problems layer: veil over the terrain so the pins stand out. */
 const PROBLEMS_VEIL_ALPHA = 0.55;
+/** Suspended flecks of a static liquid, per unit of its pattern's `flecks`. */
+const FLECKS_PER_CELL = 4;
+const FLECK_STYLE = 'rgb(255 255 255 / 0.22)';
 
 // region Tile sprites
 
@@ -133,53 +157,233 @@ function hatchPattern(
     return ctx.createPattern(tile, 'repeat') ?? rgbCss(inks.unknown);
 }
 
-function rgbaCss([red, green, blue, alpha]: Rgba): string {
+export function rgbaCss([red, green, blue, alpha]: Rgba): string {
     return `rgb(${red} ${green} ${blue} / ${alpha / 255})`;
 }
 
-/** Fill style of each palette entry (its game render colour), computed once per paint rather than per cell. */
-function paletteStyles(terrain: ZoneTerrainData, inks: ZoneMapInks): string[] {
-    return terrain.palette.map((entry) => {
-        const colour = parseRgba(entry.renderColour);
+/** Overlay colour of one cell in the mode; null paints nothing (unknown input, or heat flow before a second reading). */
+function temperatureColour(
+    mode: TemperatureMode,
+    palette: OverlayPalette,
+    terrain: ZoneTerrainData,
+    index: number,
+    kelvin: number,
+    range: { min: number; max: number } | null,
+): Rgba | null {
+    switch (mode) {
+        case 'absolute':
+            return absoluteColour(kelvin, palette).colour;
+        case 'adaptive':
+            return range ? adaptiveColour(kelvin, range, palette).colour : null;
+        case 'heatFlow': {
+            const previous = terrain.previousTemperature?.[index] ?? null;
+            const seconds = terrain.previousSeconds ?? 0;
 
-        return colour === null ? rgbCss(inks.neutral) : rgbaCss(colour);
-    });
+            return previous === null || !(seconds > 0)
+                ? null
+                : heatFlowColour((kelvin - previous) / seconds, palette);
+        }
+        case 'stateChange': {
+            const entry = terrain.palette[terrain.element?.[index] ?? -1];
+            const state = entry?.state;
+
+            return entry &&
+                (state === 'solid' || state === 'liquid' || state === 'gas')
+                ? stateChangeColour(
+                      kelvin,
+                      state,
+                      entry.lowTemp,
+                      entry.highTemp,
+                  )
+                : null;
+        }
+    }
 }
 
-// region Overlay palette
+/** Temperature layer: each known cell in the mode's colour, no textures. */
+function paintTemperatures(
+    paint: TerrainPaint,
+    terrain: ZoneTerrainData,
+    mode: TemperatureMode,
+    palette: OverlayPalette,
+): void {
+    const { ctx, box, px } = paint;
+    const values = terrain.temperature;
 
-let overlayPalette: OverlayPalette | null = null;
-let overlayPaletteRequest: Promise<void> | null = null;
-
-/** Loads the temperature overlay palette once; `onReady` repaints with it. */
-export function loadOverlayPalette(onReady: () => void): void {
-    if (overlayPalette !== null) {
+    if (!values) {
         return;
     }
 
-    overlayPaletteRequest ??= fetch('/assets/game/render.json')
-        .then((response) => (response.ok ? response.json() : null))
-        .then((json: unknown) => {
-            overlayPalette = parseRenderJson(json);
-        })
-        .catch(() => {
-            overlayPalette = null;
-        });
+    const range = mode === 'adaptive' ? temperatureRange(values) : null;
+    const source = terrain.box;
 
-    void overlayPaletteRequest.then(onReady);
+    for (let index = 0; index < source.width * source.height; index++) {
+        const kelvin = values[index];
+
+        if (
+            kelvin === null ||
+            kelvin === undefined ||
+            !Number.isFinite(kelvin)
+        ) {
+            continue;
+        }
+
+        const x = source.x + (index % source.width);
+        const y = source.y + Math.floor(index / source.width);
+
+        if (layerIndex(x, y, box) === null) {
+            continue;
+        }
+
+        const colour = temperatureColour(
+            mode,
+            palette,
+            terrain,
+            index,
+            kelvin,
+            range,
+        );
+
+        if (colour === null) {
+            continue;
+        }
+
+        const { column, row } = cellToLocal(x, y, box);
+        const left = px(column);
+        const top = px(row);
+        ctx.clearRect(left, top, px(column + 1) - left, px(row + 1) - top);
+        ctx.fillStyle = rgbaCss(colour);
+        ctx.fillRect(left, top, px(column + 1) - left, px(row + 1) - top);
+    }
 }
-
-export function getOverlayPalette(): OverlayPalette | null {
-    return overlayPalette;
-}
-
-// endregion
 
 /**
- * Paints the terrain (element colours, or temperatures on that layer),
- * then the tiles, on a canvas the size of the map box. Unknown cells (no
- * slow state, an unread layer, or outside the slow state's box) stay
- * hatched, never blank. Returns the paint time in milliseconds.
+ * Liquids and gases without the animated layer: render colour with its
+ * alpha (opaque liquids fully opaque), liquids filled from the bottom of the
+ * cell, gases tinted by their strength, plus the family's flecks.
+ */
+function paintStaticFluids(
+    paint: TerrainPaint,
+    terrain: ZoneTerrainData,
+): void {
+    const { ctx, box, px } = paint;
+
+    for (const cell of fluidCells(terrain, box)) {
+        const entry = terrain.palette[cell.palette];
+        const colour = parseRgba(entry?.renderColour);
+
+        if (!entry || colour === null || cell.amount <= 0) {
+            continue;
+        }
+
+        const left = px(cell.column);
+        const top = px(cell.row);
+        const width = px(cell.column + 1) - left;
+        const height = px(cell.row + 1) - top;
+
+        if (cell.kind === 'gas') {
+            ctx.fillStyle = rgbaCss([
+                colour[0],
+                colour[1],
+                colour[2],
+                Math.round(colour[3] * cell.amount),
+            ]);
+            ctx.fillRect(left, top, width, height);
+            continue;
+        }
+
+        const filled = Math.max(1, Math.round(height * cell.amount));
+        const alpha = entry.opaqueLiquid ? 255 : colour[3];
+        ctx.fillStyle = rgbaCss([colour[0], colour[1], colour[2], alpha]);
+        ctx.fillRect(left, top + height - filled, width, filled);
+
+        const flecks = Math.round(
+            patternFor(entry.substanceTexture).flecks * FLECKS_PER_CELL,
+        );
+
+        if (flecks > 0) {
+            const { x, y } = localToCell(cell.column, cell.row, box);
+            const size = Math.max(1, Math.round(paint.dpr * 1.5));
+            ctx.fillStyle = FLECK_STYLE;
+
+            for (let fleck = 0; fleck < flecks; fleck++) {
+                const fx = variation(x * 31 + fleck, y, 1000) / 1000;
+                const fy = variation(x, y * 17 + fleck, 1000) / 1000;
+                ctx.fillRect(
+                    left + Math.floor(fx * (width - size)),
+                    top + height - filled + Math.floor(fy * (filled - size)),
+                    size,
+                    size,
+                );
+            }
+        }
+    }
+}
+
+function paintTiles(
+    paint: TerrainPaint,
+    tiles: ZoneTileData[],
+    inks: ZoneMapInks,
+    onSpriteLoad: () => void,
+): void {
+    const { ctx, box, px, cellPx, dpr } = paint;
+
+    for (const tile of tiles) {
+        if (layerIndex(tile.x, tile.y, box) === null) {
+            continue;
+        }
+
+        const { column, row } = cellToLocal(tile.x, tile.y, box);
+        const sprite = tileSprite(tile, onSpriteLoad);
+        const left = px(column);
+        const top = px(row);
+        const width = px(column + 1) - left;
+
+        if (sprite) {
+            const scale = (cellPx * dpr) / sprite.geometry.cell.w;
+            ctx.drawImage(
+                sprite.image,
+                left - sprite.geometry.cell.x * scale,
+                top - sprite.geometry.cell.y * scale,
+                sprite.geometry.canvas.w * scale,
+                sprite.geometry.canvas.h * scale,
+            );
+            continue;
+        }
+
+        ctx.fillStyle = rgbCss(inks.tile);
+        ctx.fillRect(left, top, width, px(row + 1) - top);
+
+        if ((tile.connections & 4) === 0) {
+            ctx.fillStyle = rgbCss(inks.tileEdge);
+            ctx.fillRect(left, top, width, Math.max(1, Math.round(dpr * 2)));
+        }
+    }
+}
+
+/** 1-device-pixel lines at every cell edge. */
+function paintGrid(paint: TerrainPaint, inks: ZoneMapInks): void {
+    const { ctx, box, px } = paint;
+    const { width, height } = ctx.canvas;
+    ctx.fillStyle = rgbCss(inks.hatch);
+
+    for (let column = 0; column <= box.width; column++) {
+        ctx.fillRect(Math.min(px(column), width - 1), 0, 1, height);
+    }
+
+    for (let row = 0; row <= box.height; row++) {
+        ctx.fillRect(0, Math.min(px(row), height - 1), width, 1);
+    }
+}
+
+/**
+ * Paints the map box. Growth, materials and problems: textured solids with
+ * the game's edge masks, fallbacks for elements without render data, static
+ * fluids unless the animated layer draws them, then tiles. Temperature: the
+ * mode's overlay colour per cell, tiles faint. Unknown cells stay hatched;
+ * known cells that are not solid show what is behind them (solid edges and
+ * the map backdrop), never a page ink mixed into their colour. Returns the
+ * paint time in milliseconds.
  */
 export function paintZoneMap(
     canvas: HTMLCanvasElement,
@@ -192,6 +396,11 @@ export function paintZoneMap(
         layer: ZoneMapLayer;
         inks: ZoneMapInks;
         onSpriteLoad: () => void;
+        temperatureMode: TemperatureMode;
+        palette: OverlayPalette | null;
+        assets: RenderAssets;
+        fluidsAnimated: boolean;
+        showGrid: boolean;
     },
 ): number {
     const started = performance.now();
@@ -205,12 +414,14 @@ export function paintZoneMap(
     canvas.width = Math.round(box.width * cellPx * dpr);
     canvas.height = Math.round(box.height * cellPx * dpr);
 
-    /** Device-pixel edges of a column or row, rounded so cells never leave seams. */
-    const edge = (local: number): number => Math.round(local * cellPx * dpr);
-    const fillCell = (column: number, row: number): void => {
-        const left = edge(column);
-        const top = edge(row);
-        ctx.fillRect(left, top, edge(column + 1) - left, edge(row + 1) - top);
+    const paint: TerrainPaint = {
+        ctx,
+        box,
+        cellPx,
+        dpr,
+        px: (local) => Math.round(local * cellPx * dpr),
+        neutral: rgbCss(inks.neutral),
+        stripe: stripePattern(ctx, rgbCss(inks.hatch), dpr),
     };
 
     // region Unknown background
@@ -219,83 +430,38 @@ export function paintZoneMap(
     // endregion
 
     // region Terrain
-    const values =
-        layer === 'temperature' ? terrain?.temperature : terrain?.element;
+    if (terrain && layer === 'temperature') {
+        if (input.palette) {
+            paintTemperatures(
+                paint,
+                terrain,
+                input.temperatureMode,
+                input.palette,
+            );
+        }
+    } else if (terrain) {
+        forEachKnownCell(terrain, box, (_palette, column, row) => {
+            const left = paint.px(column);
+            const top = paint.px(row);
+            ctx.clearRect(
+                left,
+                top,
+                paint.px(column + 1) - left,
+                paint.px(row + 1) - top,
+            );
+        });
+        paintSolidTerrain(paint, terrain, input.assets);
+        paintFallbackCells(paint, terrain);
 
-    if (terrain && values && (layer !== 'temperature' || overlayPalette)) {
-        const styles =
-            layer === 'temperature' ? [] : paletteStyles(terrain, inks);
-        const cells = terrain.box.width * terrain.box.height;
-
-        for (let index = 0; index < cells; index++) {
-            const value = values[index];
-
-            if (value === null || value === undefined || value < 0) {
-                continue;
-            }
-
-            const x = terrain.box.x + (index % terrain.box.width);
-            const y = terrain.box.y + Math.floor(index / terrain.box.width);
-
-            if (layerIndex(x, y, box) === null) {
-                continue;
-            }
-
-            const style =
-                layer === 'temperature' && overlayPalette
-                    ? rgbaCss(absoluteColour(value, overlayPalette).colour)
-                    : styles[value];
-
-            if (style === undefined) {
-                continue;
-            }
-
-            const { column, row } = cellToLocal(x, y, box);
-            ctx.fillStyle = rgbCss(inks.base);
-            fillCell(column, row);
-            ctx.fillStyle = style;
-            fillCell(column, row);
+        if (!input.fluidsAnimated) {
+            paintStaticFluids(paint, terrain);
         }
     }
     // endregion
 
     // region Tiles
     ctx.globalAlpha = layer === 'temperature' ? TILE_ALPHA_ON_TEMPERATURE : 1;
-
-    for (const tile of tiles ?? []) {
-        if (layerIndex(tile.x, tile.y, box) === null) {
-            continue;
-        }
-
-        const { column, row } = cellToLocal(tile.x, tile.y, box);
-        const sprite = tileSprite(tile, input.onSpriteLoad);
-
-        if (sprite) {
-            const scale = (cellPx * dpr) / sprite.geometry.cell.w;
-            ctx.drawImage(
-                sprite.image,
-                edge(column) - sprite.geometry.cell.x * scale,
-                edge(row) - sprite.geometry.cell.y * scale,
-                sprite.geometry.canvas.w * scale,
-                sprite.geometry.canvas.h * scale,
-            );
-            continue;
-        }
-
-        ctx.fillStyle = rgbCss(inks.tile);
-        fillCell(column, row);
-
-        if ((tile.connections & 4) === 0) {
-            ctx.fillStyle = rgbCss(inks.tileEdge);
-            ctx.fillRect(
-                edge(column),
-                edge(row),
-                edge(column + 1) - edge(column),
-                Math.max(1, Math.round(dpr * 2)),
-            );
-        }
-    }
-
+    paintTiles(paint, tiles ?? [], inks, input.onSpriteLoad);
     ctx.globalAlpha = 1;
     // endregion
 
@@ -305,6 +471,12 @@ export function paintZoneMap(
         ctx.globalAlpha = PROBLEMS_VEIL_ALPHA;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.globalAlpha = 1;
+    }
+    // endregion
+
+    // region Grid
+    if (input.showGrid) {
+        paintGrid(paint, inks);
     }
     // endregion
 

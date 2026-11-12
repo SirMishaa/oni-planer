@@ -81,3 +81,11 @@ describe('fluidCells', () => {
         ]);
     });
 });
+
+describe('unreadable masses', () => {
+    it('treats a NaN mass as empty, never NaN', () => {
+        expect(liquidFill(Number.NaN, 1000)).toBe(0);
+        expect(liquidFill(500, Number.NaN)).toBe(1);
+        expect(gasStrength(Number.NaN)).toBe(0);
+    });
+});
