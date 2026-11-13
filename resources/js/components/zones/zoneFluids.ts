@@ -10,7 +10,7 @@ export const GAS_FULL_TINT_KG = 2;
  * in its shaders; these scales stand in for that (tunable).
  */
 export const LIQUID_ALPHA_SCALE = 0.7;
-export const GAS_ALPHA_SCALE = 0.45;
+export const GAS_ALPHA_SCALE = 0.3;
 
 /** Darkest a gas may look (0 to 255 luma): below it, the gas turns smoke grey so it reads on the dark map. */
 export const GAS_MIN_LUMA = 96;

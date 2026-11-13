@@ -43,9 +43,11 @@ const float CAUSTIC_STRENGTH = 0.16;
 const float HIGHLIGHT_PX = 1.6;
 const float GLOW_HALO_ALPHA = 0.35;
 // Gases
-const int GAS_PARTICLES = 4;
+const int GAS_PARTICLES = 2;
 /** Spread of the gas blend, in cells: larger blurs gases more into each other (tunable). */
 const float GAS_BLEND_CELLS = 0.75;
+/** Share of a gas's own colour kept over grey: below 1, gases read as tinted air (tunable). */
+const float GAS_SATURATION = 0.7;
 
 struct Cell {
     bool present;
@@ -266,13 +268,16 @@ vec4 shadeGas(Cell cell, ivec2 position, vec2 world, vec2 local, float pixelCell
     float wisp = fbm(world * 0.5 + warp * 1.6 + drift * 0.6);
     float fine = fbm(world * 1.3 - drift * 1.7 + 3.7);
     // Denser gas: stronger wisps, and more of them.
-    float contrast = mix(0.35, 1.0, cell.amount);
-    float alpha = tint.a * mix(1.0 - 0.55 * contrast, 1.0 + 0.7 * contrast, smoothstep(0.25, 0.75, wisp));
-    vec3 rgb = tintRgb * (0.8 + 0.45 * fine);
+    float contrast = mix(0.3, 1.0, cell.amount);
+    float alpha = tint.a * mix(1.0 - 0.3 * contrast, 1.0 + 0.35 * contrast, smoothstep(0.25, 0.75, wisp));
+    // Mixed with clear air: a gas is a slightly washed-out tint, not a saturated fog.
+    vec3 airy = mix(vec3(dot(tintRgb, vec3(0.299, 0.587, 0.114))), tintRgb, GAS_SATURATION);
+    vec3 rgb = airy * (0.9 + 0.2 * fine);
     vec3 particleColour = min(base.rgb * 1.4 + 0.1, vec3(1.0));
     vec2 seed = vec2(position);
 
-    int particles = int(ceil(cell.amount * float(GAS_PARTICLES)));
+    // No specks in a thin gas; one, then two as it gets dense.
+    int particles = cell.amount < 0.5 ? 0 : (cell.amount < 0.85 ? 1 : 2);
     for (int index = 0; index < GAS_PARTICLES; index++) {
         if (index >= particles) {
             break;
@@ -282,9 +287,9 @@ vec4 shadeGas(Cell cell, ivec2 position, vec2 world, vec2 local, float pixelCell
             vec2(hash(particleSeed), hash(particleSeed + 1.3))
             + vec2(uTime * 0.04, uTime * 0.015 + sin(uTime * 0.4 + particleSeed.x) * 0.05)
         );
-        float speck = dotAt(local, particle, pixelCells, 1.6);
-        rgb = mix(rgb, particleColour, speck * 0.7);
-        alpha += speck * 0.35 * max(cell.amount, 0.4);
+        float speck = dotAt(local, particle, pixelCells, 1.0);
+        rgb = mix(rgb, particleColour, speck * 0.4);
+        alpha += speck * 0.12 * cell.amount;
     }
 
     alpha = clamp(alpha, 0.0, 1.0);
