@@ -474,7 +474,7 @@ final class ZonePresenter
     /** Root-relative URL of a terrain texture, or null when the element has none. */
     private function terrainTexture(?string $name): ?string
     {
-        return $name === null || $name === '' ? null : "/assets/game/terrain/{$name}.webp";
+        return $name === null || $name === '' ? null : '/assets/game/terrain/'.rawurlencode($name).'.webp';
     }
 
     /**

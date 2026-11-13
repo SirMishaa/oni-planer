@@ -168,3 +168,12 @@ it('drops an unknown substance texture family and reports it', function (): void
         File::deleteDirectory($root);
     }
 });
+
+it('reports the non-special elements without a render block', function (): void {
+    $root = base_path('tests/Fixtures/OniExport');
+    $export = new OniExport($root);
+    $reader = new ElementReader($export, ModCatalog::fromExport($export, $root.'/mods', ['3557584850']));
+    $reader->records();
+
+    expect($reader->elementsWithoutRender())->toBe(['AIO_ChromiteOre_Solid', 'Brick', 'PhosphorBronze']);
+});

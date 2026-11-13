@@ -63,6 +63,9 @@ final class ElementReader
     /** @var list<string> */
     private array $unknownSubstanceTextures = [];
 
+    /** @var list<string> */
+    private array $elementsWithoutRender = [];
+
     public function __construct(private readonly OniExport $export, private readonly ModCatalog $catalog) {}
 
     /**
@@ -76,11 +79,23 @@ final class ElementReader
         return $this->unknownSubstanceTextures;
     }
 
+    /**
+     * The gas, liquid and solid elements read by {@see self::records()}
+     * without a `render` block; the map draws them with a neutral fallback.
+     *
+     * @return list<string>
+     */
+    public function elementsWithoutRender(): array
+    {
+        return $this->elementsWithoutRender;
+    }
+
     /** @return list<ElementRecord> */
     public function records(): array
     {
         $records = [];
         $this->unknownSubstanceTextures = [];
+        $this->elementsWithoutRender = [];
         $uiColors = $this->uiColors();
 
         foreach ($this->export->json('planner_extras.json')['elements'] ?? [] as $elementId => $element) {
@@ -92,10 +107,15 @@ final class ElementReader
 
             $tags = array_map(strval(...), $element['tags'] ?? []);
             $render = is_array($element['render'] ?? null) ? $element['render'] : null;
+            $state = $this->state((string) $element['state']);
+
+            if ($render === null && $state !== 'special') {
+                $this->elementsWithoutRender[] = $elementId;
+            }
 
             $records[] = [
                 'element_id' => $elementId,
-                'state' => $this->state((string) $element['state']),
+                'state' => $state,
                 'mod_id' => $this->catalog->modIdFor($elementId),
                 'localization_key' => is_string($element['localizationKey'] ?? null) ? $element['localizationKey'] : null,
                 'molar_mass' => (float) $element['molarMass'],

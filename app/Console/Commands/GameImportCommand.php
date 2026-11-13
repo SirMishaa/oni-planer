@@ -227,6 +227,9 @@ final class GameImportCommand extends Command
         if ($elementReader->unknownSubstanceTextures() !== []) {
             $this->warn('Unknown substance texture families (stored as null): '.implode(', ', $elementReader->unknownSubstanceTextures()));
         }
+        if ($elementReader->elementsWithoutRender() !== []) {
+            $this->warn('Elements without render data (drawn with a neutral fallback): '.implode(', ', $elementReader->elementsWithoutRender()));
+        }
 
         $this->info('Importing buildings...');
         $buildingReader = new BuildingReader($export, $catalog);

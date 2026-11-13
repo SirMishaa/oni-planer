@@ -311,6 +311,16 @@ it('gives each palette entry its render properties', function (): void {
         ->and($unknown->glows)->toBeFalse();
 });
 
+it('encodes the terrain texture name in its URL', function (): void {
+    Element::factory()->solid()->create(['element_id' => 'Granite', 'terrain_texture' => 'granite rough']);
+    $zone = Zone::factory()->sodicaneFarm()->create();
+    $zone->update(['slow_state' => [...$zone->slow_state, 'palette' => ['Granite']]]);
+
+    $granite = app(ZonePresenter::class)->present($zone)->map?->terrain?->palette[0];
+
+    expect($granite?->terrainTexture)->toBe('/assets/game/terrain/granite%20rough.webp');
+});
+
 it('gives the previous temperatures and the seconds between readings', function (): void {
     $zone = Zone::factory()->sodicaneFarm()->create();
     $box = $zone->slow_state['box'];

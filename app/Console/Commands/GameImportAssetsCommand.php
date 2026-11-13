@@ -78,7 +78,7 @@ final class GameImportAssetsCommand extends Command
             $foods += (int) $this->convert($converter, $source, "{$assets}/foods/{$foodId}.webp");
         }
 
-        [$terrains, $solidsWithoutTexture, $solidsWithoutAsset] = $this->importTerrain($converter, $export, $assets);
+        [$terrains, $solidsWithoutTexture, $solidsWithoutAsset, $missingRenderFiles] = $this->importTerrain($converter, $export, $assets);
 
         $this->info("Converted {$buildings} building renders, {$connections} connection sprites, {$elements} missing element icons, {$foods} food icons, {$terrains} terrain textures.");
 
@@ -94,14 +94,21 @@ final class GameImportAssetsCommand extends Command
             $this->error('Solid elements whose terrain texture asset is missing: '.implode(', ', $solidsWithoutAsset));
         }
 
-        return $solidsWithoutTexture === [] && $solidsWithoutAsset === [] ? self::SUCCESS : self::FAILURE;
+        if ($missingRenderFiles !== []) {
+            $this->error('Missing render files in the export: '.implode(', ', $missingRenderFiles));
+        }
+
+        return $solidsWithoutTexture === [] && $solidsWithoutAsset === [] && $missingRenderFiles === []
+            ? self::SUCCESS
+            : self::FAILURE;
     }
 
     /**
      * Publishes the terrain textures, the biome mask atlas and `render.json`.
      *
-     * @return array{int, list<string>, list<string>} converted textures, solids without a
-     *                                                terrain texture, solids whose texture has no webp
+     * @return array{int, list<string>, list<string>, list<string>} converted textures, solids without a
+     *                                                              terrain texture, solids whose texture has no webp,
+     *                                                              missing render files of the export
      */
     private function importTerrain(AssetConverter $converter, string $export, string $assets): array
     {
@@ -110,6 +117,11 @@ final class GameImportAssetsCommand extends Command
         foreach (File::glob("{$export}/render/terrain/*.png") ?: [] as $source) {
             $converted += (int) $this->convert($converter, $source, "{$assets}/terrain/".pathinfo($source, PATHINFO_FILENAME).'.webp');
         }
+
+        $missing = array_values(array_filter(
+            ['render/mask_atlas.png', 'database/planner_render.json'],
+            fn (string $file): bool => ! File::isFile("{$export}/{$file}"),
+        ));
 
         $converted += (int) $this->convert($converter, "{$export}/render/mask_atlas.png", "{$assets}/terrain/mask_atlas.webp");
 
@@ -130,7 +142,7 @@ final class GameImportAssetsCommand extends Command
             }
         }
 
-        return [$converted, $withoutTexture, $withoutAsset];
+        return [$converted, $withoutTexture, $withoutAsset, $missing];
     }
 
     private function convert(AssetConverter $converter, string $source, string $destination): bool

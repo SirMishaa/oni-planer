@@ -36,6 +36,12 @@ beforeEach(function (): void {
         writePng($this->export.'/connection_sprites/Tile/'.$mask.'.png', 4, 4);
     }
     File::put($this->export.'/connection_sprite_cells.json', '{"Tile":{}}');
+
+    $fixtures = base_path('tests/Fixtures/OniExport');
+    File::ensureDirectoryExists($this->export.'/render');
+    File::copy($fixtures.'/render/mask_atlas.png', $this->export.'/render/mask_atlas.png');
+    File::ensureDirectoryExists($this->export.'/database');
+    File::copy($fixtures.'/database/planner_render.json', $this->export.'/database/planner_render.json');
 });
 
 afterEach(function (): void {
@@ -116,8 +122,6 @@ it('only fills missing element icons', function (): void {
 it('publishes terrain textures, the mask atlas and render.json', function (): void {
     $fixtures = base_path('tests/Fixtures/OniExport');
     File::copyDirectory($fixtures.'/render', $this->export.'/render');
-    File::ensureDirectoryExists($this->export.'/database');
-    File::copy($fixtures.'/database/planner_render.json', $this->export.'/database/planner_render.json');
     Element::factory()->solid()->create(['element_id' => 'SandStone', 'terrain_texture' => 'sand_stone']);
 
     $this->artisan('game:import-assets')->assertSuccessful();
@@ -136,4 +140,14 @@ it('fails and lists solids without a terrain texture asset', function (): void {
         ->expectsOutputToContain('Granite (granite)')
         ->expectsOutputToContain('Obsidian')
         ->assertFailed();
+});
+
+it('fails and lists the missing mask atlas and render.json', function (): void {
+    File::delete([$this->export.'/render/mask_atlas.png', $this->export.'/database/planner_render.json']);
+
+    $this->artisan('game:import-assets')
+        ->expectsOutputToContain('Missing render files in the export: render/mask_atlas.png, database/planner_render.json')
+        ->assertFailed();
+
+    expect($this->assets.'/render.json')->not->toBeFile();
 });
