@@ -58,6 +58,11 @@ type TileGeometry = {
 };
 
 const TILE_ASSETS = '/assets/game/connections';
+/**
+ * Tile-layer buildings drawn as the solid of their cell (its terrain texture),
+ * never as a flat tile: a farm tile is a block of the dirt it was built from.
+ */
+const TERRAIN_SHOWN_TILES = new Set(['FarmTile']);
 /** Tiles stay faint under the temperature layer so the colours read. */
 const TILE_ALPHA_ON_TEMPERATURE = 0.3;
 /** Problems layer: veil over the terrain so the pins stand out. */
@@ -346,7 +351,10 @@ function paintTiles(
     const { ctx, box, px, cellPx, dpr } = paint;
 
     for (const tile of tiles) {
-        if (layerIndex(tile.x, tile.y, box) === null) {
+        if (
+            layerIndex(tile.x, tile.y, box) === null ||
+            TERRAIN_SHOWN_TILES.has(tile.prefabId)
+        ) {
             continue;
         }
 
