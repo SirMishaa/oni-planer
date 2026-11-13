@@ -102,7 +102,7 @@ describe('packPalette', () => {
                 renderColour: '#55bed280',
                 opaqueLiquid: true,
                 usesCaustics: true,
-                scrollSpeed: 2,
+                scrollSpeed: 0.02,
                 substanceTexture: 'Magma',
             }),
             entry({ state: 'gas', renderColour: '#ff000080', glows: true }),
@@ -119,9 +119,9 @@ describe('packPalette', () => {
             [0x55 / 255, 0xbe / 255, 0xd2 / 255, 1].map(Math.fround),
         );
         expect(texel(0, 1)).toEqual([2, 0.45, 0.2, 1].map(Math.fround));
-        expect(texel(0, 2)).toEqual([1, 0, 0, 2]);
+        expect(texel(0, 2)).toEqual([1, 0, 0, 0.02].map(Math.fround));
         expect(texel(1, 0)[3]).toBe(Math.fround(128 / 255));
-        expect(texel(1, 2)).toEqual([0, 1, 0, 1]);
+        expect(texel(1, 2)).toEqual([0, 1, 0, 0]);
     });
 
     it('leaves an entry without render colour transparent', () => {

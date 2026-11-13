@@ -35,7 +35,8 @@ const int SURFACE_BIT = 1;
 const int LIQUID_BIT = 2;
 // Liquids
 const float WAVE_AMPLITUDE = 0.05;
-const float SCROLL_RATE = 0.25;
+// Cells per second per unit of the game's scroll speed: 0.02 drifts 0.25 cells/s.
+const float SCROLL_RATE = 12.5;
 const float FLECKS_PER_CELL = 4.0;
 const float BUBBLE_CHANCE = 0.18;
 const float CAUSTIC_STRENGTH = 0.16;
@@ -147,11 +148,10 @@ vec4 shadeLiquid(Cell cell, ivec2 position, vec2 world, vec2 local, float pixelC
     }
 
     vec2 seed = vec2(position);
-    vec2 noisePoint = world / max(pattern.x, 0.5);
+    vec2 noisePoint = (world + vec2(uTime * effects.w * SCROLL_RATE, 0.0)) / max(pattern.x, 0.5);
     if (pattern.w > 0.5) {
         noisePoint.x *= 0.35;
     }
-    noisePoint.x += uTime * effects.w * SCROLL_RATE;
     noisePoint.y += uTime * 0.05;
     float grain = fbm(noisePoint);
 

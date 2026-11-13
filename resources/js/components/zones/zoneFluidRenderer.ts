@@ -32,8 +32,12 @@ export const PALETTE_TEXELS = 4;
 /** The animation is capped at 30 frames per second. */
 export const FRAME_INTERVAL_MS = 1000 / 30;
 
-/** Scroll speed multiplier of a liquid whose export has none. */
-const DEFAULT_SCROLL_SPEED = 1;
+/**
+ * Scroll speed of a liquid whose export has none: the game does not scroll
+ * it. Present values are the game's `LiquidShaderProperties.scrollSpeed`
+ * (texture UV per second, 0.02 for most families), unchanged.
+ */
+const DEFAULT_SCROLL_SPEED = 0;
 
 /** The cells texture stores the palette index in one byte. */
 const MAX_PALETTE_INDEX = 255;
