@@ -758,24 +758,85 @@ const hoveredCell = computed(() => {
 });
 
 /** The hovered cell's frame, in stage pixels. */
-const hoverFrameStyle = computed(() => {
-    if (!hover.value) {
+// region Lifted block
+
+/** Share of a cell kept around a lifted block, so its inked rim lifts with it. */
+const LIFT_MARGIN_CELLS = 0.15;
+
+const liftCanvas = ref<HTMLCanvasElement | null>(null);
+
+/** The hovered solid cell or tile (never a fluid, never under an entity), lifted like the entities. */
+const hoveredBlock = computed<{ x: number; y: number } | null>(() => {
+    const current = hover.value;
+
+    if (!current || hoveredEntity.value) {
+        return null;
+    }
+
+    const terrain = props.map.terrain;
+    const index = terrain
+        ? layerIndex(current.x, current.y, terrain.box)
+        : null;
+    const palette = index === null ? -1 : (terrain?.element?.[index] ?? -1);
+    const solid = terrain?.palette[palette]?.state === 'solid';
+    const tile = (props.map.tiles ?? []).some(
+        (candidate) => candidate.x === current.x && candidate.y === current.y,
+    );
+
+    return solid || tile ? { x: current.x, y: current.y } : null;
+});
+
+const liftStyle = computed(() => {
+    const block = hoveredBlock.value;
+
+    if (!block) {
         return {};
     }
 
-    const { column, row } = cellToLocal(
-        hover.value.x,
-        hover.value.y,
-        props.map.box,
-    );
+    const { column, row } = cellToLocal(block.x, block.y, props.map.box);
+    const size = (1 + LIFT_MARGIN_CELLS * 2) * cellPx.value;
 
     return {
-        left: `${column * cellPx.value}px`,
-        top: `${row * cellPx.value}px`,
-        width: `${cellPx.value}px`,
-        height: `${cellPx.value}px`,
+        left: `${(column - LIFT_MARGIN_CELLS) * cellPx.value}px`,
+        top: `${(row - LIFT_MARGIN_CELLS) * cellPx.value}px`,
+        width: `${size}px`,
+        height: `${size}px`,
     };
 });
+
+/** Copies the hovered block (and its rim) from the solids canvas into the lifted copy. */
+function drawLift(): void {
+    const block = hoveredBlock.value;
+    const source = solidsCanvas.value;
+    const target = liftCanvas.value;
+
+    if (!block || !source || !target || stageWidth.value <= 0) {
+        return;
+    }
+
+    const ratio = source.width / stageWidth.value;
+    const { column, row } = cellToLocal(block.x, block.y, props.map.box);
+    const size = (1 + LIFT_MARGIN_CELLS * 2) * cellPx.value * ratio;
+    target.width = Math.round(size);
+    target.height = Math.round(size);
+    target
+        .getContext('2d')
+        ?.drawImage(
+            source,
+            (column - LIFT_MARGIN_CELLS) * cellPx.value * ratio,
+            (row - LIFT_MARGIN_CELLS) * cellPx.value * ratio,
+            size,
+            size,
+            0,
+            0,
+            target.width,
+            target.height,
+        );
+}
+
+watch(hoveredBlock, () => void nextTick(drawLift));
+
+// endregion
 
 /** Room the card needs before it flips to the other side of the pointer. */
 const HOVER_ROOM = { x: 280, y: 150 };
@@ -1014,10 +1075,12 @@ const temperatureLegend = computed(() => {
                 <!-- endregion -->
 
                 <!-- region Hover card -->
-                <div
-                    v-if="hover && !hoveredEntity"
-                    class="zone-map__cell"
-                    :style="hoverFrameStyle"
+                <canvas
+                    v-if="hoveredBlock"
+                    :key="`${hoveredBlock.x},${hoveredBlock.y}`"
+                    ref="liftCanvas"
+                    class="zone-map__lift"
+                    :style="liftStyle"
                     aria-hidden="true"
                 />
                 <div
@@ -1280,13 +1343,33 @@ const temperatureLegend = computed(() => {
     stroke-linecap: round;
 }
 
-.zone-map__cell {
+/* A hovered block lifts like the entities: same curve, same lift. */
+.zone-map__lift {
     position: absolute;
-    z-index: 4;
-    box-shadow:
-        inset 0 0 0 2px var(--color-oni-amber),
-        inset 0 0 0 3px oklch(0% 0 0 / 0.45);
+    z-index: 3;
+    transform-origin: 50% 100%;
     pointer-events: none;
+    animation: zone-lift 220ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@keyframes zone-lift {
+    from {
+        transform: none;
+        filter: drop-shadow(0 0 0 oklch(15% 0.02 230 / 0)) brightness(1);
+    }
+
+    to {
+        transform: translateY(-2px) scale(1.06);
+        filter: drop-shadow(0 4px 4px oklch(15% 0.02 230 / 0.5))
+            brightness(1.06);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .zone-map__lift {
+        animation: none;
+        filter: brightness(1.06);
+    }
 }
 
 /* region Entities */
