@@ -47,6 +47,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 #[Description('Import all ONI game data from the OniExtract export into the database (destructive reimport)')]
@@ -78,7 +79,7 @@ final class GameImportCommand extends Command
         $stagingPath = $langPath.'.staging';
         File::deleteDirectory($stagingPath);
 
-        DB::statement('PRAGMA foreign_keys = OFF');
+        Schema::disableForeignKeyConstraints();
 
         try {
             DB::transaction(function () use ($gamePath, $export, $modsPath, $supportedMods, $stagingPath, &$report): void {
@@ -87,7 +88,7 @@ final class GameImportCommand extends Command
 
             $this->publishCatalogs($stagingPath, $langPath);
         } finally {
-            DB::statement('PRAGMA foreign_keys = ON');
+            Schema::enableForeignKeyConstraints();
             File::deleteDirectory($stagingPath);
         }
 

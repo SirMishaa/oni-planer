@@ -14,7 +14,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('elements', function (Blueprint $table): void {
-            $table->unsignedInteger('ui_color')->nullable()->after('dlc_id');
+            $table->unsignedBigInteger('ui_color')->nullable()->after('dlc_id');
         });
     }
 

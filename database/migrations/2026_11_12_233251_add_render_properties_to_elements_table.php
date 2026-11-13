@@ -14,7 +14,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('elements', function (Blueprint $table): void {
-            $table->unsignedInteger('render_color')->nullable()->after('ui_color');
+            $table->unsignedBigInteger('render_color')->nullable()->after('ui_color');
             $table->string('substance_texture')->nullable()->after('render_color');
             $table->boolean('uses_caustics')->default(false)->after('substance_texture');
             $table->boolean('glows')->default(false)->after('uses_caustics');

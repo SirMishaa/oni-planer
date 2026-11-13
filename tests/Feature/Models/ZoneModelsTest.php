@@ -7,6 +7,7 @@ use App\Models\Zone;
 use App\Models\ZoneVersion;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -42,7 +43,8 @@ it('keeps a version number unique per zone and cascades on delete', function ():
     $zone = Zone::factory()->create();
     ZoneVersion::factory()->for($zone)->create(['version' => 1]);
 
-    expect(fn () => ZoneVersion::factory()->for($zone)->create(['version' => 1]))
+    // In a savepoint: PostgreSQL aborts the surrounding test transaction on a violation.
+    expect(fn () => DB::transaction(fn () => ZoneVersion::factory()->for($zone)->create(['version' => 1])))
         ->toThrow(UniqueConstraintViolationException::class);
 
     $zone->delete();

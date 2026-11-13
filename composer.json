@@ -64,11 +64,11 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "bunx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74,#86efac\" \"php artisan serve --port 8003\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"bun run dev\" \"php artisan reverb:start\" --names=server,queue,logs,vite,reverb --kill-others"
+            "bunx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74,#86efac\" \"php artisan serve --port 8003\" \"composer run queue-workers\" \"php artisan pail --timeout=0\" \"bun run dev\" \"php artisan reverb:start\" --names=server,queues,logs,vite,reverb --kill-others"
         ],
         "devWithOctane": [
             "Composer\\Config::disableProcessTimeout",
-            "bunx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74,#86efac\" \"php artisan octane:start --watch --server=frankenphp --port=8003 --caddyfile=Caddyfile\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"bun run dev\" \"php artisan reverb:start\" --names=server,queue,logs,vite,reverb --kill-others"
+            "bunx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74,#86efac\" \"php artisan octane:start --watch --server=frankenphp --port=8003 --caddyfile=Caddyfile\" \"composer run queue-workers\" \"php artisan pail --timeout=0\" \"bun run dev\" \"php artisan reverb:start\" --names=server,queue,logs,vite,reverb --kill-others"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
@@ -110,6 +110,10 @@
             "@test:unit",
             "@test:lint",
             "@test:types"
+        ],
+        "queue-workers": [
+            "Composer\\Config::disableProcessTimeout",
+            "bunx concurrently --restart-tries=-1 --restart-after=1000 \"php artisan queue:work redis --queue=uplink-reliable --tries=1 --memory=256\" \"php artisan queue:work redis --queue=uplink-state,default --tries=1 --memory=256\" \"php artisan queue:work redis --queue=uplink-state,default --tries=1 --memory=256\" \"php artisan queue:work redis --queue=uplink-state,default --tries=1 --memory=256\" \"php artisan queue:work redis --queue=uplink-state,default --tries=1 --memory=256\" --names=reliable,state1,state2,state3,state4"
         ]
     },
     "extra": {
