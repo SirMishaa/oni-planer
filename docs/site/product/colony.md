@@ -1,7 +1,7 @@
 ---
 title: Ma colonie
-description: Relier le jeu au planner avec le mod Uplink, puis suivre la viabilité alimentaire de ta colonie et voir ce que le jeu envoie.
-sources: ["app/Http/Controllers/ColonyController.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Services/Viability/**", "resources/js/pages/Colony/**", "lang/fr/colony.php"]
+description: Relier le jeu au planner avec le mod Uplink, puis suivre la viabilité alimentaire de ta colonie, la carte de tes zones et voir ce que le jeu envoie.
+sources: ["app/Http/Controllers/ColonyController.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Services/Viability/**", "resources/js/pages/Colony/**", "lang/fr/colony.php", "app/Http/Controllers/ZoneController.php", "app/Services/Zones/ZonePresenter.php", "resources/js/components/zones/**", "lang/fr/zones.php"]
 order: 6
 ---
 
@@ -34,6 +34,37 @@ La page de viabilité répond à une question : **tes duplicants vont-ils manque
 - **Récoltes à venir** liste chaque source de nourriture, avec une marque pour chaque récolte au cycle où elle mûrit.
 
 Si le jeu n'a pas pu lire quelque chose (duplicants, stock de nourriture ou plantes), la page dit ce qui manque au lieu de deviner.
+
+## Carte d'une zone
+
+Ouvre une zone (<Route name="zones.index" />) pour voir sa carte, dessinée comme dans le jeu : le terrain porte ses textures et ses bords de biome, les liquides coulent et les gaz ondulent. Passe la souris sur une case pour lire son élément, sa masse et sa température.
+
+- Le sélecteur de **calque** choisit ce que la carte montre : croissance, matériaux, température ou problèmes.
+- **Grille** affiche ou masque le quadrillage des cases.
+- Les cases que le jeu n'a pas lues restent hachurées.
+
+### Calque température
+
+Quatre modes colorent la carte avec les teintes de la surcouche température du jeu. Une légende accompagne chaque mode.
+
+| Mode | Ce qu'il montre |
+| --- | --- |
+| Absolue | La température de chaque case sur une échelle fixe. |
+| Adaptative | La même couleur, mais l'échelle s'ajuste aux températures présentes dans la zone. |
+| Flux thermique | Si la case refroidit, reste stable ou chauffe depuis la lecture précédente. Le rythme se mesure en temps réel : la vitesse du jeu et les pauses le faussent. |
+| Changement d'état | Les cases proches de geler ou de se condenser, ou de fondre ou de bouillir. |
+
+Le flux thermique a besoin de deux lectures du terrain : tant que le jeu n'a envoyé que la première, la carte l'indique.
+
+Si les couleurs de la surcouche manquent (fichier `render.json` absent), le mode Changement d'état reste coloré ; les autres modes laissent les cases connues sur le fond de la carte et une note demande de relancer l'export du jeu.
+
+<Accordion title="Si l'animation ne s'affiche pas">
+
+Les liquides et les gaz sont animés avec WebGL2. Si ton navigateur ne le gère pas, ou si le contexte graphique est perdu, ils restent dessinés à plat : la carte reste lisible, sans mouvement. Le calque température ne dessine pas les fluides animés.
+
+Les textures viennent de l'export du jeu. Après une mise à jour du jeu ou du mod, relance **Export Game Data** dans le jeu, puis l'import (voir [Import des données du jeu](../development/game-data-import.md)).
+
+</Accordion>
 
 ## Inspecteur Uplink
 

@@ -30,3 +30,21 @@ php artisan game:import-assets   # convertit les images exportées en WebP
 <Artisan command="game:import" />
 <Artisan command="game:import-assets" />
 </Accordion>
+
+## Rendu de la carte des zones
+
+La carte des zones dessine les éléments avec les données de rendu du jeu. Si ton export est plus ancien, relance **Export Game Data** dans le jeu (menu pause), puis les trois commandes ci-dessus. Si `game:import-assets` échoue en listant des solides sans texture ou des fichiers de rendu manquants, c'est que l'export n'est pas à jour.
+
+<Accordion title="Ce que l'import lit et publie">
+
+`game:import` lit la clé `render` de chaque élément dans `planner_extras.json` et la range dans les colonnes de la table des éléments : `render_color`, `substance_texture`, `uses_caustics`, `glows`, `is_metallic`, `is_opaque_liquid`, `liquid_scroll_speed`, `max_mass` et `terrain_texture`. Une famille de texture de substance inconnue est stockée à `null`. La commande liste en avertissement les gaz, liquides et solides importés sans clé `render` : la carte les dessine avec un motif neutre.
+
+`game:import-assets` publie en plus, depuis l'export :
+
+- `render/terrain/*.png` vers `terrain/*.webp`, une texture par solide ;
+- `render/mask_atlas.png` vers `terrain/mask_atlas.webp`, l'atlas des masques de bord ;
+- `database/planner_render.json` vers `render.json`.
+
+La commande échoue (code de sortie non nul) si un solide n'a pas de texture de terrain, si l'image de sa texture n'a pas été publiée, ou si `render/mask_atlas.png` ou `database/planner_render.json` manque dans l'export.
+
+</Accordion>
