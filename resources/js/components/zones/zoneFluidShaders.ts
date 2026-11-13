@@ -292,6 +292,15 @@ vec4 shadeGas(Cell cell, ivec2 position, vec2 world, vec2 local, float pixelCell
     return vec4(clamp(rgb, 0.0, 1.0) * alpha, alpha);
 }
 
+/** A gas pocket the liquid runs through: the same liquid on its left and right. */
+bool bridgedPocket(ivec2 position, int palette) {
+    Cell pocket = cellAt(position);
+    Cell left = cellAt(position + ivec2(-1, 0));
+    Cell right = cellAt(position + ivec2(1, 0));
+    return pocket.present && !pocket.liquid && left.present && right.present
+        && left.liquid && right.liquid && left.palette == palette && right.palette == palette;
+}
+
 void main() {
     vec2 pixel = vec2(gl_FragCoord.x, uResolution.y - gl_FragCoord.y);
     vec2 world = pixel / uResolution * uGrid;
@@ -303,6 +312,12 @@ void main() {
     vec4 colour = vec4(0.0);
 
     if (here.present && here.liquid) {
+        // Under a bridged gas pocket the liquid goes on: no surface there.
+        if (here.surface && bridgedPocket(position + ivec2(0, -1), here.palette)) {
+            here.surface = false;
+            here.amount = 1.0;
+        }
+
         colour = shadeLiquid(here, position, world, local, pixelCells);
 
         // Above the surface of a partly filled cell, the gas of the cell above shows,
@@ -319,16 +334,19 @@ void main() {
             colour = shadeGas(here, position, world, local, pixelCells);
         }
 
-        // A gas pocket on a waterline (surface liquid on both sides): the liquid runs
-        // through it at its neighbours' mean level, so the waterline does not break
-        // into a square hole; the pocket's gas shows above it.
+        // A gas pocket with the same liquid on both sides (on a waterline or deep in a
+        // pool): the liquid runs through it at its neighbours' mean level, so the water
+        // does not break into a square hole; the pocket's gas shows above that level.
         Cell left = cellAt(position + ivec2(-1, 0));
         Cell right = cellAt(position + ivec2(1, 0));
         if (here.present && left.present && right.present && left.liquid && right.liquid
-            && left.surface && right.surface && left.palette == right.palette) {
+            && left.palette == right.palette) {
             Cell bridge = left;
             bridge.amount = (left.amount + right.amount) * 0.5;
-            float covered = smoothstep(-pixelCells, pixelCells, local.y - surfaceLevel(bridge, world));
+            bridge.surface = left.surface || right.surface;
+            float covered = bridge.surface
+                ? smoothstep(-pixelCells, pixelCells, local.y - surfaceLevel(bridge, world))
+                : 1.0;
             colour = shadeLiquid(bridge, position, world, local, pixelCells) + colour * (1.0 - covered);
         }
 

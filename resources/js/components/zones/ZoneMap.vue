@@ -1267,18 +1267,17 @@ const temperatureLegend = computed(() => {
     vector-effect: non-scaling-stroke;
 }
 
-/* A dark halo under the line, so it reads on light water as well as on dark rock. */
+/* A discreet dashed line over a faint dark halo, so it reads on light water as well as on dark rock without hiding the map. */
 .zone-map__outline-shadow {
-    stroke: rgb(0 0 0 / 0.45);
-    stroke-width: 5px;
+    stroke: rgb(0 0 0 / 0.3);
+    stroke-width: 3.5px;
 }
 
 .zone-map__outline-line {
-    stroke: var(--color-oni-amber);
-    stroke-width: 2.5px;
-    filter: drop-shadow(
-        0 0 2px color-mix(in srgb, var(--color-oni-amber) 60%, transparent)
-    );
+    stroke: rgb(255 255 255 / 0.75);
+    stroke-width: 1.5px;
+    stroke-dasharray: 6 5;
+    stroke-linecap: round;
 }
 
 .zone-map__cell {
@@ -1472,7 +1471,7 @@ const temperatureLegend = computed(() => {
 }
 
 .zone-map__swatch--edge {
-    border: 2px solid var(--color-oni-amber);
+    border: 1.5px dashed rgb(255 255 255 / 0.75);
 }
 
 .zone-map__swatch--unknown {
