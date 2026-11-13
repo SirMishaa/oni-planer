@@ -45,7 +45,7 @@ const float GLOW_HALO_ALPHA = 0.35;
 // Gases
 const int GAS_PARTICLES = 2;
 /** Spread of the gas blend, in cells: larger blurs gases more into each other (tunable). */
-const float GAS_BLEND_CELLS = 1.0;
+const float GAS_BLEND_CELLS = 0.8;
 /** Fill below which a liquid cell is a trace (a few grams of salt water): it shows the gas around it instead. */
 const float TRACE_LIQUID = 0.02;
 /** Share of a gas's own colour kept over grey: below 1, gases read as tinted air (tunable). */
@@ -246,21 +246,27 @@ vec4 shadeGas(Cell cell, ivec2 position, vec2 world, vec2 local, float pixelCell
     // other instead of showing square cells; a non-gas neighbour lends this cell's own
     // tint, so a gas never bleeds onto a liquid or a solid.
     vec4 own = vec4(base.rgb * base.a * cell.amount, base.a * cell.amount);
-    // Gaussian blend over the 3x3 neighbours: a lone cell of another gas becomes a
-    // soft patch, not a square.
+    // Gaussian blend of the gas cells in a 4x4 window centred on the pixel: a lone cell
+    // of another gas becomes a soft patch, not a square. The window moves at cell
+    // centres, where the cells it drops weigh almost nothing, and cells without gas
+    // do not count, so the blend has no seam at cell edges.
     vec4 tint = vec4(0.0);
     float total = 0.0;
-    for (int dy = -1; dy <= 1; dy++) {
-        for (int dx = -1; dx <= 1; dx++) {
-            ivec2 neighbour = position + ivec2(dx, dy);
-            vec2 centre = vec2(neighbour) + 0.5;
-            vec2 offset = world - centre;
+    ivec2 corner = ivec2(floor(world - 0.5)) - ivec2(1);
+    for (int dy = 0; dy < 4; dy++) {
+        for (int dx = 0; dx < 4; dx++) {
+            ivec2 neighbour = corner + ivec2(dx, dy);
+            vec4 neighbourTint = gasTint(neighbour, vec4(-1.0));
+            if (neighbourTint.a < 0.0) {
+                continue;
+            }
+            vec2 offset = world - (vec2(neighbour) + 0.5);
             float weight = exp(-dot(offset, offset) / (GAS_BLEND_CELLS * GAS_BLEND_CELLS));
-            tint += gasTint(neighbour, own) * weight;
+            tint += neighbourTint * weight;
             total += weight;
         }
     }
-    tint /= total;
+    tint = total > 0.0 ? tint / total : own;
     vec3 tintRgb = tint.a > 0.0001 ? tint.rgb / tint.a : base.rgb;
 
     // Smoke: a slowly drifting, domain-warped noise in contrasted bands, so a gas
