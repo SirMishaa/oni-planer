@@ -1359,9 +1359,9 @@ const temperatureLegend = computed(() => {
     }
 
     to {
-        transform: translateY(-2px) scale(1.06);
-        filter: drop-shadow(0 4px 4px oklch(15% 0.02 230 / 0.5))
-            brightness(1.06);
+        transform: translateY(-1px) scale(1.02);
+        filter: drop-shadow(0 2px 3px oklch(15% 0.02 230 / 0.45))
+            brightness(1.05);
     }
 }
 
