@@ -58,11 +58,6 @@ type TileGeometry = {
 };
 
 const TILE_ASSETS = '/assets/game/connections';
-/**
- * Tile-layer buildings drawn as the solid of their cell (its terrain texture),
- * never as a flat tile: a farm tile is a block of the dirt it was built from.
- */
-const TERRAIN_SHOWN_TILES = new Set(['FarmTile']);
 /** Tiles stay faint under the temperature layer so the colours read. */
 const TILE_ALPHA_ON_TEMPERATURE = 0.3;
 /** Problems layer: veil over the terrain so the pins stand out. */
@@ -131,6 +126,16 @@ function tileSprite(
 }
 
 // endregion
+
+/**
+ * A tile-layer building with no exported connection sprites (farm tile, a
+ * modded aquatic farm) is drawn as the solid of its cell: the cell holds its
+ * build material (dirt, zinc ore), whose terrain texture is already painted.
+ * Known once the geometry has loaded; until then the tile is drawn flat.
+ */
+function showsItsCell(prefabId: string): boolean {
+    return tileGeometry !== null && tileGeometry[prefabId] === undefined;
+}
 
 // region Painting
 
@@ -353,7 +358,7 @@ function paintTiles(
     for (const tile of tiles) {
         if (
             layerIndex(tile.x, tile.y, box) === null ||
-            TERRAIN_SHOWN_TILES.has(tile.prefabId)
+            showsItsCell(tile.prefabId)
         ) {
             continue;
         }
