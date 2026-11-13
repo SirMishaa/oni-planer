@@ -214,6 +214,17 @@ vec4 shadeLiquid(Cell cell, ivec2 position, vec2 world, vec2 local, float pixelC
     return vec4(rgb * alpha, alpha);
 }
 
+/** A gas cell's tint, premultiplied; fallback for a cell that holds no gas (liquid, solid, outside). */
+vec4 gasTint(ivec2 position, vec4 fallback) {
+    Cell cell = cellAt(position);
+    if (!cell.present || cell.liquid) {
+        return fallback;
+    }
+    vec4 base = paletteTexel(cell.palette, 0);
+    float alpha = base.a * cell.amount;
+    return vec4(base.rgb * alpha, alpha);
+}
+
 vec4 shadeGas(Cell cell, ivec2 position, vec2 world, vec2 local, float pixelCells) {
     vec4 base = paletteTexel(cell.palette, 0);
 
@@ -221,11 +232,25 @@ vec4 shadeGas(Cell cell, ivec2 position, vec2 world, vec2 local, float pixelCell
         return vec4(0.0);
     }
 
+    // Bilinear blend of the neighbouring gas cells' tints, so gases fade into each
+    // other instead of showing square cells; a non-gas neighbour lends this cell's own
+    // tint, so a gas never bleeds onto a liquid or a solid.
+    vec4 own = vec4(base.rgb * base.a * cell.amount, base.a * cell.amount);
+    vec2 grid = world - 0.5;
+    ivec2 corner = ivec2(floor(grid));
+    vec2 weight = smoothstep(0.0, 1.0, fract(grid));
+    vec4 tint = mix(
+        mix(gasTint(corner, own), gasTint(corner + ivec2(1, 0), own), weight.x),
+        mix(gasTint(corner + ivec2(0, 1), own), gasTint(corner + ivec2(1, 1), own), weight.x),
+        weight.y
+    );
+    vec3 tintRgb = tint.a > 0.0001 ? tint.rgb / tint.a : base.rgb;
+
     vec2 drift = vec2(uTime * 0.12, -uTime * 0.05);
     float wisp = fbm(world * 0.45 + drift);
     float fine = fbm(world * 1.3 - drift * 1.7 + 3.7);
-    float alpha = base.a * cell.amount * mix(0.75, 1.25, wisp);
-    vec3 rgb = base.rgb * (0.9 + 0.25 * fine);
+    float alpha = tint.a * mix(0.75, 1.25, wisp);
+    vec3 rgb = tintRgb * (0.9 + 0.25 * fine);
     vec3 particleColour = min(base.rgb * 1.4 + 0.1, vec3(1.0));
     vec2 seed = vec2(position);
 

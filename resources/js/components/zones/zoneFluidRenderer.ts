@@ -3,7 +3,7 @@ import type {
     ZoneTerrainElementData,
 } from '@/types/App/Data/data.d';
 import { patternFor } from './substanceTexturePatterns';
-import { type FluidCell, fluidAlpha } from './zoneFluids';
+import { type FluidCell, fluidAlpha, gasColour } from './zoneFluids';
 import { FLUID_FRAGMENT_SHADER, FLUID_VERTEX_SHADER } from './zoneFluidShaders';
 import { parseRgba } from './zoneTemperature';
 
@@ -100,7 +100,14 @@ export function packPalette(palette: ZoneTerrainElementData[]): Float32Array {
 
     palette.forEach((entry, index) => {
         const offset = index * PALETTE_TEXELS * 4;
-        const colour = parseRgba(entry.renderColour);
+        const parsed = parseRgba(entry.renderColour);
+        const colour =
+            parsed !== null && entry.state === 'gas'
+                ? ([
+                      ...gasColour([parsed[0], parsed[1], parsed[2]]),
+                      parsed[3],
+                  ] as const)
+                : parsed;
         const opaque = entry.state === 'liquid' && entry.opaqueLiquid;
         const pattern = patternFor(entry.substanceTexture);
 

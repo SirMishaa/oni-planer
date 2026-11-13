@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ZoneBoxData, ZoneTerrainData } from '@/types/App/Data/data.d';
 import {
     fluidAlpha,
+    gasColour,
     fluidCells,
     GAS_ALPHA_SCALE,
     gasStrength,
@@ -139,5 +140,19 @@ describe('fluid behind solids', () => {
 
     it('puts nothing behind a solid with no fluid neighbour', () => {
         expect(fluidCells(terrain([2, 2, 2]), box)).toEqual([]);
+    });
+});
+
+describe('gasColour', () => {
+    it('lifts a near-black gas (carbon dioxide) to a smoke grey that reads on the dark map', () => {
+        const [red, green, blue] = gasColour([30, 30, 30]);
+
+        expect(red).toBeGreaterThanOrEqual(90);
+        expect(red).toBe(green);
+        expect(green).toBe(blue);
+    });
+
+    it('keeps a light gas (oxygen) as the game colours it', () => {
+        expect(gasColour([46, 192, 231])).toEqual([46, 192, 231]);
     });
 });

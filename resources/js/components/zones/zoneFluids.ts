@@ -10,7 +10,10 @@ export const GAS_FULL_TINT_KG = 2;
  * in its shaders; these scales stand in for that (tunable).
  */
 export const LIQUID_ALPHA_SCALE = 0.7;
-export const GAS_ALPHA_SCALE = 0.55;
+export const GAS_ALPHA_SCALE = 0.45;
+
+/** Darkest a gas may look (0 to 255 luma): below it, the gas turns smoke grey so it reads on the dark map. */
+export const GAS_MIN_LUMA = 96;
 
 export type FluidCell = {
     column: number;
@@ -65,6 +68,30 @@ export function fluidAlpha(
         clamp01(colourAlpha / 255) *
         (kind === 'liquid' ? LIQUID_ALPHA_SCALE : GAS_ALPHA_SCALE)
     );
+}
+
+/**
+ * The colour a gas is drawn with: its render colour, except that a near-black
+ * gas (carbon dioxide is #1e1e1e) is lifted to a smoke grey of the same hue,
+ * as the game shows it over its lit background.
+ */
+export function gasColour(
+    rgb: readonly [number, number, number],
+): [number, number, number] {
+    const [red, green, blue] = rgb;
+    const luma = 0.299 * red + 0.587 * green + 0.114 * blue;
+
+    if (luma >= GAS_MIN_LUMA) {
+        return [red, green, blue];
+    }
+
+    const lift = GAS_MIN_LUMA - luma;
+
+    return [
+        Math.round(Math.min(255, red + lift)),
+        Math.round(Math.min(255, green + lift)),
+        Math.round(Math.min(255, blue + lift)),
+    ];
 }
 
 // endregion

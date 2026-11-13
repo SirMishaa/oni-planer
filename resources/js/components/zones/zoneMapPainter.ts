@@ -4,7 +4,7 @@ import type {
     ZoneTileData,
 } from '@/types/App/Data/data.d';
 import { patternFor } from './substanceTexturePatterns';
-import { fluidAlpha, fluidCells } from './zoneFluids';
+import { fluidAlpha, fluidCells, gasColour } from './zoneFluids';
 import {
     cellToLocal,
     layerIndex,
@@ -306,9 +306,7 @@ function paintStaticFluids(
 
         if (cell.kind === 'gas') {
             ctx.fillStyle = rgbaCss([
-                colour[0],
-                colour[1],
-                colour[2],
+                ...gasColour([colour[0], colour[1], colour[2]]),
                 Math.round(
                     255 * fluidAlpha(colour[3], 'gas', false) * cell.amount,
                 ),
