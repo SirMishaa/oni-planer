@@ -52,6 +52,10 @@ return [
         'unknown_cell' => 'Cell not read',
         'vacuum' => 'Vacuum',
         'grid' => 'Grid',
+        'zoom' => 'Zoom',
+        'zoom_in' => 'Zoom in',
+        'zoom_out' => 'Zoom out',
+        'zoom_reset' => 'Back to the default zoom',
         'fill' => 'Filled :percent %',
         'modes' => [
             'absolute' => 'Absolute',

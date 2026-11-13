@@ -52,6 +52,10 @@ return [
         'unknown_cell' => 'Case non lue',
         'vacuum' => 'Vide',
         'grid' => 'Grille',
+        'zoom' => 'Zoom',
+        'zoom_in' => 'Zoomer',
+        'zoom_out' => 'Dézoomer',
+        'zoom_reset' => 'Revenir au zoom par défaut',
         'fill' => 'Remplie à :percent %',
         'modes' => [
             'absolute' => 'Absolue',

@@ -76,7 +76,23 @@ const scroller = ref<HTMLElement | null>(null);
 const availableWidth = ref(0);
 let resizeObserver: ResizeObserver | undefined;
 
-const cellPx = computed(() => {
+/** Zoom over the fitted size: the map opens at 1.5× the fit, then the wheel and the buttons change it. */
+const ZOOM_DEFAULT = 1.5;
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 6;
+/** Ctrl + wheel step, as a factor. */
+const ZOOM_STEP = 1.25;
+/** Button step: ten points of zoom. */
+const ZOOM_BUTTON_STEP = 0.1;
+/** Longest canvas side, in device pixels, kept under the browsers' canvas limits. */
+const CANVAS_MAX_PX = 8192;
+/** Pointer travel, in CSS pixels, past which a press becomes a pan and not a click. */
+const PAN_THRESHOLD_PX = 4;
+
+const zoom = ref(ZOOM_DEFAULT);
+
+/** The cell that fits the box in the available width, before zoom. */
+const fitCellPx = computed(() => {
     const fit = Math.floor(
         (availableWidth.value - STAGE_PAD_PX * 2) / props.map.box.width,
     );
@@ -84,8 +100,135 @@ const cellPx = computed(() => {
     return Math.min(CELL_MAX_PX, Math.max(CELL_MIN_PX, fit || CELL_MAX_PX));
 });
 
+const cellPx = computed(() => {
+    const dpr = window.devicePixelRatio || 1;
+    const longestSide = Math.max(props.map.box.width, props.map.box.height, 1);
+    const cap = Math.floor(CANVAS_MAX_PX / dpr / longestSide);
+
+    return Math.max(4, Math.min(cap, Math.round(fitCellPx.value * zoom.value)));
+});
+
 const stageWidth = computed(() => props.map.box.width * cellPx.value);
 const stageHeight = computed(() => props.map.box.height * cellPx.value);
+
+// endregion
+
+// region Camera
+
+const zoomPercent = computed(() => Math.round(zoom.value * 100));
+
+/**
+ * Sets the zoom, keeping the point under `anchor` (a client position, the
+ * scroller's centre by default) where it was.
+ */
+function setZoom(
+    next: number,
+    anchor?: { clientX: number; clientY: number },
+): void {
+    const element = scroller.value;
+    const stageElement = stage.value;
+    const clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next));
+
+    if (!element || !stageElement || clamped === zoom.value) {
+        zoom.value = clamped;
+
+        return;
+    }
+
+    const view = element.getBoundingClientRect();
+    const clientX = anchor?.clientX ?? view.left + view.width / 2;
+    const clientY = anchor?.clientY ?? view.top + view.height / 2;
+    const before = stageElement.getBoundingClientRect();
+    const beforeCell = cellPx.value;
+    const cellX = (clientX - before.left) / beforeCell;
+    const cellY = (clientY - before.top) / beforeCell;
+
+    zoom.value = clamped;
+
+    void nextTick(() => {
+        const after = stageElement.getBoundingClientRect();
+        element.scrollLeft += after.left + cellX * cellPx.value - clientX;
+        element.scrollTop += after.top + cellY * cellPx.value - clientY;
+    });
+}
+
+/** The − and + buttons: ten points down or up, on a whole ten. */
+function stepZoom(direction: 1 | -1): void {
+    setZoom(Math.round((zoom.value + direction * ZOOM_BUTTON_STEP) * 10) / 10);
+}
+
+/** Ctrl (or ⌘) + wheel zooms the map; a plain wheel scrolls the map, or the page when the map does not scroll. */
+function onWheel(event: WheelEvent): void {
+    if (!event.ctrlKey && !event.metaKey) {
+        return;
+    }
+
+    event.preventDefault();
+    setZoom(zoom.value * (event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP), event);
+}
+
+/** A press on the map: a drag past the threshold pans it, and the click that ends a pan is swallowed. */
+const pan = {
+    pointerId: null as number | null,
+    startX: 0,
+    startY: 0,
+    scrollLeft: 0,
+    scrollTop: 0,
+    moved: false,
+};
+const panning = ref(false);
+
+function onPanStart(event: PointerEvent): void {
+    if (event.button !== 0 || !scroller.value) {
+        return;
+    }
+
+    pan.pointerId = event.pointerId;
+    pan.startX = event.clientX;
+    pan.startY = event.clientY;
+    pan.scrollLeft = scroller.value.scrollLeft;
+    pan.scrollTop = scroller.value.scrollTop;
+    pan.moved = false;
+}
+
+function onPanMove(event: PointerEvent): void {
+    if (pan.pointerId !== event.pointerId || !scroller.value) {
+        return;
+    }
+
+    const dx = event.clientX - pan.startX;
+    const dy = event.clientY - pan.startY;
+
+    if (!pan.moved && Math.hypot(dx, dy) < PAN_THRESHOLD_PX) {
+        return;
+    }
+
+    if (!pan.moved) {
+        pan.moved = true;
+        panning.value = true;
+        scroller.value.setPointerCapture(event.pointerId);
+    }
+
+    scroller.value.scrollLeft = pan.scrollLeft - dx;
+    scroller.value.scrollTop = pan.scrollTop - dy;
+}
+
+function onPanEnd(event: PointerEvent): void {
+    if (pan.pointerId !== event.pointerId) {
+        return;
+    }
+
+    pan.pointerId = null;
+    panning.value = false;
+}
+
+function onClickCapture(event: MouseEvent): void {
+    if (pan.moved) {
+        pan.moved = false;
+        event.stopPropagation();
+        event.preventDefault();
+    }
+}
 
 // endregion
 
@@ -711,7 +854,17 @@ const temperatureLegend = computed(() => {
 <template>
     <div ref="root" class="zone-map">
         <!-- region Stage -->
-        <div ref="scroller" class="zone-map__scroll">
+        <div
+            ref="scroller"
+            class="zone-map__scroll"
+            :class="{ 'zone-map__scroll--panning': panning }"
+            @wheel="onWheel"
+            @pointerdown="onPanStart"
+            @pointermove="onPanMove"
+            @pointerup="onPanEnd"
+            @pointercancel="onPanEnd"
+            @click.capture="onClickCapture"
+        >
             <div
                 ref="stage"
                 class="zone-map__stage"
@@ -967,6 +1120,41 @@ const temperatureLegend = computed(() => {
             >
                 {{ t('zones.map.grid') }}
             </button>
+            <div
+                class="zone-map__zoom"
+                role="group"
+                :aria-label="t('zones.map.zoom')"
+            >
+                <button
+                    type="button"
+                    class="zone-map__toggle"
+                    data-test="zone-map-zoom-out"
+                    :aria-label="t('zones.map.zoom_out')"
+                    :disabled="zoom <= ZOOM_MIN"
+                    @click="stepZoom(-1)"
+                >
+                    −
+                </button>
+                <button
+                    type="button"
+                    class="zone-map__toggle"
+                    data-test="zone-map-zoom-reset"
+                    :title="t('zones.map.zoom_reset')"
+                    @click="setZoom(ZOOM_DEFAULT)"
+                >
+                    {{ zoomPercent }} %
+                </button>
+                <button
+                    type="button"
+                    class="zone-map__toggle"
+                    data-test="zone-map-zoom-in"
+                    :aria-label="t('zones.map.zoom_in')"
+                    :disabled="zoom >= ZOOM_MAX"
+                    @click="stepZoom(1)"
+                >
+                    +
+                </button>
+            </div>
         </div>
 
         <div v-if="layer === 'temperature'" class="zone-map__temperature">
@@ -1025,6 +1213,8 @@ const temperatureLegend = computed(() => {
 
 .zone-map__scroll {
     overflow: auto;
+    max-height: 72vh;
+    cursor: grab;
     padding: 12px;
     border-radius: 8px;
     background: var(--ink-0);
@@ -1264,6 +1454,21 @@ const temperatureLegend = computed(() => {
 
 .zone-map__grid {
     margin-left: auto;
+}
+
+.zone-map__scroll--panning {
+    cursor: grabbing;
+    user-select: none;
+}
+
+.zone-map__zoom {
+    display: flex;
+    gap: 4px;
+}
+
+.zone-map__zoom .zone-map__toggle:disabled {
+    opacity: 0.4;
+    cursor: default;
 }
 
 .zone-map__toggle {

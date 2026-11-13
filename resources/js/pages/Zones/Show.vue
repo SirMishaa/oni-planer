@@ -140,7 +140,7 @@ function showOnMap(instanceId: string): void {
 
 <template>
     <div class="colony min-h-full pb-16 md:pb-0">
-        <div class="mx-auto max-w-[1320px] px-4 pt-6 pb-20 md:px-9">
+        <div class="mx-auto max-w-[1760px] px-4 pt-6 pb-20 md:px-9">
             <!-- region Header -->
             <header class="zone-header">
                 <Link

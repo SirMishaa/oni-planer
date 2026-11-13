@@ -92,3 +92,30 @@ it('lists a door on the zone border apart and knows its state on the map', funct
         ->assertDontSee(__('zones.panel.state_unknown'))
         ->assertNoJavaScriptErrors();
 });
+
+it('zooms the map with its buttons and ctrl + wheel, never with a plain wheel', function (): void {
+    $zone = Zone::factory()->sodicaneFarm()->create();
+
+    $page = visit(route('zones.show', $zone));
+    $width = fn (): string => $page->script("document.querySelector('.zone-map__stage').style.width");
+    $wheel = fn (bool $ctrl): mixed => $page->script("document.querySelector('.zone-map__scroll').dispatchEvent(new WheelEvent('wheel', {deltaY: -100, ctrlKey: ".($ctrl ? 'true' : 'false').', bubbles: true, cancelable: true}))');
+
+    $page->assertSeeIn('[data-test=zone-map-zoom-reset]', '150 %');
+    $initial = $width();
+
+    $wheel(false);
+    expect($width())->toBe($initial);
+
+    $wheel(true);
+    $page->assertSeeIn('[data-test=zone-map-zoom-reset]', '188 %');
+    expect((int) $width())->toBeGreaterThan((int) $initial);
+
+    $page->click('[data-test=zone-map-zoom-reset]')
+        ->assertSeeIn('[data-test=zone-map-zoom-reset]', '150 %')
+        ->click('[data-test=zone-map-zoom-out]')
+        ->assertSeeIn('[data-test=zone-map-zoom-reset]', '140 %')
+        ->click('[data-test=zone-map-zoom-in]')
+        ->click('[data-test=zone-map-zoom-in]')
+        ->assertSeeIn('[data-test=zone-map-zoom-reset]', '160 %')
+        ->assertNoJavaScriptErrors();
+});
