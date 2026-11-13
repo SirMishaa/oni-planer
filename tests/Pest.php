@@ -100,3 +100,61 @@ function makeHatch(): Critter
 
     return $critter;
 }
+
+/** Builds the raw Pusher frame the mod sends: base64(gzip(json)) under `payload`. */
+function uplinkData(string $event, array $inner, string $channel = 'uplink-data'): string
+{
+    return (string) json_encode([
+        'event' => $event,
+        'channel' => $channel,
+        'data' => ['payload' => base64_encode((string) gzencode((string) json_encode($inner)))],
+    ]);
+}
+
+/** Wraps a raw client message in the event Reverb raises for it. */
+function reverbMessage(string $message): Laravel\Reverb\Events\MessageReceived
+{
+    $connection = new class extends Laravel\Reverb\Contracts\Connection
+    {
+        public function __construct() {}
+
+        public function identifier(): string
+        {
+            return 'test';
+        }
+
+        public function id(): string
+        {
+            return 'test';
+        }
+
+        public function send(string $message): void {}
+
+        public function control(string $type = Ratchet\RFC6455\Messaging\Frame::OP_PING): void {}
+
+        public function terminate(): void {}
+    };
+
+    return new Laravel\Reverb\Events\MessageReceived($connection, $message);
+}
+
+/**
+ * Routes a raw client message as Reverb would and runs its job (the queue is
+ * sync in tests); returns the acknowledgement frames the mod would receive.
+ *
+ * @return list<string>
+ */
+function receiveUplinkData(string $message): array
+{
+    $acks = [];
+    Illuminate\Support\Facades\Event::listen(
+        App\Events\Uplink\UplinkMessageAccepted::class,
+        function (App\Events\Uplink\UplinkMessageAccepted $event) use (&$acks): void {
+            $acks[] = (string) json_encode(['event' => $event->broadcastAs(), 'channel' => 'uplink-data', 'data' => json_encode($event->broadcastWith())]);
+        },
+    );
+
+    app(App\Listeners\RouteUplinkMessage::class)->handle(reverbMessage($message));
+
+    return $acks;
+}

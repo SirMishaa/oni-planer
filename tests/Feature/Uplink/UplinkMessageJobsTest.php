@@ -3,67 +3,14 @@
 declare(strict_types=1);
 
 use App\Events\ZoneUpdated;
-use App\Listeners\IngestUplinkData;
 use App\Models\Colony;
 use App\Models\UplinkSession;
 use App\Models\Zone;
 use App\Models\ZoneVersion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
-use Laravel\Reverb\Contracts\Connection;
-use Laravel\Reverb\Events\MessageReceived;
-use Ratchet\RFC6455\Messaging\Frame;
 
 uses(RefreshDatabase::class);
-
-/** Builds the raw Pusher frame the mod sends: base64(gzip(json)) under `payload`. */
-function uplinkData(string $event, array $inner, string $channel = 'uplink-data'): string
-{
-    return (string) json_encode([
-        'event' => $event,
-        'channel' => $channel,
-        'data' => ['payload' => base64_encode((string) gzencode((string) json_encode($inner)))],
-    ]);
-}
-
-/**
- * Hands a raw client message to the listener and returns the frames sent back.
- *
- * @return list<string>
- */
-function receiveUplinkData(string $message): array
-{
-    $connection = new class extends Connection
-    {
-        /** @var list<string> */
-        public array $sent = [];
-
-        public function __construct() {}
-
-        public function identifier(): string
-        {
-            return 'test';
-        }
-
-        public function id(): string
-        {
-            return 'test';
-        }
-
-        public function send(string $message): void
-        {
-            $this->sent[] = $message;
-        }
-
-        public function control(string $type = Frame::OP_PING): void {}
-
-        public function terminate(): void {}
-    };
-
-    app(IngestUplinkData::class)->handle(new MessageReceived($connection, $message));
-
-    return $connection->sent;
-}
 
 /** @return array<string, mixed> */
 function zoneListMessage(array $zones, string $id = 'msg-list-1', string $colonyId = 'colony-1'): array
@@ -262,4 +209,12 @@ it('acks a stale layout without storing it', function (): void {
         ->and(ZoneVersion::query()->count())->toBe(1)
         ->and(Zone::query()->sole()->version)->toBe(2)
         ->and(Zone::query()->sole()->layout['cells'])->toBe([10, 11, 12, 13]);
+});
+
+it('sends the ack frame the mod parses', function (): void {
+    $accepted = new App\Events\Uplink\UplinkMessageAccepted('x');
+
+    expect($accepted->broadcastAs())->toBe('uplink.ack')
+        ->and($accepted->broadcastOn())->toEqual([new Illuminate\Broadcasting\Channel('uplink-data')])
+        ->and($accepted->broadcastWith())->toBe(['id' => 'x']);
 });

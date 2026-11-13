@@ -2,41 +2,16 @@
 
 declare(strict_types=1);
 
-use App\Listeners\IngestColonyState;
 use App\Models\Colony;
 use App\Models\UplinkMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Reverb\Contracts\Connection;
-use Laravel\Reverb\Events\MessageReceived;
-use Ratchet\RFC6455\Messaging\Frame;
 
 uses(RefreshDatabase::class);
 
-/** Hands a raw client message to the listener, as Reverb would. */
+/** Hands a raw client message to the router, as Reverb would (the queue is sync in tests). */
 function receive(string $message): void
 {
-    $connection = new class extends Connection
-    {
-        public function __construct() {}
-
-        public function identifier(): string
-        {
-            return 'test';
-        }
-
-        public function id(): string
-        {
-            return 'test';
-        }
-
-        public function send(string $message): void {}
-
-        public function control(string $type = Frame::OP_PING): void {}
-
-        public function terminate(): void {}
-    };
-
-    app(IngestColonyState::class)->handle(new MessageReceived($connection, $message));
+    receiveUplinkData($message);
 }
 
 it('ingests a colony state whose event comes first', function (): void {
