@@ -786,52 +786,72 @@ const hoveredBlock = computed<{ x: number; y: number } | null>(() => {
     return solid || tile ? { x: current.x, y: current.y } : null;
 });
 
-const liftStyle = computed(() => {
-    const block = hoveredBlock.value;
+/** Backing resolution of the lifted copy over the map's own pixels, so its slight scale stays sharp. */
+const LIFT_OVERSAMPLE = 2;
 
-    if (!block) {
+/**
+ * The lifted copy's crop of the solids canvas, in that canvas's pixels, snapped
+ * to whole pixels so the copy sits exactly on the map and is not resampled.
+ */
+const liftRect = computed(() => {
+    const block = hoveredBlock.value;
+    const source = solidsCanvas.value;
+
+    if (!block || !source || stageWidth.value <= 0) {
+        return null;
+    }
+
+    const ratio = source.width / stageWidth.value;
+    const { column, row } = cellToLocal(block.x, block.y, props.map.box);
+    const left = Math.floor(
+        (column - LIFT_MARGIN_CELLS) * cellPx.value * ratio,
+    );
+    const top = Math.floor((row - LIFT_MARGIN_CELLS) * cellPx.value * ratio);
+    const size = Math.ceil((1 + LIFT_MARGIN_CELLS * 2) * cellPx.value * ratio);
+
+    return { left, top, size, ratio };
+});
+
+const liftStyle = computed(() => {
+    const rect = liftRect.value;
+
+    if (!rect) {
         return {};
     }
 
-    const { column, row } = cellToLocal(block.x, block.y, props.map.box);
-    const size = (1 + LIFT_MARGIN_CELLS * 2) * cellPx.value;
-
     return {
-        left: `${(column - LIFT_MARGIN_CELLS) * cellPx.value}px`,
-        top: `${(row - LIFT_MARGIN_CELLS) * cellPx.value}px`,
-        width: `${size}px`,
-        height: `${size}px`,
+        left: `${rect.left / rect.ratio}px`,
+        top: `${rect.top / rect.ratio}px`,
+        width: `${rect.size / rect.ratio}px`,
+        height: `${rect.size / rect.ratio}px`,
     };
 });
 
 /** Copies the hovered block (and its rim) from the solids canvas into the lifted copy. */
 function drawLift(): void {
-    const block = hoveredBlock.value;
+    const rect = liftRect.value;
     const source = solidsCanvas.value;
     const target = liftCanvas.value;
+    const context = target?.getContext('2d');
 
-    if (!block || !source || !target || stageWidth.value <= 0) {
+    if (!rect || !source || !target || !context) {
         return;
     }
 
-    const ratio = source.width / stageWidth.value;
-    const { column, row } = cellToLocal(block.x, block.y, props.map.box);
-    const size = (1 + LIFT_MARGIN_CELLS * 2) * cellPx.value * ratio;
-    target.width = Math.round(size);
-    target.height = Math.round(size);
-    target
-        .getContext('2d')
-        ?.drawImage(
-            source,
-            (column - LIFT_MARGIN_CELLS) * cellPx.value * ratio,
-            (row - LIFT_MARGIN_CELLS) * cellPx.value * ratio,
-            size,
-            size,
-            0,
-            0,
-            target.width,
-            target.height,
-        );
+    target.width = rect.size * LIFT_OVERSAMPLE;
+    target.height = rect.size * LIFT_OVERSAMPLE;
+    context.imageSmoothingEnabled = false;
+    context.drawImage(
+        source,
+        rect.left,
+        rect.top,
+        rect.size,
+        rect.size,
+        0,
+        0,
+        target.width,
+        target.height,
+    );
 }
 
 watch(hoveredBlock, () => void nextTick(drawLift));
