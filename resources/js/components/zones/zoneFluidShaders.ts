@@ -45,7 +45,9 @@ const float GLOW_HALO_ALPHA = 0.35;
 // Gases
 const int GAS_PARTICLES = 2;
 /** Spread of the gas blend, in cells: larger blurs gases more into each other (tunable). */
-const float GAS_BLEND_CELLS = 0.75;
+const float GAS_BLEND_CELLS = 1.0;
+/** Fill below which a liquid cell is a trace (a few grams of salt water): it shows the gas around it instead. */
+const float TRACE_LIQUID = 0.02;
 /** Share of a gas's own colour kept over grey: below 1, gases read as tinted air (tunable). */
 const float GAS_SATURATION = 0.7;
 
@@ -297,6 +299,18 @@ vec4 shadeGas(Cell cell, ivec2 position, vec2 world, vec2 local, float pixelCell
     return vec4(clamp(rgb, 0.0, 1.0) * alpha, alpha);
 }
 
+/** The first gas cell beside a position (above, left, right, below); not present when there is none. */
+Cell gasNeighbour(ivec2 position) {
+    ivec2 offsets[4] = ivec2[4](ivec2(0, -1), ivec2(-1, 0), ivec2(1, 0), ivec2(0, 1));
+    for (int index = 0; index < 4; index++) {
+        Cell cell = cellAt(position + offsets[index]);
+        if (cell.present && !cell.liquid) {
+            return cell;
+        }
+    }
+    return Cell(false, 0, 0.0, false, false);
+}
+
 /** A gas pocket the liquid runs through: the same liquid on its left and right. */
 bool bridgedPocket(ivec2 position, int palette) {
     Cell pocket = cellAt(position);
@@ -316,7 +330,13 @@ void main() {
     Cell here = cellAt(position);
     vec4 colour = vec4(0.0);
 
-    if (here.present && here.liquid) {
+    if (here.present && here.liquid && here.amount < TRACE_LIQUID && !bridgedPocket(position + ivec2(0, -1), here.palette)) {
+        // A trace of liquid: invisible itself, so it shows the gas around it, not a dark hole.
+        Cell gas = gasNeighbour(position);
+        if (gas.present) {
+            colour = shadeGas(gas, position, world, local, pixelCells);
+        }
+    } else if (here.present && here.liquid) {
         // Under a bridged gas pocket the liquid goes on: no surface there.
         if (here.surface && bridgedPocket(position + ivec2(0, -1), here.palette)) {
             here.surface = false;
