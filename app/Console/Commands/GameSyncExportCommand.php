@@ -8,6 +8,7 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Process;
 
 #[Description('Mirror the OniExtract export and the supported mods files into game-data')]
 #[Signature('game:sync-export')]
@@ -25,14 +26,45 @@ final class GameSyncExportCommand extends Command
         }
 
         File::deleteDirectory($exportPath);
-        File::copyDirectory($exportSource, $exportPath);
-        $this->info(sprintf('Mirrored export: %d files into %s', count(File::allFiles($exportPath)), $exportPath));
+        File::ensureDirectoryExists($exportPath);
+        Process::run(['cp', '-R', $exportSource.'/.', $exportPath])->throw();
+
+        $expected = self::countFiles($exportSource);
+        $mirrored = self::countFiles($exportPath);
+
+        if ($mirrored !== $expected) {
+            $this->error("Mirror incomplete: {$mirrored} of {$expected} files copied into {$exportPath}.");
+
+            return self::FAILURE;
+        }
+
+        $this->info(sprintf('Mirrored export: %d files into %s', $mirrored, $exportPath));
 
         foreach ((array) config('game.supported_mods') as $workshopId) {
             $this->syncMod((string) $workshopId);
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Files under a directory, counted with scandir: PHP's directory iterators (and so
+     * File::copyDirectory and File::allFiles) skip entries on the WSL mount of the
+     * Windows drive, which once left the mirror without half of ui_image.
+     */
+    private static function countFiles(string $directory): int
+    {
+        $count = 0;
+        foreach (scandir($directory) ?: [] as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+
+            $path = $directory.'/'.$entry;
+            $count += is_dir($path) ? self::countFiles($path) : 1;
+        }
+
+        return $count;
     }
 
     private function syncMod(string $workshopId): void

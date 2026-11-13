@@ -45,3 +45,12 @@ it('fails when the export has no building.json', function (): void {
 
     expect($this->workDir.'/out/export')->not->toBeDirectory();
 });
+
+it('fails when the mirror holds fewer files than the export', function (): void {
+    File::copyDirectory(base_path('tests/Fixtures/OniExport/database'), $this->workDir.'/src-export/database');
+    Illuminate\Support\Facades\Process::fake();
+
+    $this->artisan('game:sync-export')
+        ->expectsOutputToContain('incomplete')
+        ->assertFailed();
+});
