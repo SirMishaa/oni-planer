@@ -263,13 +263,13 @@ vec4 shadeGas(Cell cell, ivec2 position, vec2 world, vec2 local, float pixelCell
 
     // Smoke: a slowly drifting, domain-warped noise in contrasted bands, so a gas
     // reads as moving wisps and not as a flat tint.
-    vec2 drift = vec2(uTime * 0.12, -uTime * 0.05);
+    vec2 drift = vec2(uTime * 0.18, -uTime * 0.075);
     vec2 warp = vec2(fbm(world * 0.35 + drift), fbm(world * 0.35 - drift + 5.2));
     float wisp = fbm(world * 0.5 + warp * 1.6 + drift * 0.6);
     float fine = fbm(world * 1.3 - drift * 1.7 + 3.7);
     // Denser gas: stronger wisps, and more of them.
     float contrast = mix(0.3, 1.0, cell.amount);
-    float alpha = tint.a * mix(1.0 - 0.3 * contrast, 1.0 + 0.35 * contrast, smoothstep(0.25, 0.75, wisp));
+    float alpha = tint.a * mix(1.0 - 0.4 * contrast, 1.0 + 0.45 * contrast, smoothstep(0.25, 0.75, wisp));
     // Mixed with clear air: a gas is a slightly washed-out tint, not a saturated fog.
     vec3 airy = mix(vec3(dot(tintRgb, vec3(0.299, 0.587, 0.114))), tintRgb, GAS_SATURATION);
     vec3 rgb = airy * (0.9 + 0.2 * fine);
