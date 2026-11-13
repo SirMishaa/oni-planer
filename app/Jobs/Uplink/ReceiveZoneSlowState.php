@@ -5,27 +5,28 @@ declare(strict_types=1);
 namespace App\Jobs\Uplink;
 
 use App\Actions\Uplink\StoreZoneState;
-use App\Uplink\UplinkMessageType;
+use App\Enums\UplinkMessageType;
+use App\Services\Uplink\UplinkMessageReader;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
 
-/** `client-zone.slow`: latest terrain and temperatures of a zone. */
-final class ReceiveZoneSlowState extends UplinkMessageJob
+/** `client-zone.slow`: latest terrain and temperatures of a zone; never acked. */
+final class ReceiveZoneSlowState implements ShouldQueue
 {
-    public static function type(): UplinkMessageType
-    {
-        return UplinkMessageType::ZoneSlowState;
-    }
+    use Queueable;
 
-    /**
-     * @param  array<string, mixed>  $message
-     */
-    protected function process(array $message): bool
+    public int $tries = 1;
+
+    public function __construct(public readonly string $frame) {}
+
+    public function handle(UplinkMessageReader $reader, StoreZoneState $storeState): void
     {
-        if (! is_string($message['colonyId'] ?? null) || ! is_string($message['zoneId'] ?? null)) {
-            return false;
+        $message = $reader->read($this->frame, UplinkMessageType::ZoneSlowState);
+
+        if ($message === null || ! is_string($message['colonyId'] ?? null) || ! is_string($message['zoneId'] ?? null)) {
+            return;
         }
 
-        app(StoreZoneState::class)->handle('slow', $message);
-
-        return true;
+        $storeState->handle('slow', $message);
     }
 }

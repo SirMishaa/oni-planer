@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Events\Uplink;
 
-use App\Uplink\UplinkMessageType;
+use App\Enums\UplinkMessageType;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;

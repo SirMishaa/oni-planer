@@ -4,21 +4,26 @@ declare(strict_types=1);
 
 namespace App\Jobs\Uplink;
 
-use App\Uplink\UplinkMessageType;
+use App\Enums\UplinkMessageType;
+use App\Services\Uplink\UplinkMessageReader;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
 
 /** `client-command.ack`: the mod's answer to a command of the site. */
-final class ReceiveCommandAck extends UplinkMessageJob
+final class ReceiveCommandAck implements ShouldQueue
 {
-    public static function type(): UplinkMessageType
-    {
-        return UplinkMessageType::CommandAck;
-    }
+    use Queueable;
 
-    /**
-     * @param  array<string, mixed>  $message
-     */
-    protected function process(array $message): bool
+    public int $tries = 1;
+
+    public function __construct(public readonly string $frame) {}
+
+    public function handle(UplinkMessageReader $reader): void
     {
-        return false;
+        $message = $reader->read($this->frame, UplinkMessageType::CommandAck);
+
+        if ($message === null) {
+            return;
+        }
     }
 }

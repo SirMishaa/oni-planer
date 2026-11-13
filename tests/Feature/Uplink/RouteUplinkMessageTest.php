@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\UplinkMessageType;
 use App\Listeners\RouteUplinkMessage;
-use App\Uplink\UplinkMessageType;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 

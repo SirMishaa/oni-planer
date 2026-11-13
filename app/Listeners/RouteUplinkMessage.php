@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
-use App\Uplink\UplinkMessageType;
+use App\Enums\UplinkMessageType;
 use Laravel\Reverb\Events\MessageReceived;
 use Throwable;
 

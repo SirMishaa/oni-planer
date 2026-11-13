@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Uplink;
+namespace App\Enums;
 
 use App\Jobs\Uplink\ReceiveColonyState;
 use App\Jobs\Uplink\ReceiveCommandAck;
@@ -11,7 +11,6 @@ use App\Jobs\Uplink\ReceiveZoneFastState;
 use App\Jobs\Uplink\ReceiveZoneLayout;
 use App\Jobs\Uplink\ReceiveZoneList;
 use App\Jobs\Uplink\ReceiveZoneSlowState;
-use App\Jobs\Uplink\UplinkMessageJob;
 
 /**
  * Every message the Uplink mod sends, keyed by its Pusher event name. Each
@@ -62,7 +61,7 @@ enum UplinkMessageType: string
         return 1;
     }
 
-    /** @return class-string<UplinkMessageJob|ReceiveColonyState> */
+    /** @return class-string<ReceiveSessionStart|ReceiveZoneList|ReceiveZoneLayout|ReceiveZoneSlowState|ReceiveZoneFastState|ReceiveColonyState|ReceiveCommandAck> */
     public function job(): string
     {
         return match ($this) {
