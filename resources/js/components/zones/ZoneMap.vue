@@ -1327,11 +1327,21 @@ const temperatureLegend = computed(() => {
 .zone-entity {
     --sticker: oklch(97% 0.012 85);
     --sticker-shadow: oklch(15% 0.02 230 / 0.55);
+    /* The same colours fully transparent: the outline fades from clear white, not from black. */
+    --sticker-clear: oklch(97% 0.012 85 / 0);
+    --sticker-shadow-clear: oklch(15% 0.02 230 / 0);
 }
 
+/* Same filter list in every state (5 shadows, then brightness), so the outline
+   animates with the lift instead of snapping in at the end. */
 .zone-entity__sprite,
 .zone-entity__placeholder {
     transform-origin: 50% 100%;
+    filter: drop-shadow(0 0 0 var(--sticker-clear))
+        drop-shadow(0 0 0 var(--sticker-clear))
+        drop-shadow(0 0 0 var(--sticker-clear))
+        drop-shadow(0 0 0 var(--sticker-clear))
+        drop-shadow(0 0 0 var(--sticker-shadow-clear)) brightness(1);
     transition:
         transform 220ms cubic-bezier(0.25, 1, 0.5, 1),
         filter 220ms cubic-bezier(0.25, 1, 0.5, 1);
@@ -1342,7 +1352,8 @@ const temperatureLegend = computed(() => {
     transform: translateY(-1px) scale(1.03);
     filter: drop-shadow(1px 0 0 var(--sticker))
         drop-shadow(-1px 0 0 var(--sticker)) drop-shadow(0 1px 0 var(--sticker))
-        drop-shadow(0 -1px 0 var(--sticker)) brightness(1.06);
+        drop-shadow(0 -1px 0 var(--sticker))
+        drop-shadow(0 0 0 var(--sticker-shadow-clear)) brightness(1.06);
 }
 
 .zone-entity--selected {
