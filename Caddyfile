@@ -44,9 +44,16 @@
 		@immutable path /build/*
 		header @immutable Cache-Control "public, max-age=31536000, immutable"
 
-		# Extracted game imagery (animated WebP) + fonts/media: stable URLs but
-		# regenerated occasionally, so cache hard yet allow background revalidation.
-		@assets path /assets/game/* *.webp *.avif *.png *.jpg *.jpeg *.gif *.svg *.ico *.woff *.woff2 *.ttf *.mp4 *.webm
+		# Extracted game imagery: same URLs, new files after every game:import-assets, so the
+		# browser revalidates each time (a 304 when unchanged) instead of keeping a stale image.
+		@game path /assets/game/*
+		header @game Cache-Control "public, no-cache"
+
+		# Fonts and media: stable URLs, regenerated rarely, so cache hard yet allow background revalidation.
+		@assets {
+			not path /assets/game/*
+			path *.webp *.avif *.png *.jpg *.jpeg *.gif *.svg *.ico *.woff *.woff2 *.ttf *.mp4 *.webm
+		}
 		header @assets Cache-Control "public, max-age=2592000, stale-while-revalidate=86400"
 		header @assets Vary Accept-Encoding
 		# endregion
