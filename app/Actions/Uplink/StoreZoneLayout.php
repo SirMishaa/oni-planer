@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Uplink;
 
-use App\Events\ZoneUpdated;
+use App\Events\Uplink\ZoneLayoutStored;
 use App\Models\Zone;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -67,7 +67,7 @@ final class StoreZoneLayout
         });
 
         if ($stored === true) {
-            ZoneUpdated::dispatch($message['zoneId'], $message['colonyId'], 'layout');
+            ZoneLayoutStored::dispatch($message['colonyId'], $message['zoneId']);
         }
 
         return $stored !== false;

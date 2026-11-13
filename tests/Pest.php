@@ -158,3 +158,47 @@ function receiveUplinkData(string $message): array
 
     return $acks;
 }
+
+/** @return array<string, mixed> */
+function zoneListMessage(array $zones, string $id = 'msg-list-1', string $colonyId = 'colony-1'): array
+{
+    return [
+        'schema' => 1,
+        'id' => $id,
+        'colonyId' => $colonyId,
+        'sessionId' => 'session-1',
+        'zones' => $zones,
+    ];
+}
+
+/** @return array<string, mixed> */
+function zoneEntry(string $zoneId, array $override = []): array
+{
+    return [
+        'zoneId' => $zoneId,
+        'name' => 'Ferme',
+        'worldId' => 0,
+        'version' => 1,
+        'cellCount' => 3,
+        'orphaned' => false,
+        ...$override,
+    ];
+}
+
+/** @return array<string, mixed> */
+function zoneLayoutMessage(array $cells, string $id = 'msg-layout-1', int $version = 1): array
+{
+    return [
+        'schema' => 1,
+        'id' => $id,
+        'colonyId' => 'colony-1',
+        'zoneId' => 'zone-a',
+        'version' => $version,
+        'gameSeconds' => 1200.5,
+        'gridWidth' => 606,
+        'box' => ['x' => 1, 'y' => 2, 'width' => 3, 'height' => 1],
+        'cells' => $cells,
+        'tiles' => [['cell' => $cells[0], 'prefabId' => 'Tile']],
+        'buildings' => [],
+    ];
+}

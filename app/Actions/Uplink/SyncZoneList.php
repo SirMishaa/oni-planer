@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Uplink;
 
-use App\Events\ZoneUpdated;
+use App\Events\Uplink\ZoneListSynced;
 use App\Models\Zone;
 
 /**
@@ -51,8 +51,6 @@ final class SyncZoneList
                 ->update(['archived_at' => now()]);
         }
 
-        foreach ([...$listed, ...$missing->all()] as $zoneGuid) {
-            ZoneUpdated::dispatch($zoneGuid, $colonyGuid, 'list');
-        }
+        ZoneListSynced::dispatch($colonyGuid, [...$listed, ...$missing->all()]);
     }
 }
