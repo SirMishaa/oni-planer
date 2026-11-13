@@ -43,6 +43,12 @@ Ouvre une zone (<Route name="zones.index" />) pour voir sa carte, dessinée comm
 - **Grille** affiche ou masque le quadrillage des cases.
 - Les cases que le jeu n'a pas lues restent hachurées.
 
+### Entités et bord
+
+L'onglet **Entités** liste les plantes et les bâtiments de la zone, ceux qui ont un problème en premier. Les bâtiments posés sur les murs, le sol ou le plafond de la zone comptent avec elle : une station de pêche ou un distributeur collé au bassin apparaît dans les entités et peut signaler un problème.
+
+Les portes, échelles, poteaux de pompier et escaliers sur ce bord sont rangés à part, dans le groupe **Bord** : ils restent sur la carte, mais ne comptent ni dans les bâtiments ni dans les problèmes.
+
 ### Calque température
 
 Quatre modes colorent la carte avec les teintes de la surcouche température du jeu. Une légende accompagne chaque mode.

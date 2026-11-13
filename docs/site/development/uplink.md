@@ -1,7 +1,7 @@
 ---
 title: Uplink
 description: Comment le mod Uplink parle au planner via Reverb, comment chaque message est traité en file et les règles d'ordre et de commande.
-sources: ["app/Listeners/RouteUplinkMessage.php", "app/Listeners/Uplink/**", "app/Enums/UplinkMessageType.php", "app/Jobs/Uplink/**", "app/Events/Uplink/**", "app/Services/Uplink/**", "app/Actions/Uplink/**", "app/Events/ZoneUpdated.php", "app/Models/UplinkCommand.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Console/Commands/UplinkResyncZoneCommand.php"]
+sources: ["app/Listeners/RouteUplinkMessage.php", "app/Listeners/Uplink/**", "app/Enums/UplinkMessageType.php", "app/Jobs/Uplink/**", "app/Events/Uplink/**", "app/Services/Uplink/**", "app/Actions/Uplink/**", "app/Events/ZoneUpdated.php", "app/Models/UplinkCommand.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Console/Commands/UplinkResyncZoneCommand.php", "app/Services/Zones/ZonePresenter.php"]
 order: 4
 ---
 
@@ -31,6 +31,14 @@ Sur `uplink-data`, le `data` de l'événement vaut `{"payload": "<base64 du gzip
 - **Ils sont traités dans l'ordre** : un seul worker lit `uplink-reliable`, donc le début de session passe avant la liste, et la liste avant les layouts.
 - **Les événements d'état** (`slow`, `fast`) ne gardent que le dernier et ne sont jamais acquittés.
 - Un layout pour une zone que le site ne connaît pas encore n'est pas acquitté ; le mod le renvoie après la liste des zones.
+
+## Bord de zone
+
+Une zone n'est qu'un ensemble de cases. Le mod lit aussi un **anneau de bord** autour d'elle : les cases à quelques cases d'une case de la zone, diagonales comprises (`ZoneBorder`). Sa largeur se règle avec `zoneBorderCells` dans `uplink.json` et le layout la renvoie dans `borderCells`.
+
+- L'état rapide (`buildings`) liste les bâtiments qui touchent la zone **ou** l'anneau, sur le même monde que la zone. Le cadre du layout s'élargit pour les dessiner.
+- Le terrain, les températures et les plantes restent ceux des cases de la zone : les murs ne faussent pas les moyennes.
+- Côté site, `ZonePresenter` sépare les passages (`PASSAGE_PREFABS` : portes, échelles, poteaux, escaliers) dans `borderEntities`. Ils ne comptent ni dans les entités, ni dans les problèmes, ni dans le résumé des zones. Tout autre bâtiment, de mod ou inconnu, compte comme contenu.
 
 ## Règles du listener
 
