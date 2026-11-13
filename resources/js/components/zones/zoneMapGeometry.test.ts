@@ -27,24 +27,62 @@ describe('cells', () => {
 });
 
 describe('zoneOutlinePath', () => {
-    it('draws the four sides of a lone cell', () => {
-        expect(zoneOutlinePath([[10, 22]], box)).toBe(
-            'M0 0h1M0 1h1M0 0v1M1 0v1',
-        );
+    const loops = (path: string) => path.match(/Z/g)?.length ?? 0;
+    const corners = (path: string) => path.match(/Q/g)?.length ?? 0;
+
+    it('draws a lone cell as one closed loop with four rounded corners', () => {
+        const path = zoneOutlinePath([[10, 22]], box);
+
+        expect(loops(path)).toBe(1);
+        expect(corners(path)).toBe(4);
     });
 
-    it('skips the side shared by two zone cells', () => {
+    it('merges the sides of neighbouring cells into one outline', () => {
         const path = zoneOutlinePath(
             [
                 [10, 20],
                 [11, 20],
+                [12, 20],
             ],
             box,
         );
 
-        expect(path).not.toContain('M1 2v1');
-        expect(path.match(/v1/g)).toHaveLength(2);
-        expect(path.match(/h1/g)).toHaveLength(4);
+        expect(loops(path)).toBe(1);
+        expect(corners(path)).toBe(4);
+    });
+
+    it('outlines a hole in the zone as its own loop', () => {
+        const ring: [number, number][] = [];
+        for (let x = 10; x <= 12; x++) {
+            for (let y = 20; y <= 22; y++) {
+                if (x !== 11 || y !== 21) {
+                    ring.push([x, y]);
+                }
+            }
+        }
+
+        const path = zoneOutlinePath(ring, box);
+
+        expect(loops(path)).toBe(2);
+        expect(corners(path)).toBe(8);
+    });
+
+    it('follows an L shape with its inner corner', () => {
+        const path = zoneOutlinePath(
+            [
+                [10, 20],
+                [11, 20],
+                [10, 21],
+            ],
+            box,
+        );
+
+        expect(loops(path)).toBe(1);
+        expect(corners(path)).toBe(6);
+    });
+
+    it('draws nothing for no cell', () => {
+        expect(zoneOutlinePath([], box)).toBe('');
     });
 });
 

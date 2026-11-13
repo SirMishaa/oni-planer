@@ -932,7 +932,8 @@ const temperatureLegend = computed(() => {
                     preserveAspectRatio="none"
                     aria-hidden="true"
                 >
-                    <path :d="outlinePath" />
+                    <path class="zone-map__outline-shadow" :d="outlinePath" />
+                    <path class="zone-map__outline-line" :d="outlinePath" />
                 </svg>
                 <!-- endregion -->
 
@@ -1262,10 +1263,22 @@ const temperatureLegend = computed(() => {
 
 .zone-map__outline path {
     fill: none;
-    stroke: var(--color-oni-amber);
-    stroke-width: 2px;
-    stroke-linecap: square;
+    stroke-linejoin: round;
     vector-effect: non-scaling-stroke;
+}
+
+/* A dark halo under the line, so it reads on light water as well as on dark rock. */
+.zone-map__outline-shadow {
+    stroke: rgb(0 0 0 / 0.45);
+    stroke-width: 5px;
+}
+
+.zone-map__outline-line {
+    stroke: var(--color-oni-amber);
+    stroke-width: 2.5px;
+    filter: drop-shadow(
+        0 0 2px color-mix(in srgb, var(--color-oni-amber) 60%, transparent)
+    );
 }
 
 .zone-map__cell {
