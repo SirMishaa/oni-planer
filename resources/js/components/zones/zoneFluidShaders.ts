@@ -43,7 +43,9 @@ const float CAUSTIC_STRENGTH = 0.16;
 const float HIGHLIGHT_PX = 1.6;
 const float GLOW_HALO_ALPHA = 0.35;
 // Gases
-const int GAS_PARTICLES = 2;
+const int GAS_PARTICLES = 4;
+/** Spread of the gas blend, in cells: larger blurs gases more into each other (tunable). */
+const float GAS_BLEND_CELLS = 0.75;
 
 struct Cell {
     bool present;
@@ -143,7 +145,11 @@ vec4 shadeLiquid(Cell cell, ivec2 position, vec2 world, vec2 local, float pixelC
     float level = surfaceLevel(cell, world);
     float depth = local.y - level;
 
-    if (depth < 0.0) {
+    // Antialiased surface: the liquid fades in over about one pixel, so a moving wave
+    // does not crawl.
+    float coverage = cell.surface ? smoothstep(-pixelCells, pixelCells, depth) : step(0.0, depth);
+
+    if (coverage <= 0.0) {
         return glows ? glowHalo(base.rgb, -depth) : vec4(0.0);
     }
 
@@ -209,7 +215,7 @@ vec4 shadeLiquid(Cell cell, ivec2 position, vec2 world, vec2 local, float pixelC
     }
 
     rgb = clamp(rgb, 0.0, 1.0);
-    alpha = clamp(alpha, 0.0, 1.0);
+    alpha = clamp(alpha, 0.0, 1.0) * coverage;
 
     return vec4(rgb * alpha, alpha);
 }
@@ -236,33 +242,49 @@ vec4 shadeGas(Cell cell, ivec2 position, vec2 world, vec2 local, float pixelCell
     // other instead of showing square cells; a non-gas neighbour lends this cell's own
     // tint, so a gas never bleeds onto a liquid or a solid.
     vec4 own = vec4(base.rgb * base.a * cell.amount, base.a * cell.amount);
-    vec2 grid = world - 0.5;
-    ivec2 corner = ivec2(floor(grid));
-    vec2 weight = smoothstep(0.0, 1.0, fract(grid));
-    vec4 tint = mix(
-        mix(gasTint(corner, own), gasTint(corner + ivec2(1, 0), own), weight.x),
-        mix(gasTint(corner + ivec2(0, 1), own), gasTint(corner + ivec2(1, 1), own), weight.x),
-        weight.y
-    );
+    // Gaussian blend over the 3x3 neighbours: a lone cell of another gas becomes a
+    // soft patch, not a square.
+    vec4 tint = vec4(0.0);
+    float total = 0.0;
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            ivec2 neighbour = position + ivec2(dx, dy);
+            vec2 centre = vec2(neighbour) + 0.5;
+            vec2 offset = world - centre;
+            float weight = exp(-dot(offset, offset) / (GAS_BLEND_CELLS * GAS_BLEND_CELLS));
+            tint += gasTint(neighbour, own) * weight;
+            total += weight;
+        }
+    }
+    tint /= total;
     vec3 tintRgb = tint.a > 0.0001 ? tint.rgb / tint.a : base.rgb;
 
+    // Smoke: a slowly drifting, domain-warped noise in contrasted bands, so a gas
+    // reads as moving wisps and not as a flat tint.
     vec2 drift = vec2(uTime * 0.12, -uTime * 0.05);
-    float wisp = fbm(world * 0.45 + drift);
+    vec2 warp = vec2(fbm(world * 0.35 + drift), fbm(world * 0.35 - drift + 5.2));
+    float wisp = fbm(world * 0.5 + warp * 1.6 + drift * 0.6);
     float fine = fbm(world * 1.3 - drift * 1.7 + 3.7);
-    float alpha = tint.a * mix(0.75, 1.25, wisp);
-    vec3 rgb = tintRgb * (0.9 + 0.25 * fine);
+    // Denser gas: stronger wisps, and more of them.
+    float contrast = mix(0.35, 1.0, cell.amount);
+    float alpha = tint.a * mix(1.0 - 0.55 * contrast, 1.0 + 0.7 * contrast, smoothstep(0.25, 0.75, wisp));
+    vec3 rgb = tintRgb * (0.8 + 0.45 * fine);
     vec3 particleColour = min(base.rgb * 1.4 + 0.1, vec3(1.0));
     vec2 seed = vec2(position);
 
+    int particles = int(ceil(cell.amount * float(GAS_PARTICLES)));
     for (int index = 0; index < GAS_PARTICLES; index++) {
+        if (index >= particles) {
+            break;
+        }
         vec2 particleSeed = seed + float(index) * 3.71;
         vec2 particle = fract(
             vec2(hash(particleSeed), hash(particleSeed + 1.3))
             + vec2(uTime * 0.04, uTime * 0.015 + sin(uTime * 0.4 + particleSeed.x) * 0.05)
         );
-        float speck = dotAt(local, particle, pixelCells, 1.0);
-        rgb = mix(rgb, particleColour, speck * 0.6);
-        alpha += speck * 0.25 * cell.amount;
+        float speck = dotAt(local, particle, pixelCells, 1.6);
+        rgb = mix(rgb, particleColour, speck * 0.7);
+        alpha += speck * 0.35 * max(cell.amount, 0.4);
     }
 
     alpha = clamp(alpha, 0.0, 1.0);
@@ -282,9 +304,32 @@ void main() {
 
     if (here.present && here.liquid) {
         colour = shadeLiquid(here, position, world, local, pixelCells);
+
+        // Above the surface of a partly filled cell, the gas of the cell above shows,
+        // as in the game, instead of the background in a straight band.
+        Cell above = cellAt(position + ivec2(0, -1));
+        if (here.surface && above.present && !above.liquid) {
+            float covered = smoothstep(-pixelCells, pixelCells, local.y - surfaceLevel(here, world));
+            if (covered < 1.0) {
+                colour += shadeGas(above, position, world, local, pixelCells) * (1.0 - covered);
+            }
+        }
     } else {
         if (here.present) {
             colour = shadeGas(here, position, world, local, pixelCells);
+        }
+
+        // A gas pocket on a waterline (surface liquid on both sides): the liquid runs
+        // through it at its neighbours' mean level, so the waterline does not break
+        // into a square hole; the pocket's gas shows above it.
+        Cell left = cellAt(position + ivec2(-1, 0));
+        Cell right = cellAt(position + ivec2(1, 0));
+        if (here.present && left.present && right.present && left.liquid && right.liquid
+            && left.surface && right.surface && left.palette == right.palette) {
+            Cell bridge = left;
+            bridge.amount = (left.amount + right.amount) * 0.5;
+            float covered = smoothstep(-pixelCells, pixelCells, local.y - surfaceLevel(bridge, world));
+            colour = shadeLiquid(bridge, position, world, local, pixelCells) + colour * (1.0 - covered);
         }
 
         Cell below = cellAt(position + ivec2(0, 1));

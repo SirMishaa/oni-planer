@@ -1,7 +1,7 @@
 import type { ZoneBoxData, ZoneTerrainData } from '@/types/App/Data/data.d';
 import { cellToLocal, layerIndex } from './zoneMapGeometry';
 
-/** Gas mass, in kilograms, at which a cell shows its full tint. */
+/** Gas mass, in kilograms, at which a cell shows its full tint; below it the tint follows the square root of the mass, so a thin gas still shows. */
 export const GAS_FULL_TINT_KG = 2;
 
 /**
@@ -48,7 +48,7 @@ export function liquidFill(
 export function gasStrength(mass: number | null): number {
     return mass === null || !Number.isFinite(mass)
         ? 0
-        : clamp01(mass / GAS_FULL_TINT_KG);
+        : Math.sqrt(clamp01(mass / GAS_FULL_TINT_KG));
 }
 
 /**

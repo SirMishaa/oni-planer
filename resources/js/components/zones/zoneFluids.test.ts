@@ -55,8 +55,9 @@ describe('liquidFill', () => {
 });
 
 describe('gasStrength', () => {
-    it('scales gas tint with mass', () => {
-        expect(gasStrength(1)).toBe(0.5);
+    it('scales gas tint with the square root of its mass, so a thin gas still shows', () => {
+        expect(gasStrength(0.5)).toBeCloseTo(0.5);
+        expect(gasStrength(2)).toBe(1);
         expect(gasStrength(null)).toBe(0);
     });
 });
