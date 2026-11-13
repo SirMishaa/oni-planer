@@ -51,6 +51,30 @@ return [
         'mass' => ':mass kg',
         'unknown_cell' => 'Case non lue',
         'vacuum' => 'Vide',
+        'grid' => 'Grille',
+        'fill' => 'Remplie à :percent %',
+        'modes' => [
+            'absolute' => 'Absolue',
+            'adaptive' => 'Adaptative',
+            'heat_flow' => 'Flux thermique',
+            'state_change' => 'Changement d\'état',
+        ],
+        'heat_flow_waiting' => 'Le flux thermique s\'affiche dès que le jeu a envoyé une deuxième lecture du terrain.',
+        'heat_flow' => [
+            'cooling' => 'Refroidit',
+            'stable' => 'Stable',
+            'heating' => 'Chauffe',
+        ],
+        'state_change' => [
+            'cold' => 'Près de geler ou de se condenser',
+            'hot' => 'Près de fondre ou de bouillir',
+        ],
+        'states' => [
+            'solid' => 'Solide',
+            'liquid' => 'Liquide',
+            'gas' => 'Gaz',
+            'special' => 'Spécial',
+        ],
     ],
     'panel' => [
         'verdict' => [
@@ -71,7 +95,7 @@ return [
         ],
         'todo' => 'À régler',
         'nothing_todo' => 'Rien à régler.',
-        'nothing_todo_partial' => "Rien à régler dans ce que le jeu a lu : la liste est partielle.",
+        'nothing_todo_partial' => 'Rien à régler dans ce que le jeu a lu : la liste est partielle.',
         'todo_partial' => 'Liste partielle : le jeu n\'a pas tout lu.',
         'todo_unknown' => 'Inconnu tant que le jeu n\'a pas envoyé l\'état de la zone.',
         'show' => 'voir',

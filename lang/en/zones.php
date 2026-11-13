@@ -51,6 +51,30 @@ return [
         'mass' => ':mass kg',
         'unknown_cell' => 'Cell not read',
         'vacuum' => 'Vacuum',
+        'grid' => 'Grid',
+        'fill' => 'Filled :percent %',
+        'modes' => [
+            'absolute' => 'Absolute',
+            'adaptive' => 'Adaptive',
+            'heat_flow' => 'Heat flow',
+            'state_change' => 'State change',
+        ],
+        'heat_flow_waiting' => 'Heat flow shows once the game has sent a second reading of the terrain.',
+        'heat_flow' => [
+            'cooling' => 'Cooling',
+            'stable' => 'Stable',
+            'heating' => 'Heating',
+        ],
+        'state_change' => [
+            'cold' => 'Near freezing or condensing',
+            'hot' => 'Near melting or boiling',
+        ],
+        'states' => [
+            'solid' => 'Solid',
+            'liquid' => 'Liquid',
+            'gas' => 'Gas',
+            'special' => 'Special',
+        ],
     ],
     'panel' => [
         'verdict' => [

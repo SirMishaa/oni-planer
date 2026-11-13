@@ -420,6 +420,9 @@ export function createFluidRenderer(
             gl.deleteTexture(paletteTexture);
             gl.deleteVertexArray(vertexArray);
             gl.deleteProgram(program);
+            // Free the context now: browsers cap live WebGL contexts, and
+            // Inertia remounts would otherwise pile them up until GC.
+            gl.getExtension('WEBGL_lose_context')?.loseContext();
         },
     };
 }

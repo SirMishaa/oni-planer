@@ -163,13 +163,18 @@ function terrainTexture(url: string, onLoad: () => void): LoadedImage | null {
     if (!textures.has(url)) {
         const image = new Image();
         image.decoding = 'async';
-        image.onload = onLoad;
         image.onerror = () => textures.set(url, null);
         image.src = url;
         textures.set(url, image);
     }
 
     const image = textures.get(url);
+
+    // Every caller still waiting is told when it loads (a remount while the
+    // image loads gets its own repaint); the same listener is added once.
+    if (image && !image.complete) {
+        image.addEventListener('load', onLoad, { once: true });
+    }
 
     return image && image.complete && image.naturalWidth > 0
         ? { image, width: image.naturalWidth, height: image.naturalHeight }

@@ -266,6 +266,67 @@ describe('paintZoneMap', () => {
         expect(solidDraw).toBeGreaterThan(gasFill);
     });
 
+    it('splits the base and the solids into two canvases', () => {
+        const base = new StubCanvas();
+        const solids = new StubCanvas();
+        canvases.push(base, solids);
+        const terrain = terrainOf(
+            [
+                entry({
+                    elementId: 'Granite',
+                    state: 'solid',
+                    renderColour: '#112233ff',
+                }),
+                entry({
+                    elementId: 'Oxygen',
+                    state: 'gas',
+                    renderColour: '#aabbcc80',
+                }),
+            ],
+            {
+                box: { x: 0, y: 0, width: 2, height: 1 },
+                element: [0, 1],
+                mass: [100, 2],
+                temperature: [293.15, 293.15],
+            },
+        );
+
+        paintZoneMap(base as unknown as HTMLCanvasElement, {
+            box: terrain.box,
+            terrain,
+            tiles: null,
+            cellPx: 10,
+            dpr: 1,
+            layer: 'materials',
+            inks,
+            onSpriteLoad: () => undefined,
+            temperatureMode: 'absolute',
+            palette: overlay,
+            assets: NO_RENDER_ASSETS,
+            fluidsAnimated: false,
+            showGrid: true,
+            solidsCanvas: solids as unknown as HTMLCanvasElement,
+        });
+
+        const gas = 'rgb(170 187 204 / 0.5019607843137255)';
+        const styles = (canvas: StubCanvas): unknown[] =>
+            canvas.context.calls.map((call) => call.style);
+
+        expect(styles(base)).toContain(gas);
+        expect(styles(solids)).not.toContain(gas);
+        expect(base.context.calls.some((call) => call.op === 'drawImage')).toBe(
+            false,
+        );
+        expect(
+            solids.context.calls.some((call) => call.op === 'drawImage'),
+        ).toBe(true);
+        expect(styles(solids)).toContain(rgbCss(inks.hatch));
+        expect([solids.width, solids.height]).toEqual([
+            base.width,
+            base.height,
+        ]);
+    });
+
     it('paints nothing for heat flow before a second reading', () => {
         const canvas = paint(terrainOf([entry({})]), 'temperature', 'heatFlow');
         const solidFills = canvas.context.calls.filter(

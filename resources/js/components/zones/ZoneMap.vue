@@ -13,6 +13,12 @@ import { useT } from '@/composables/useT';
 import { useZoneText } from '@/composables/useZoneText';
 import type { ZoneEntityData, ZoneMapData } from '@/types/App/Data/data.d';
 import {
+    createFluidRenderer,
+    type FluidRenderer,
+    shouldAnimate,
+} from './zoneFluidRenderer';
+import { fluidCells, liquidFill } from './zoneFluids';
+import {
     layerIndex,
     localToCell,
     zoneOutlinePath,
@@ -31,6 +37,8 @@ import {
     loadRenderAssets,
 } from './zoneRenderAssets';
 import {
+    absoluteColour,
+    adaptiveColour,
     legendStops,
     type OverlayPalette,
     type TemperatureMode,
@@ -83,14 +91,19 @@ const stageHeight = computed(() => props.map.box.height * cellPx.value);
 
 // region Canvas
 
+/**
+ * Three stacked canvases (ruling 9): the base (hatch, static fluids or
+ * temperature colours), the animated WebGL fluids, then the solids (terrain
+ * edges, fallbacks, tiles, grid) so solid edges cover fluids as in the game.
+ */
 const root = ref<HTMLElement | null>(null);
 const canvas = ref<HTMLCanvasElement | null>(null);
+const solidsCanvas = ref<HTMLCanvasElement | null>(null);
+const fluidCanvas = ref<HTMLCanvasElement | null>(null);
 const inks = shallowRef<ZoneMapInks | null>(null);
 const paintMs = ref<number | null>(null);
-/** Controls arrive with the layer bar work; until then the defaults. */
 const temperatureMode = ref<TemperatureMode>('absolute');
 const showGrid = ref<boolean>(false);
-const fluidsAnimated = ref<boolean>(false);
 /** Game temperature overlay colours, null until `render.json` loads (or when it is missing). */
 const overlayPalette = shallowRef<OverlayPalette | null>(null);
 let frame = 0;
@@ -116,6 +129,7 @@ function paint(): void {
         assets: getRenderAssets(schedulePaint),
         fluidsAnimated: fluidsAnimated.value,
         showGrid: showGrid.value,
+        solidsCanvas: solidsCanvas.value,
     });
 }
 
@@ -124,6 +138,120 @@ function schedulePaint(): void {
         frame = requestAnimationFrame(paint);
     }
 }
+
+// endregion
+
+// region Animated fluids
+
+/** False once WebGL2 is missing or its context was lost: fluids then stay static. */
+const webglUsable = ref<boolean>(true);
+const fluidRenderer = shallowRef<FluidRenderer | null>(null);
+/** The temperature layer paints no fluids: no WebGL canvas there. */
+const showFluidCanvas = computed(
+    () => props.layer !== 'temperature' && webglUsable.value,
+);
+const fluidsAnimated = computed(
+    () => showFluidCanvas.value && fluidRenderer.value !== null,
+);
+
+const motion = { hidden: false, onScreen: true, reducedMotion: false };
+let intersectionObserver: IntersectionObserver | undefined;
+let reducedMotionQuery: MediaQueryList | undefined;
+
+function syncAnimation(): void {
+    const renderer = fluidRenderer.value;
+
+    if (!renderer) {
+        return;
+    }
+
+    if (shouldAnimate(motion)) {
+        renderer.start();
+    } else {
+        renderer.stop();
+    }
+}
+
+function updateFluids(): void {
+    const renderer = fluidRenderer.value;
+    const terrain = props.map.terrain;
+
+    if (!renderer) {
+        return;
+    }
+
+    renderer.update({
+        cells: terrain ? fluidCells(terrain, props.map.box) : [],
+        palette: terrain?.palette ?? [],
+        box: props.map.box,
+        cellPx: cellPx.value,
+        dpr: window.devicePixelRatio || 1,
+    });
+}
+
+function onContextLost(): void {
+    teardownFluids();
+    webglUsable.value = false;
+}
+
+function teardownFluids(): void {
+    const renderer = fluidRenderer.value;
+
+    if (!renderer) {
+        return;
+    }
+
+    // Our listener goes first: destroy() loses the context on purpose.
+    fluidCanvas.value?.removeEventListener('webglcontextlost', onContextLost);
+    fluidRenderer.value = null;
+    renderer.destroy();
+}
+
+watch(fluidCanvas, (element, previous) => {
+    if (previous) {
+        previous.removeEventListener('webglcontextlost', onContextLost);
+    }
+
+    const renderer = fluidRenderer.value;
+
+    if (renderer) {
+        fluidRenderer.value = null;
+        renderer.destroy();
+    }
+
+    if (!element) {
+        return;
+    }
+
+    const created = createFluidRenderer(element);
+
+    if (!created) {
+        webglUsable.value = false;
+
+        return;
+    }
+
+    element.addEventListener('webglcontextlost', onContextLost);
+    fluidRenderer.value = created;
+    updateFluids();
+    syncAnimation();
+});
+
+watch(() => [props.map.box, props.map.terrain, cellPx.value], updateFluids);
+
+function onVisibilityChange(): void {
+    motion.hidden = document.hidden;
+    syncAnimation();
+}
+
+function onReducedMotionChange(event: MediaQueryListEvent): void {
+    motion.reducedMotion = event.matches;
+    syncAnimation();
+}
+
+// endregion
+
+// region Lifecycle
 
 watch(
     () => [
@@ -163,6 +291,21 @@ onMounted(() => {
         resizeObserver.observe(scroller.value);
     }
 
+    motion.hidden = document.hidden;
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    motion.reducedMotion = reducedMotionQuery.matches;
+    reducedMotionQuery.addEventListener('change', onReducedMotionChange);
+
+    if (stage.value) {
+        intersectionObserver = new IntersectionObserver(([entry]) => {
+            motion.onScreen = entry?.isIntersecting ?? true;
+            syncAnimation();
+        });
+        intersectionObserver.observe(stage.value);
+    }
+
+    syncAnimation();
     loadTileGeometry(schedulePaint);
     loadRenderAssets(() => {
         overlayPalette.value = getOverlayPalette();
@@ -173,7 +316,11 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     resizeObserver?.disconnect();
+    intersectionObserver?.disconnect();
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+    reducedMotionQuery?.removeEventListener('change', onReducedMotionChange);
     cancelAnimationFrame(frame);
+    teardownFluids();
 });
 
 // endregion
@@ -368,7 +515,46 @@ const hoveredEntity = computed(() =>
         : null,
 );
 
-/** Terrain under the pointer: element, mass and temperature, each possibly unknown. */
+/** Overlay without colours: enough to find a temperature band before `render.json` loads. */
+const NO_PALETTE: OverlayPalette = { temperature: [], heatFlow: [] };
+
+const temperatureSpan = computed(() =>
+    temperatureRange(props.map.terrain?.temperature ?? null),
+);
+
+/** The mode's band name (absolute, adaptive) or signed rate (heat flow) of a cell; null when unknown. */
+function temperatureDetail(index: number, kelvin: number): string | null {
+    const terrain = props.map.terrain;
+    const palette = overlayPalette.value ?? NO_PALETTE;
+
+    switch (temperatureMode.value) {
+        case 'absolute':
+            return (
+                props.map.temperatureBands[
+                    absoluteColour(kelvin, palette).band
+                ] ?? null
+            );
+        case 'adaptive':
+            return temperatureSpan.value
+                ? (props.map.temperatureBands[
+                      adaptiveColour(kelvin, temperatureSpan.value, palette)
+                          .band
+                  ] ?? null)
+                : null;
+        case 'heatFlow': {
+            const previous = terrain?.previousTemperature?.[index] ?? null;
+            const seconds = terrain?.previousSeconds ?? 0;
+
+            return previous === null || !(seconds > 0)
+                ? null
+                : text.celsiusPerSecond((kelvin - previous) / seconds);
+        }
+        case 'stateChange':
+            return null;
+    }
+}
+
+/** Terrain under the pointer: element, state, mass, temperature and fill, each possibly unknown. */
 const hoveredCell = computed(() => {
     if (!hover.value) {
         return null;
@@ -392,8 +578,40 @@ const hoveredCell = computed(() => {
         element: element
             ? (element.name ?? element.elementId ?? t('zones.map.vacuum'))
             : null,
+        state: element?.state ?? null,
         mass,
         temperature,
+        fill:
+            element?.state === 'liquid'
+                ? Math.round(liquidFill(mass, element.maxMass) * 100)
+                : null,
+        detail:
+            props.layer === 'temperature' &&
+            index !== null &&
+            temperature !== null &&
+            Number.isFinite(temperature)
+                ? temperatureDetail(index, temperature)
+                : null,
+    };
+});
+
+/** The hovered cell's frame, in stage pixels. */
+const hoverFrameStyle = computed(() => {
+    if (!hover.value) {
+        return {};
+    }
+
+    const { column, row } = cellToLocal(
+        hover.value.x,
+        hover.value.y,
+        props.map.box,
+    );
+
+    return {
+        left: `${column * cellPx.value}px`,
+        top: `${row * cellPx.value}px`,
+        width: `${cellPx.value}px`,
+        height: `${cellPx.value}px`,
     };
 });
 
@@ -439,23 +657,43 @@ function entityLabel(entity: MapEntity): string {
 
 // region Legend
 
+const TEMPERATURE_MODES: { key: TemperatureMode; label: string }[] = [
+    { key: 'absolute', label: 'zones.map.modes.absolute' },
+    { key: 'adaptive', label: 'zones.map.modes.adaptive' },
+    { key: 'heatFlow', label: 'zones.map.modes.heat_flow' },
+    { key: 'stateChange', label: 'zones.map.modes.state_change' },
+];
+
+/** Heat flow needs two slow states; until the second arrives it paints nothing. */
+const heatFlowWaiting = computed(() => {
+    const terrain = props.map.terrain;
+
+    return (
+        temperatureMode.value === 'heatFlow' &&
+        (!terrain?.previousTemperature || !((terrain.previousSeconds ?? 0) > 0))
+    );
+});
+
 const temperatureLegend = computed(() => {
     const palette = overlayPalette.value;
-    const range = temperatureRange(props.map.terrain?.temperature ?? null);
 
-    if (!palette || !range) {
-        return null;
+    if (!palette || heatFlowWaiting.value) {
+        return [];
     }
 
-    const stops = legendStops('absolute', palette, range);
-    const css = ([r, g, b, a]: number[]): string =>
-        `rgb(${r} ${g} ${b} / ${(a ?? 255) / 255})`;
+    return legendStops(
+        temperatureMode.value,
+        palette,
+        temperatureSpan.value,
+    ).map((stop, index) => {
+        const [r, g, b, a] = stop.colour;
 
-    return {
-        gradient: `linear-gradient(90deg, ${stops.map((stop) => css(stop.colour)).join(', ')})`,
-        min: stops[0]?.label ?? '',
-        max: stops[stops.length - 1]?.label ?? '',
-    };
+        return {
+            key: index,
+            colour: `rgb(${r} ${g} ${b} / ${a / 255})`,
+            label: stop.labelKey ? t(stop.labelKey) : stop.label,
+        };
+    });
 });
 
 // endregion
@@ -485,6 +723,25 @@ const temperatureLegend = computed(() => {
                         height: `${stageHeight}px`,
                     }"
                     :data-paint-ms="paintMs?.toFixed(2)"
+                    aria-hidden="true"
+                />
+                <canvas
+                    v-if="showFluidCanvas"
+                    ref="fluidCanvas"
+                    class="zone-map__canvas"
+                    :style="{
+                        width: `${stageWidth}px`,
+                        height: `${stageHeight}px`,
+                    }"
+                    aria-hidden="true"
+                />
+                <canvas
+                    ref="solidsCanvas"
+                    class="zone-map__canvas"
+                    :style="{
+                        width: `${stageWidth}px`,
+                        height: `${stageHeight}px`,
+                    }"
                     aria-hidden="true"
                 />
 
@@ -577,6 +834,12 @@ const temperatureLegend = computed(() => {
 
                 <!-- region Hover card -->
                 <div
+                    v-if="hover && !hoveredEntity"
+                    class="zone-map__cell"
+                    :style="hoverFrameStyle"
+                    aria-hidden="true"
+                />
+                <div
                     v-if="hover"
                     class="zone-map__hover"
                     :style="hoverStyle"
@@ -633,18 +896,30 @@ const temperatureLegend = computed(() => {
                         >
                     </template>
                     <template v-else-if="hoveredCell">
-                        <strong>{{ text.position(hover.x, hover.y) }}</strong>
-                        <span v-if="hoveredCell.element">{{
-                            hoveredCell.element
-                        }}</span>
-                        <span v-else class="zone-map__hover-unknown">{{
-                            t('zones.map.unknown_cell')
+                        <strong>{{
+                            hoveredCell.element ?? t('zones.map.unknown_cell')
+                        }}</strong>
+                        <span v-if="hoveredCell.state">{{
+                            t(`zones.map.states.${hoveredCell.state}`)
                         }}</span>
                         <span v-if="hoveredCell.mass !== null">{{
                             text.mass(hoveredCell.mass)
                         }}</span>
                         <span v-if="hoveredCell.temperature !== null">{{
                             text.celsius(hoveredCell.temperature)
+                        }}</span>
+                        <span v-if="hoveredCell.fill !== null">{{
+                            t('zones.map.fill', {
+                                percent: hoveredCell.fill,
+                            })
+                        }}</span>
+                        <span
+                            v-if="hoveredCell.detail"
+                            class="zone-map__hover-detail"
+                            >{{ hoveredCell.detail }}</span
+                        >
+                        <span class="zone-map__hover-position">{{
+                            text.position(hover.x, hover.y)
                         }}</span>
                     </template>
                 </div>
@@ -663,17 +938,6 @@ const temperatureLegend = computed(() => {
                 <i class="zone-map__swatch zone-map__swatch--unknown" />
                 {{ t('zones.layers.unknown') }}
             </span>
-            <span
-                v-if="layer === 'temperature' && temperatureLegend"
-                class="zone-map__key"
-            >
-                <span>{{ temperatureLegend.min }}</span>
-                <i
-                    class="zone-map__scale"
-                    :style="{ background: temperatureLegend.gradient }"
-                />
-                <span>{{ temperatureLegend.max }}</span>
-            </span>
             <span v-if="layer === 'problems'" class="zone-map__key">
                 <i class="zone-map__swatch zone-map__swatch--pin">!</i>
                 {{ t('zones.layers.problems') }}
@@ -685,6 +949,50 @@ const temperatureLegend = computed(() => {
                 >
                 {{ t('zones.panel.state_unknown') }}
             </span>
+            <button
+                type="button"
+                class="zone-map__toggle zone-map__grid"
+                data-test="zone-map-grid"
+                :aria-pressed="showGrid"
+                @click="showGrid = !showGrid"
+            >
+                {{ t('zones.map.grid') }}
+            </button>
+        </div>
+
+        <div v-if="layer === 'temperature'" class="zone-map__temperature">
+            <div
+                class="zone-map__modes"
+                role="group"
+                :aria-label="t('zones.layers.temperature')"
+            >
+                <button
+                    v-for="mode in TEMPERATURE_MODES"
+                    :key="mode.key"
+                    type="button"
+                    class="zone-map__toggle"
+                    :aria-pressed="temperatureMode === mode.key"
+                    @click="temperatureMode = mode.key"
+                >
+                    {{ t(mode.label) }}
+                </button>
+            </div>
+            <p v-if="heatFlowWaiting" class="zone-map__note">
+                {{ t('zones.map.heat_flow_waiting') }}
+            </p>
+            <ol v-else-if="temperatureLegend.length" class="zone-map__stops">
+                <li
+                    v-for="stop in temperatureLegend"
+                    :key="stop.key"
+                    class="zone-map__stop"
+                >
+                    <i
+                        class="zone-map__swatch"
+                        :style="{ background: stop.colour }"
+                    />
+                    {{ stop.label }}
+                </li>
+            </ol>
         </div>
         <p v-if="!map.terrain" class="zone-map__note">
             {{ t('zones.layers.no_terrain') }}
@@ -733,6 +1041,15 @@ const temperatureLegend = computed(() => {
     stroke-width: 2px;
     stroke-linecap: square;
     vector-effect: non-scaling-stroke;
+}
+
+.zone-map__cell {
+    position: absolute;
+    z-index: 4;
+    box-shadow:
+        inset 0 0 0 2px var(--color-oni-amber),
+        inset 0 0 0 3px oklch(0% 0 0 / 0.45);
+    pointer-events: none;
 }
 
 /* region Entities */
@@ -862,6 +1179,16 @@ const temperatureLegend = computed(() => {
     font-weight: 600;
 }
 
+.zone-map__hover-detail {
+    color: var(--color-oni-amber);
+}
+
+.zone-map__hover-position {
+    margin-top: 3px;
+    color: var(--text-3);
+    font-size: 11.5px;
+}
+
 .zone-map__hover-unknown {
     color: var(--text-3);
     font-style: italic;
@@ -918,10 +1245,55 @@ const temperatureLegend = computed(() => {
     color: var(--text);
 }
 
-.zone-map__scale {
-    width: 120px;
-    height: 8px;
-    border-radius: 4px;
+.zone-map__grid {
+    margin-left: auto;
+}
+
+.zone-map__toggle {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: var(--ink-2);
+    color: var(--text-2);
+    font-size: 12.5px;
+}
+
+.zone-map__toggle:hover {
+    color: var(--text);
+}
+
+.zone-map__toggle[aria-pressed='true'] {
+    background: oklch(72% 0.145 52 / 0.22);
+    color: var(--color-oni-amber);
+}
+
+.zone-map__temperature {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.zone-map__modes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.zone-map__stops {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    color: var(--text-3);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.zone-map__stop {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .zone-map__note {

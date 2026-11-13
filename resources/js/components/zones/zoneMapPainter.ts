@@ -109,13 +109,16 @@ function tileSprite(
     if (!tileImages.has(src)) {
         const image = new Image();
         image.decoding = 'async';
-        image.onload = onLoad;
         image.onerror = () => tileImages.set(src, null);
         image.src = src;
         tileImages.set(src, image);
     }
 
     const image = tileImages.get(src);
+
+    if (image && !image.complete) {
+        image.addEventListener('load', onLoad, { once: true });
+    }
 
     return image && image.complete && image.naturalWidth > 0
         ? { image, geometry }
@@ -376,6 +379,24 @@ function paintGrid(paint: TerrainPaint, inks: ZoneMapInks): void {
     }
 }
 
+function terrainPaint(
+    ctx: CanvasRenderingContext2D,
+    box: ZoneBoxData,
+    cellPx: number,
+    dpr: number,
+    inks: ZoneMapInks,
+): TerrainPaint {
+    return {
+        ctx,
+        box,
+        cellPx,
+        dpr,
+        px: (local) => Math.round(local * cellPx * dpr),
+        neutral: rgbCss(inks.neutral),
+        stripe: stripePattern(ctx, rgbCss(inks.hatch), dpr),
+    };
+}
+
 /**
  * Paints the map box. Growth, materials and problems: static fluids unless
  * the animated layer draws them, fallbacks for elements without render
@@ -383,7 +404,13 @@ function paintGrid(paint: TerrainPaint, inks: ZoneMapInks): void {
  * draws ground over liquids), then tiles. Temperature: the mode's overlay
  * colour per cell, tiles faint. Unknown cells stay hatched; known cells
  * that are not solid show the map backdrop under their fluid, never a page
- * ink mixed into their colour. Returns the paint time in milliseconds.
+ * ink mixed into their colour.
+ *
+ * With `solidsCanvas`, the paint splits in two passes so the animated fluid
+ * canvas can sit between them: `canvas` gets the base (hatch, cleared known
+ * cells, static fluids or temperature colours), `solidsCanvas` the rest
+ * (fallbacks, solids, tiles, problems veil, grid) over a transparent
+ * background. Returns the paint time in milliseconds.
  */
 export function paintZoneMap(
     canvas: HTMLCanvasElement,
@@ -401,35 +428,41 @@ export function paintZoneMap(
         assets: RenderAssets;
         fluidsAnimated: boolean;
         showGrid: boolean;
+        solidsCanvas?: HTMLCanvasElement | null;
     },
 ): number {
     const started = performance.now();
     const { box, terrain, tiles, cellPx, dpr, layer, inks } = input;
     const ctx = canvas.getContext('2d');
+    const solidsCanvas = input.solidsCanvas ?? canvas;
+    const solidsCtx =
+        solidsCanvas === canvas ? ctx : solidsCanvas.getContext('2d');
 
-    if (!ctx) {
+    if (!ctx || !solidsCtx) {
         return 0;
     }
 
-    canvas.width = Math.round(box.width * cellPx * dpr);
-    canvas.height = Math.round(box.height * cellPx * dpr);
+    const width = Math.round(box.width * cellPx * dpr);
+    const height = Math.round(box.height * cellPx * dpr);
+    canvas.width = width;
+    canvas.height = height;
 
-    const paint: TerrainPaint = {
-        ctx,
-        box,
-        cellPx,
-        dpr,
-        px: (local) => Math.round(local * cellPx * dpr),
-        neutral: rgbCss(inks.neutral),
-        stripe: stripePattern(ctx, rgbCss(inks.hatch), dpr),
-    };
+    if (solidsCanvas !== canvas) {
+        // Setting the size also clears the canvas to transparent.
+        solidsCanvas.width = width;
+        solidsCanvas.height = height;
+    }
 
-    // region Unknown background
+    const paint = terrainPaint(ctx, box, cellPx, dpr, inks);
+    const solids =
+        solidsCtx === ctx
+            ? paint
+            : terrainPaint(solidsCtx, box, cellPx, dpr, inks);
+
+    // region Base
     ctx.fillStyle = hatchPattern(ctx, inks, dpr);
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // endregion
+    ctx.fillRect(0, 0, width, height);
 
-    // region Terrain
     if (terrain && layer === 'temperature') {
         if (input.palette) {
             paintTemperatures(
@@ -450,35 +483,41 @@ export function paintZoneMap(
                 paint.px(row + 1) - top,
             );
         });
+
         // Fluids first: the game draws ground over liquids, so the solids'
         // organic edges (half a cell of spill) stay on top of them.
         if (!input.fluidsAnimated) {
             paintStaticFluids(paint, terrain);
         }
+    }
+    // endregion
 
-        paintFallbackCells(paint, terrain);
-        paintSolidTerrain(paint, terrain, input.assets);
+    // region Solids
+    if (terrain && layer !== 'temperature') {
+        paintFallbackCells(solids, terrain);
+        paintSolidTerrain(solids, terrain, input.assets);
     }
     // endregion
 
     // region Tiles
-    ctx.globalAlpha = layer === 'temperature' ? TILE_ALPHA_ON_TEMPERATURE : 1;
-    paintTiles(paint, tiles ?? [], inks, input.onSpriteLoad);
-    ctx.globalAlpha = 1;
+    solidsCtx.globalAlpha =
+        layer === 'temperature' ? TILE_ALPHA_ON_TEMPERATURE : 1;
+    paintTiles(solids, tiles ?? [], inks, input.onSpriteLoad);
+    solidsCtx.globalAlpha = 1;
     // endregion
 
     // region Problems veil
     if (layer === 'problems') {
-        ctx.fillStyle = rgbCss(inks.base);
-        ctx.globalAlpha = PROBLEMS_VEIL_ALPHA;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.globalAlpha = 1;
+        solidsCtx.fillStyle = rgbCss(inks.base);
+        solidsCtx.globalAlpha = PROBLEMS_VEIL_ALPHA;
+        solidsCtx.fillRect(0, 0, width, height);
+        solidsCtx.globalAlpha = 1;
     }
     // endregion
 
     // region Grid
     if (input.showGrid) {
-        paintGrid(paint, inks);
+        paintGrid(solids, inks);
     }
     // endregion
 

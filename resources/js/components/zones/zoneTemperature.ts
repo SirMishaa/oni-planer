@@ -271,16 +271,25 @@ function celsiusLabel(kelvin: number): string {
     return `${Math.round(kelvin - 273.15)} °C`;
 }
 
+/** A legend stop: a °C label, or a lang key (`labelKey`) for the modes without a temperature scale. */
+export type LegendStop = {
+    colour: Rgba;
+    label: string;
+    labelKey: string | null;
+};
+
 export function legendStops(
     mode: TemperatureMode,
     palette: OverlayPalette,
     range: TemperatureRange | null,
-): { colour: Rgba; label: string }[] {
+): LegendStop[] {
     if (mode === 'absolute') {
         return thresholds(0, ABSOLUTE_INTERVALS_K).flatMap((kelvin, index) => {
             const colour = palette.temperature[index];
 
-            return colour ? [{ colour, label: celsiusLabel(kelvin) }] : [];
+            return colour
+                ? [{ colour, label: celsiusLabel(kelvin), labelKey: null }]
+                : [];
         });
     }
 
@@ -297,7 +306,9 @@ export function legendStops(
         ).flatMap((kelvin, index) => {
             const colour = palette.temperature[index];
 
-            return colour ? [{ colour, label: celsiusLabel(kelvin) }] : [];
+            return colour
+                ? [{ colour, label: celsiusLabel(kelvin), labelKey: null }]
+                : [];
         });
     }
 
@@ -309,17 +320,34 @@ export function legendStops(
 
         return first && middle && last
             ? [
-                  { colour: first.colour, label: 'cooling' },
-                  { colour: middle.colour, label: 'stable' },
-                  { colour: last.colour, label: 'heating' },
+                  heatFlowStop(first.colour, 'cooling'),
+                  heatFlowStop(middle.colour, 'stable'),
+                  heatFlowStop(last.colour, 'heating'),
               ]
             : [];
     }
 
+    // Cyan sits at the lower transition (freezing, condensing), red at the
+    // upper one (melting, boiling).
     return [
-        { colour: stateChangeColour(0, 'liquid', 0, 1), label: 'far' },
-        { colour: stateChangeColour(1, 'liquid', 0, 1), label: 'near' },
+        {
+            colour: stateChangeColour(0, 'liquid', 0, 1),
+            label: '',
+            labelKey: 'zones.map.state_change.cold',
+        },
+        {
+            colour: stateChangeColour(1, 'liquid', 0, 1),
+            label: '',
+            labelKey: 'zones.map.state_change.hot',
+        },
     ];
+}
+
+function heatFlowStop(
+    colour: Rgba,
+    name: 'cooling' | 'stable' | 'heating',
+): LegendStop {
+    return { colour, label: '', labelKey: `zones.map.heat_flow.${name}` };
 }
 
 // endregion

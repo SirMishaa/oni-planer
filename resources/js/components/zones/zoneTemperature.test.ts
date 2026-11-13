@@ -161,4 +161,23 @@ describe('legendStops', () => {
         expect(stops[0]?.label).toBe('27 °C');
         expect(stops).toHaveLength(8);
     });
+
+    it('names the heat flow and state change stops with lang keys', () => {
+        expect(
+            legendStops('heatFlow', palette, null).map((stop) => stop.labelKey),
+        ).toEqual([
+            'zones.map.heat_flow.cooling',
+            'zones.map.heat_flow.stable',
+            'zones.map.heat_flow.heating',
+        ]);
+        expect(
+            legendStops('stateChange', palette, null).map(
+                (stop) => stop.labelKey,
+            ),
+        ).toEqual([
+            'zones.map.state_change.cold',
+            'zones.map.state_change.hot',
+        ]);
+        expect(legendStops('absolute', palette, null)[0]?.labelKey).toBeNull();
+    });
 });

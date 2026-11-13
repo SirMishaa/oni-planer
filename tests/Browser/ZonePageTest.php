@@ -51,5 +51,20 @@ it('draws a 2000-cell zone', function (): void {
         ->assertPresent('canvas[data-paint-ms]')
         ->click(__('zones.layers.temperature'))
         ->assertPresent('canvas[data-paint-ms]')
+        ->click(__('zones.map.modes.state_change'))
+        ->assertPresent('canvas[data-paint-ms]')
+        ->click(__('zones.map.modes.heat_flow'))
+        ->assertSee(__('zones.map.heat_flow_waiting'))
+        ->assertNoJavaScriptErrors();
+});
+
+it('toggles the grid', function (): void {
+    $colony = Colony::factory()->create();
+    $zone = Zone::factory()->sodicaneFarm()->create(['colony_guid' => $colony->guid]);
+
+    visit(route('zones.show', $zone))
+        ->assertPresent('canvas[data-paint-ms]')
+        ->click(__('zones.map.grid'))
+        ->assertAttribute('[data-test="zone-map-grid"]', 'aria-pressed', 'true')
         ->assertNoJavaScriptErrors();
 });

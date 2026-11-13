@@ -10,6 +10,7 @@ export function useZoneText(): {
     percent(share: number): string;
     position(x: number | null, y: number | null): string;
     celsius(kelvin: number): string;
+    celsiusPerSecond(kelvinPerSecond: number): string;
     mass(kilograms: number): string;
 } {
     const i18n = useT();
@@ -39,6 +40,12 @@ export function useZoneText(): {
         percent: (share) => `${format.number(share * 100)} %`,
         position: (x, y) => (x === null || y === null ? '' : `${x}, ${y}`),
         celsius: (kelvin) => `${format.number(kelvinToCelsius(kelvin), 1)} °C`,
+        /** Signed rate, `+0.012 °C/s` (a kelvin step is a degree Celsius step). */
+        celsiusPerSecond: (kelvinPerSecond) =>
+            `${new Intl.NumberFormat(format.locale(), {
+                maximumFractionDigits: 3,
+                signDisplay: 'exceptZero',
+            }).format(kelvinPerSecond)} °C/s`,
         mass: (kilograms) =>
             i18n.t('zones.map.mass', {
                 mass: format.number(kilograms, kilograms < 10 ? 2 : 0),
