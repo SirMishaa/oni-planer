@@ -118,7 +118,8 @@ final class ColonyIngestor
     /** Whether an unparsable message names the colony-state event near its start. */
     /**
      * A state of another session than the colony's current one (latest session
-     * start), or older than the stored state of the same session, is stale. A
+     * start), or strictly older than the stored state of the same session, is stale (a paused
+     * game resends the same game time: it is stored, so the colony stays live). A
      * state without session fields (older mod) is never stale: last write wins.
      */
     private function isStale(string $guid, ?Colony $colony, string $sessionId, float $gameSeconds): bool
@@ -130,7 +131,7 @@ final class ColonyIngestor
         }
 
         return $colony !== null && $colony->session_id === $sessionId
-            && $colony->game_seconds !== null && $colony->game_seconds >= $gameSeconds;
+            && $colony->game_seconds !== null && $colony->game_seconds > $gameSeconds;
     }
 
     private function looksLikeColonyState(string $rawMessage): bool

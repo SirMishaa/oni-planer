@@ -125,3 +125,16 @@ it('stores a colony state without session fields', function (): void {
     expect($message->outcome)->toBe('stored')
         ->and(Colony::query()->sole()->cycle)->toBe(58);
 });
+
+it('keeps a paused colony live: the same state sent again is stored', function (): void {
+    startSession('A', colonyGuid: 'guid-deepwater');
+    $ingestor = app(ColonyIngestor::class);
+    $state = uplinkFixture(['sessionId' => 'A', 'gameSeconds' => 500.0]);
+
+    $ingestor->ingest($state);
+    $this->travel(15)->seconds();
+    $again = $ingestor->ingest($state);
+
+    expect($again->outcome)->toBe('stored')
+        ->and(Colony::query()->sole()->last_seen_at->toDateTimeString())->toBe(now()->toDateTimeString());
+});
