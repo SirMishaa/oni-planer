@@ -1349,10 +1349,12 @@ const temperatureLegend = computed(() => {
 
 .zone-entity:hover .zone-entity__sprite,
 .zone-entity:hover .zone-entity__placeholder {
+    /* Hover lifts only; the white outline is for the selection. */
     transform: translateY(-1px) scale(1.03);
-    filter: drop-shadow(1px 0 0 var(--sticker))
-        drop-shadow(-1px 0 0 var(--sticker)) drop-shadow(0 1px 0 var(--sticker))
-        drop-shadow(0 -1px 0 var(--sticker))
+    filter: drop-shadow(0 0 0 var(--sticker-clear))
+        drop-shadow(0 0 0 var(--sticker-clear))
+        drop-shadow(0 0 0 var(--sticker-clear))
+        drop-shadow(0 0 0 var(--sticker-clear))
         drop-shadow(0 0 0 var(--sticker-shadow-clear)) brightness(1.06);
 }
 
