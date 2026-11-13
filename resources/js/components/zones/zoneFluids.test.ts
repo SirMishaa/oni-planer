@@ -115,3 +115,29 @@ describe('fluidAlpha', () => {
         );
     });
 });
+
+describe('fluid behind solids', () => {
+    const terrain = (element: number[]): ZoneTerrainData => ({
+        ...column(element, [1000, 1000, 1000]),
+        palette: [
+            entry('liquid', 1000),
+            entry('gas', null),
+            entry('solid', null),
+        ],
+    });
+
+    it('extends the neighbouring fluid behind a solid cell, so its rounded corners do not show the background', () => {
+        // bottom solid, middle gas, top solid
+        const cells = fluidCells(terrain([2, 1, 2]), box);
+
+        expect(cells.filter((cell) => cell.palette === 1)).toHaveLength(3);
+        expect(cells.find((cell) => cell.row === 0)).toMatchObject({
+            kind: 'gas',
+            palette: 1,
+        });
+    });
+
+    it('puts nothing behind a solid with no fluid neighbour', () => {
+        expect(fluidCells(terrain([2, 2, 2]), box)).toEqual([]);
+    });
+});
