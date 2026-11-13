@@ -55,7 +55,7 @@ return [
         'zoom' => 'Zoom',
         'zoom_in' => 'Zoom in',
         'zoom_out' => 'Zoom out',
-        'zoom_reset' => 'Back to the default zoom',
+        'zoom_reset' => 'Fit to the screen',
         'fill' => 'Filled :percent %',
         'modes' => [
             'absolute' => 'Absolute',

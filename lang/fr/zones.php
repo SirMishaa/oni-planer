@@ -55,7 +55,7 @@ return [
         'zoom' => 'Zoom',
         'zoom_in' => 'Zoomer',
         'zoom_out' => 'Dézoomer',
-        'zoom_reset' => 'Revenir au zoom par défaut',
+        'zoom_reset' => 'Ajuster à l\'écran',
         'fill' => 'Remplie à :percent %',
         'modes' => [
             'absolute' => 'Absolue',

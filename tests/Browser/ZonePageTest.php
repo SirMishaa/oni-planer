@@ -100,22 +100,22 @@ it('zooms the map with its buttons and ctrl + wheel, never with a plain wheel', 
     $width = fn (): string => $page->script("document.querySelector('.zone-map__stage').style.width");
     $wheel = fn (bool $ctrl): mixed => $page->script("document.querySelector('.zone-map__scroll').dispatchEvent(new WheelEvent('wheel', {deltaY: -100, ctrlKey: ".($ctrl ? 'true' : 'false').', bubbles: true, cancelable: true}))');
 
-    $page->assertSeeIn('[data-test=zone-map-zoom-reset]', '150 %');
+    $page->assertSeeIn('[data-test=zone-map-zoom-reset]', '100 %');
     $initial = $width();
 
     $wheel(false);
     expect($width())->toBe($initial);
 
     $wheel(true);
-    $page->assertSeeIn('[data-test=zone-map-zoom-reset]', '188 %');
+    $page->assertSeeIn('[data-test=zone-map-zoom-reset]', '125 %');
     expect((int) $width())->toBeGreaterThan((int) $initial);
 
     $page->click('[data-test=zone-map-zoom-reset]')
-        ->assertSeeIn('[data-test=zone-map-zoom-reset]', '150 %')
+        ->assertSeeIn('[data-test=zone-map-zoom-reset]', '100 %')
         ->click('[data-test=zone-map-zoom-out]')
-        ->assertSeeIn('[data-test=zone-map-zoom-reset]', '140 %')
+        ->assertSeeIn('[data-test=zone-map-zoom-reset]', '90 %')
         ->click('[data-test=zone-map-zoom-in]')
         ->click('[data-test=zone-map-zoom-in]')
-        ->assertSeeIn('[data-test=zone-map-zoom-reset]', '160 %')
+        ->assertSeeIn('[data-test=zone-map-zoom-reset]', '110 %')
         ->assertNoJavaScriptErrors();
 });

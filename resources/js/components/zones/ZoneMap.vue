@@ -64,9 +64,13 @@ const emit = defineEmits<{
 
 // region Sizing
 
-/** Largest and smallest cell, in CSS pixels; below the smallest the map scrolls. */
-const CELL_MAX_PX = 40;
+/** Largest and smallest fitted cell, in CSS pixels; below the smallest the map scrolls. */
+const CELL_MAX_PX = 96;
 const CELL_MIN_PX = 12;
+/** Share of the window height the map may take (the scroller's `max-height`). */
+const VIEW_HEIGHT_SHARE = 0.72;
+/** Space the scroller takes around the stage vertically: its padding and the stage's top margin. */
+const STAGE_CHROME_Y_PX = 12 * 2 + 18;
 /** Room left around the map for the entities that rise above the box. */
 const STAGE_PAD_PX = 12;
 /** Height of a plant on the map, in cells (most crops stand two cells high). */
@@ -74,10 +78,11 @@ const PLANT_HEIGHT_CELLS = 2;
 
 const scroller = ref<HTMLElement | null>(null);
 const availableWidth = ref(0);
+const viewportHeight = ref(window.innerHeight);
 let resizeObserver: ResizeObserver | undefined;
 
-/** Zoom over the fitted size: the map opens at 1.5× the fit, then the wheel and the buttons change it. */
-const ZOOM_DEFAULT = 1.5;
+/** Zoom over the fitted size (100 %: the whole box fits the width and the height), changed by the wheel and the buttons. */
+const ZOOM_DEFAULT = 1;
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 6;
 /** Ctrl + wheel step, as a factor. */
@@ -91,13 +96,18 @@ const PAN_THRESHOLD_PX = 4;
 
 const zoom = ref(ZOOM_DEFAULT);
 
-/** The cell that fits the box in the available width, before zoom. */
+/** The largest cell that fits the whole box in the available width and height, before zoom. */
 const fitCellPx = computed(() => {
-    const fit = Math.floor(
+    const byWidth = Math.floor(
         (availableWidth.value - STAGE_PAD_PX * 2) / props.map.box.width,
     );
+    const byHeight = Math.floor(
+        (viewportHeight.value * VIEW_HEIGHT_SHARE - STAGE_CHROME_Y_PX) /
+            props.map.box.height,
+    );
+    const fit = Math.min(byWidth || CELL_MAX_PX, byHeight || CELL_MAX_PX);
 
-    return Math.min(CELL_MAX_PX, Math.max(CELL_MIN_PX, fit || CELL_MAX_PX));
+    return Math.min(CELL_MAX_PX, Math.max(CELL_MIN_PX, fit));
 });
 
 const cellPx = computed(() => {
@@ -389,6 +399,10 @@ function onVisibilityChange(): void {
     syncAnimation();
 }
 
+function onWindowResize(): void {
+    viewportHeight.value = window.innerHeight;
+}
+
 function onReducedMotionChange(event: MediaQueryListEvent): void {
     motion.reducedMotion = event.matches;
     syncAnimation();
@@ -438,6 +452,7 @@ onMounted(() => {
 
     motion.hidden = document.hidden;
     document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('resize', onWindowResize);
     reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     motion.reducedMotion = reducedMotionQuery.matches;
     reducedMotionQuery.addEventListener('change', onReducedMotionChange);
@@ -464,6 +479,7 @@ onBeforeUnmount(() => {
     resizeObserver?.disconnect();
     intersectionObserver?.disconnect();
     document.removeEventListener('visibilitychange', onVisibilityChange);
+    window.removeEventListener('resize', onWindowResize);
     reducedMotionQuery?.removeEventListener('change', onReducedMotionChange);
     cancelAnimationFrame(frame);
     teardownFluids();
@@ -921,77 +937,79 @@ const temperatureLegend = computed(() => {
                 <!-- endregion -->
 
                 <!-- region Entities -->
-                <button
-                    v-for="entity in mapEntities"
-                    :key="entity.key"
-                    type="button"
-                    class="zone-entity"
-                    :class="{
-                        'zone-entity--plant': entity.kind === 'plant',
-                        'zone-entity--selected':
-                            entity.instanceId !== null &&
-                            entity.instanceId === selectedId,
-                        'zone-entity--dimmed':
-                            layer === 'problems' &&
-                            problemMark(entity) === 'clear',
-                        'zone-entity--faint': layer === 'temperature',
-                    }"
-                    :style="entityStyle(entity)"
-                    :data-entity="entity.key"
-                    :aria-label="entityLabel(entity)"
-                    :aria-pressed="
-                        entity.instanceId !== null &&
-                        entity.instanceId === selectedId
-                    "
-                    @click="select(entity)"
-                    @focus="onEntityFocus($event, entity)"
-                    @blur="hover = null"
-                >
-                    <img
-                        v-if="entity.sprite"
-                        :src="entity.sprite"
-                        alt=""
-                        class="zone-entity__sprite"
-                        decoding="async"
-                    />
-                    <GameSprite
-                        v-else
-                        :src="null"
-                        :kind="entity.kind"
-                        :size="Math.max(10, Math.round(cellPx * 0.8))"
-                        class="zone-entity__placeholder"
-                    />
-                    <span
-                        v-if="
-                            layer === 'growth' &&
-                            entity.kind === 'plant' &&
-                            entity.growth !== null
-                        "
-                        class="zone-entity__bar"
+                <div class="zone-map__entities">
+                    <button
+                        v-for="entity in mapEntities"
+                        :key="entity.key"
+                        type="button"
+                        class="zone-entity"
                         :class="{
-                            'zone-entity__bar--wilting':
-                                entity.state === 'wilting',
+                            'zone-entity--plant': entity.kind === 'plant',
+                            'zone-entity--selected':
+                                entity.instanceId !== null &&
+                                entity.instanceId === selectedId,
+                            'zone-entity--dimmed':
+                                layer === 'problems' &&
+                                problemMark(entity) === 'clear',
+                            'zone-entity--faint': layer === 'temperature',
                         }"
-                        aria-hidden="true"
-                    >
-                        <i :style="{ width: `${entity.growth * 100}%` }" />
-                    </span>
-                    <span
-                        v-if="problemMark(entity) === 'problem'"
-                        class="zone-entity__pin"
-                        aria-hidden="true"
-                        >!</span
-                    >
-                    <span
-                        v-else-if="
-                            layer === 'problems' &&
-                            problemMark(entity) === 'unknown'
+                        :style="entityStyle(entity)"
+                        :data-entity="entity.key"
+                        :aria-label="entityLabel(entity)"
+                        :aria-pressed="
+                            entity.instanceId !== null &&
+                            entity.instanceId === selectedId
                         "
-                        class="zone-entity__pin zone-entity__pin--unknown"
-                        aria-hidden="true"
-                        >?</span
+                        @click="select(entity)"
+                        @focus="onEntityFocus($event, entity)"
+                        @blur="hover = null"
                     >
-                </button>
+                        <img
+                            v-if="entity.sprite"
+                            :src="entity.sprite"
+                            alt=""
+                            class="zone-entity__sprite"
+                            decoding="async"
+                        />
+                        <GameSprite
+                            v-else
+                            :src="null"
+                            :kind="entity.kind"
+                            :size="Math.max(10, Math.round(cellPx * 0.8))"
+                            class="zone-entity__placeholder"
+                        />
+                        <span
+                            v-if="
+                                layer === 'growth' &&
+                                entity.kind === 'plant' &&
+                                entity.growth !== null
+                            "
+                            class="zone-entity__bar"
+                            :class="{
+                                'zone-entity__bar--wilting':
+                                    entity.state === 'wilting',
+                            }"
+                            aria-hidden="true"
+                        >
+                            <i :style="{ width: `${entity.growth * 100}%` }" />
+                        </span>
+                        <span
+                            v-if="problemMark(entity) === 'problem'"
+                            class="zone-entity__pin"
+                            aria-hidden="true"
+                            >!</span
+                        >
+                        <span
+                            v-else-if="
+                                layer === 'problems' &&
+                                problemMark(entity) === 'unknown'
+                            "
+                            class="zone-entity__pin zone-entity__pin--unknown"
+                            aria-hidden="true"
+                            >?</span
+                        >
+                    </button>
+                </div>
                 <!-- endregion -->
 
                 <!-- region Hover card -->
@@ -1260,6 +1278,20 @@ const temperatureLegend = computed(() => {
 }
 
 /* region Entities */
+.zone-map__entities {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    /* A window on the game: buildings of the next room show only their part in the box; pins keep a little room. */
+    overflow: clip;
+    overflow-clip-margin: 10px;
+    pointer-events: none;
+}
+
+.zone-map__entities > .zone-entity {
+    pointer-events: auto;
+}
+
 .zone-entity {
     position: absolute;
     z-index: 2;
