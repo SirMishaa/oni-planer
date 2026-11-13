@@ -7,9 +7,21 @@ order: 2
 
 # Installation locale
 
-Il faut PHP 8.5, Composer, Bun et une copie d'Oxygen Not Included.
+Il faut PHP 8.5 (extensions `pgsql` et `redis`), Composer, Bun, PostgreSQL, Valkey (ou Redis) et une copie d'Oxygen Not Included.
 
 <Steps>
+<Step title="Créer les bases">
+
+L'application et les tests utilisent PostgreSQL par le socket local, avec ton utilisateur système. La queue et le cache sont dans Valkey.
+
+```bash
+sudo pacman -S valkey && sudo systemctl enable --now valkey
+sudo -u postgres createuser -s "$USER"
+createdb oni_planner
+createdb oni_planner_testing
+```
+
+</Step>
 <Step title="Installer">
 
 ```bash
@@ -30,7 +42,9 @@ Lance l'export OniExtract depuis le menu pause du jeu, puis les trois commandes 
 composer devWithOctane
 ```
 
-Lance ensemble Octane, le worker de queue, Pail, Vite et Reverb, avec le site sur le port 8003. `composer dev` fait pareil avec `php artisan serve` à la place d'Octane.
+Lance ensemble Octane, les workers de queue, Pail, Vite et Reverb, avec le site sur le port 8003. `composer dev` fait pareil avec `php artisan serve` à la place d'Octane.
+
+Les workers ne rechargent pas le code PHP : après une modification d'un job ou d'une action, lance `php artisan queue:restart` (ils redémarrent seuls).
 </Step>
 <Step title="Relier le jeu (optionnel)">
 Compile et installe le mod Uplink, puis lance <Artisan command="uplink:install" /> pour écrire ses réglages dans le dossier du mod.

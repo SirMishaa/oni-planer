@@ -46,4 +46,5 @@ Remplies par Uplink, jamais touchées par l'import.
 - <Model name="Colony" /> : le dernier état reçu pour chaque colonie.
 - <Model name="UplinkMessage" /> : le journal affiché dans l'inspecteur.
 - <Model name="UplinkSession" /> : une ligne par session de jeu (sauvegarde chargée).
-- <Model name="Zone" /> et <Model name="ZoneVersion" /> : les zones marquées en jeu et chaque version de leurs cases, pour que modifier une zone ne réécrive jamais son passé. Une zone garde aussi la lecture lente précédente de ses températures (`previous_slow_temperature`), pour le mode Flux thermique de la carte.
+- <Model name="Zone" /> et <Model name="ZoneVersion" /> : les zones marquées en jeu et chaque version de leurs cases, pour que modifier une zone ne réécrive jamais son passé. Une zone garde aussi la lecture lente précédente de ses températures (`previous_slow_temperature`, même session uniquement), pour le mode Flux thermique de la carte. Chaque état enregistré garde sa session et son temps de jeu (`slow_session_id`, `slow_game_seconds`, et pareil pour `fast`), pour qu'un état en retard ne remplace jamais un plus récent (voir [Uplink](./uplink.md)).
+- <Model name="UplinkCommand" /> : les commandes envoyées au mod et leur réponse.

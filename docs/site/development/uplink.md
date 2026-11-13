@@ -1,20 +1,23 @@
 ---
 title: Uplink
-description: Comment le mod Uplink parle au planner via Reverb, ce que chaque listener enregistre et les règles qu'ils suivent.
-sources: ["app/Listeners/IngestColonyState.php", "app/Listeners/IngestUplinkData.php", "app/Services/Uplink/**", "app/Actions/Uplink/**", "app/Events/ZoneUpdated.php", "app/Console/Commands/UplinkInstallCommand.php"]
+description: Comment le mod Uplink parle au planner via Reverb, comment chaque message est traité en file et les règles d'ordre et de commande.
+sources: ["app/Listeners/RouteUplinkMessage.php", "app/Listeners/Uplink/**", "app/Enums/UplinkMessageType.php", "app/Jobs/Uplink/**", "app/Events/Uplink/**", "app/Services/Uplink/**", "app/Actions/Uplink/**", "app/Events/ZoneUpdated.php", "app/Models/UplinkCommand.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Console/Commands/UplinkResyncZoneCommand.php"]
 order: 4
 ---
 
 # Uplink
 
-Uplink est un mod du jeu (dépôt séparé) qui se connecte à Reverb comme client Pusher et envoie des **client events**. Des listeners sur l'événement `MessageReceived` de Reverb les enregistrent. Tout passe par le WebSocket : le jeu n'a aucun endpoint HTTP.
+Uplink est un mod du jeu (dépôt séparé) qui se connecte à Reverb comme client Pusher et envoie des **client events**. Le listener `RouteUplinkMessage` les reçoit dans Reverb et met chacun en file sur le job de son type ; les workers les décodent et les enregistrent. Tout passe par le WebSocket : le jeu n'a aucun endpoint HTTP.
 
 ## Canaux
 
-| Canal | Événements | Enregistré par |
+| Canal | Événements | File |
 | --- | --- | --- |
-| `uplink` | `client-colony.state` | `IngestColonyState` → `ColonyIngestor` |
-| `uplink-data` | `client-session.start`, `client-zone.list`, `client-zone.layout` (fiables) ; `client-zone.slow`, `client-zone.fast` (dernier état) | `IngestUplinkData` |
+| `uplink` | `client-colony.state` | `uplink-state` |
+| `uplink-data` | `client-session.start`, `client-zone.list`, `client-zone.layout`, `client-command.ack` (fiables) | `uplink-reliable` |
+| `uplink-data` | `client-zone.slow`, `client-zone.fast` (dernier état) | `uplink-state` |
+
+Chaque événement a un job dans `app/Jobs/Uplink` (par exemple `ReceiveZoneLayout`), listé par l'enum `UplinkMessageType`. Ajouter un type de message, c'est un cas de l'enum et un job.
 
 Les données lourdes des zones ont leur propre canal, car un client event est diffusé à tous les abonnés du canal.
 
@@ -24,18 +27,47 @@ Sur `uplink-data`, le `data` de l'événement vaut `{"payload": "<base64 du gzip
 
 ## Fiabilité
 
-- **Les événements fiables** portent un identifiant de corrélation. Une fois enregistré, le listener répond à l'émetteur par `uplink.ack` sur `uplink-data`, avec cet identifiant. Le mod renvoie tant qu'il n'a pas d'ack, donc la réception est idempotente.
+- **Les événements fiables** portent un identifiant de corrélation. Une fois l'événement enregistré, le worker diffuse `uplink.ack` sur `uplink-data` avec cet identifiant (`UplinkMessageAccepted`). Le mod renvoie tant qu'il n'a pas d'ack, donc la réception est idempotente.
+- **Ils sont traités dans l'ordre** : un seul worker lit `uplink-reliable`, donc le début de session passe avant la liste, et la liste avant les layouts.
 - **Les événements d'état** (`slow`, `fast`) ne gardent que le dernier et ne sont jamais acquittés.
 - Un layout pour une zone que le site ne connaît pas encore n'est pas acquitté ; le mod le renvoie après la liste des zones.
 
-## Règles pour les listeners
+## Règles du listener
 
-Les listeners tournent **dans le processus Reverb**, pour chaque message :
+`RouteUplinkMessage` tourne **dans le processus Reverb**, pour chaque message :
 
-- ils doivent rester légers et **ne jamais lever d'exception**, sinon la boucle d'événements de Reverb meurt ;
-- les mises à jour du navigateur passent par des broadcasts en file (`ZoneUpdated`), jamais par du travail synchrone.
+- il ne fait que lire l'enveloppe et mettre le message en file : jamais de décodage du payload, jamais de base de données, car un travail lourd fige tous les sockets, pages comprises ;
+- il ne lève **jamais d'exception**, sinon la boucle d'événements de Reverb meurt.
+
+Les jobs enregistrent puis lèvent un événement métier (`ZoneListSynced`, `ZoneLayoutStored`, `ZoneStateStored`). Les listeners de ces événements diffusent `ZoneUpdated` aux pages ouvertes (au plus une fois toutes les 2 s par zone pour les états rapides) et demandent un resync si besoin.
 
 Les messages sur `uplink` sont journalisés (voir l'inspecteur). Seules les colonies vues le plus récemment sont gardées, plus toute colonie qui possède des zones.
+
+## Ordre des états
+
+Plusieurs workers lisent `uplink-state` : un état peut finir après un plus récent. L'écriture est donc conditionnelle, en une seule requête :
+
+- dans une même session, seul un `gameSeconds` plus grand remplace l'état enregistré ;
+- un état d'une autre session que la session courante de la colonie (le dernier `client-session.start`) est ignoré. Recharger une ancienne sauvegarde fait reculer `gameSeconds`, et ses états ne doivent jamais se mélanger à ceux de la nouvelle session ;
+- un état sans `sessionId` (mod plus ancien) compte comme de la session courante.
+
+`previous_slow_temperature` ne garde que des températures de la même session. L'état colonie suit la même règle quand il porte `sessionId` et `gameSeconds` ; sans eux, le dernier arrivé gagne.
+
+## Commandes du site vers le mod
+
+Le site envoie `uplink.command` sur `uplink-data` : `{schema, id, colonyId, type, issuedAt, expiresAt, payload}`. Le mod dont la colonie chargée est `colonyId` l'exécute et répond `client-command.ack` avec `commandId` et un statut `done`, `refused` ou `expired` ; un autre mod l'ignore. Une commande sans réponse passe `expired` après `expiresAt` (vérifié à la lecture, sans planificateur).
+
+<Model name="UplinkCommand" />
+
+La seule commande pour l'instant est `zone.resync` : le mod renvoie le layout et les deux états d'une zone. Le site l'envoie seul pour une zone toujours sans layout 30 s après sa création, ou à la main :
+
+<Artisan command="uplink:resync-zone" />
+
+<Accordion title="Versions des messages">
+
+Chaque type de message a sa propre version (`schema`). Un champ ajouté et optionnel ne la change pas ; une version plus récente que celle que le site connaît est refusée (avertissement au plus une fois par heure, par type de message et par colonie ; pour l'état colonie, le refus apparaît dans le journal de l'inspecteur). Le site et le mod peuvent donc être mis à jour dans n'importe quel ordre.
+
+</Accordion>
 
 ## Relier une partie
 
