@@ -105,6 +105,8 @@ const temperatureMode = ref<TemperatureMode>('absolute');
 const showGrid = ref<boolean>(false);
 /** Game temperature overlay colours, null until `render.json` loads (or when it is missing). */
 const overlayPalette = shallowRef<OverlayPalette | null>(null);
+/** True once the `render.json` request has settled, found or not. */
+const renderAssetsLoaded = ref<boolean>(false);
 let frame = 0;
 
 function paint(): void {
@@ -308,6 +310,7 @@ onMounted(() => {
     loadTileGeometry(schedulePaint);
     loadRenderAssets(() => {
         overlayPalette.value = getOverlayPalette();
+        renderAssetsLoaded.value = true;
         schedulePaint();
     });
     void nextTick(schedulePaint);
@@ -667,23 +670,29 @@ const heatFlowWaiting = computed(() => {
     );
 });
 
-const temperatureLegend = computed(() => {
-    const palette = overlayPalette.value;
+/** `render.json` loaded without overlay colours: every mode but state change paints the backdrop. */
+const overlayMissing = computed(
+    () =>
+        renderAssetsLoaded.value &&
+        overlayPalette.value === null &&
+        temperatureMode.value !== 'stateChange',
+);
 
-    if (!palette || heatFlowWaiting.value) {
+const temperatureLegend = computed(() => {
+    if (heatFlowWaiting.value) {
         return [];
     }
 
     return legendStops(
         temperatureMode.value,
-        palette,
+        overlayPalette.value,
         temperatureSpan.value,
     ).map((stop, index) => {
-        const [r, g, b, a] = stop.colour;
+        const [r, g, b, a] = stop.colour ?? [0, 0, 0, 0];
 
         return {
             key: index,
-            colour: `rgb(${r} ${g} ${b} / ${a / 255})`,
+            colour: stop.colour ? `rgb(${r} ${g} ${b} / ${a / 255})` : null,
             label: stop.labelKey ? t(stop.labelKey) : stop.label,
         };
     });
@@ -970,6 +979,13 @@ const temperatureLegend = computed(() => {
                     {{ t(mode.label) }}
                 </button>
             </div>
+            <p
+                v-if="overlayMissing"
+                class="zone-map__note"
+                data-test="zone-map-overlay-missing"
+            >
+                {{ t('zones.map.overlay_missing') }}
+            </p>
             <p v-if="heatFlowWaiting" class="zone-map__note">
                 {{ t('zones.map.heat_flow_waiting') }}
             </p>
@@ -980,6 +996,7 @@ const temperatureLegend = computed(() => {
                     class="zone-map__stop"
                 >
                     <i
+                        v-if="stop.colour"
                         class="zone-map__swatch"
                         :style="{ background: stop.colour }"
                     />

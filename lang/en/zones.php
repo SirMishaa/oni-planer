@@ -60,6 +60,7 @@ return [
             'state_change' => 'State change',
         ],
         'heat_flow_waiting' => 'Heat flow shows once the game has sent a second reading of the terrain.',
+        'overlay_missing' => 'Overlay colours missing: re-run the game export.',
         'heat_flow' => [
             'cooling' => 'Cooling',
             'stable' => 'Stable',

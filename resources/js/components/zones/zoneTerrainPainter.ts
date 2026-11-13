@@ -80,7 +80,10 @@ export function cellKind(entry: ZoneTerrainElementData | undefined): CellKind {
     return 'fallback';
 }
 
-/** Render order of each palette entry: rank of its element id among the solids; null for the rest. */
+/**
+ * Render order of each palette entry: rank of its element id string among the
+ * solids (sorted by id, not the game's substance index); null for the rest.
+ */
 export function solidOrders(
     palette: readonly ZoneTerrainElementData[],
 ): (number | null)[] {

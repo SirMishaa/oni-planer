@@ -80,6 +80,15 @@ describe('heat flow', () => {
 });
 
 describe('state change', () => {
+    it('is cyan at the lower transition and green far from both', () => {
+        const [r, g, b] = stateChangeColour(273.15, 'liquid', 273.15, 372.15);
+        const [, green] = stateChangeColour(322.65, 'liquid', 273.15, 372.15);
+
+        expect([r, b]).toEqual([0, 255]);
+        expect(g).toBeGreaterThan(200);
+        expect(green).toBe(255);
+    });
+
     it('is red for water near boiling', () => {
         const [r, g, b, a] = stateChangeColour(372, 'liquid', 273.15, 372.15);
 
@@ -120,15 +129,44 @@ describe('parseRenderJson', () => {
         color,
     });
 
+    const nineStops = Array.from({ length: 9 }, (_, index) =>
+        entry(index, '#ff000080'),
+    );
+
     it('parses #rrggbbaa thresholds and sorts the heat flow', () => {
         const parsed = parseRenderJson({
-            temperatureThresholds: [entry(0, '#ff000080')],
+            temperatureThresholds: nineStops,
             heatFlowThresholds: [entry(1, '#00ff00ff'), entry(-1, '#0000ffff')],
             maskAtlas: {},
         });
 
-        expect(parsed?.temperature).toEqual([[255, 0, 0, 128]]);
+        expect(parsed?.temperature[0]).toEqual([255, 0, 0, 128]);
+        expect(parsed?.temperature).toHaveLength(9);
         expect(parsed?.heatFlow.map((stop) => stop.value)).toEqual([-1, 1]);
+    });
+
+    it('rejects too few temperature or heat flow stops', () => {
+        expect(
+            parseRenderJson({
+                temperatureThresholds: nineStops.slice(0, 8),
+                heatFlowThresholds: [
+                    entry(1, '#00ff00ff'),
+                    entry(-1, '#0000ffff'),
+                ],
+            }),
+        ).toBeNull();
+        expect(
+            parseRenderJson({
+                temperatureThresholds: nineStops,
+                heatFlowThresholds: [entry(1, '#00ff00ff')],
+            }),
+        ).toBeNull();
+        expect(
+            parseRenderJson({
+                temperatureThresholds: [],
+                heatFlowThresholds: [],
+            }),
+        ).toBeNull();
     });
 
     it('rejects a null colour or a malformed document', () => {
@@ -179,5 +217,24 @@ describe('legendStops', () => {
             'zones.map.state_change.hot',
         ]);
         expect(legendStops('absolute', palette, null)[0]?.labelKey).toBeNull();
+    });
+
+    it('works without the overlay palette where it can', () => {
+        expect(
+            legendStops('stateChange', null, null).map((stop) => stop.colour),
+        ).toEqual([
+            stateChangeColour(0, 'liquid', 0, 1),
+            stateChangeColour(1, 'liquid', 0, 1),
+        ]);
+
+        const absolute = legendStops('absolute', null, null);
+
+        expect(absolute).toHaveLength(9);
+        expect(absolute[0]).toEqual({
+            colour: null,
+            label: '-273 °C',
+            labelKey: null,
+        });
+        expect(legendStops('heatFlow', null, null)).toEqual([]);
     });
 });

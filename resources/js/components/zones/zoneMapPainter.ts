@@ -164,10 +164,13 @@ export function rgbaCss([red, green, blue, alpha]: Rgba): string {
     return `rgb(${red} ${green} ${blue} / ${alpha / 255})`;
 }
 
-/** Overlay colour of one cell in the mode; null paints nothing (unknown input, or heat flow before a second reading). */
+/**
+ * Overlay colour of one cell in the mode; null paints nothing (unknown input,
+ * heat flow before a second reading, or no palette for a mode that needs one).
+ */
 function temperatureColour(
     mode: TemperatureMode,
-    palette: OverlayPalette,
+    palette: OverlayPalette | null,
     terrain: ZoneTerrainData,
     index: number,
     kelvin: number,
@@ -175,14 +178,16 @@ function temperatureColour(
 ): Rgba | null {
     switch (mode) {
         case 'absolute':
-            return absoluteColour(kelvin, palette).colour;
+            return palette ? absoluteColour(kelvin, palette).colour : null;
         case 'adaptive':
-            return range ? adaptiveColour(kelvin, range, palette).colour : null;
+            return range && palette
+                ? adaptiveColour(kelvin, range, palette).colour
+                : null;
         case 'heatFlow': {
             const previous = terrain.previousTemperature?.[index] ?? null;
             const seconds = terrain.previousSeconds ?? 0;
 
-            return previous === null || !(seconds > 0)
+            return previous === null || !(seconds > 0) || palette === null
                 ? null
                 : heatFlowColour((kelvin - previous) / seconds, palette);
         }
@@ -203,12 +208,16 @@ function temperatureColour(
     }
 }
 
-/** Temperature layer: each known cell in the mode's colour, no textures. */
+/**
+ * Temperature layer: each known cell in the mode's colour, no textures. State
+ * change needs no palette; the other modes without one clear known cells to
+ * the map backdrop (the page explains why), so they never read as unknown.
+ */
 function paintTemperatures(
     paint: TerrainPaint,
     terrain: ZoneTerrainData,
     mode: TemperatureMode,
-    palette: OverlayPalette,
+    palette: OverlayPalette | null,
 ): void {
     const { ctx, box, px } = paint;
     const values = terrain.temperature;
@@ -218,6 +227,7 @@ function paintTemperatures(
     }
 
     const range = mode === 'adaptive' ? temperatureRange(values) : null;
+    const paletteMissing = palette === null && mode !== 'stateChange';
     const source = terrain.box;
 
     for (let index = 0; index < source.width * source.height; index++) {
@@ -238,16 +248,11 @@ function paintTemperatures(
             continue;
         }
 
-        const colour = temperatureColour(
-            mode,
-            palette,
-            terrain,
-            index,
-            kelvin,
-            range,
-        );
+        const colour = paletteMissing
+            ? null
+            : temperatureColour(mode, palette, terrain, index, kelvin, range);
 
-        if (colour === null) {
+        if (colour === null && !paletteMissing) {
             continue;
         }
 
@@ -255,6 +260,11 @@ function paintTemperatures(
         const left = px(column);
         const top = px(row);
         ctx.clearRect(left, top, px(column + 1) - left, px(row + 1) - top);
+
+        if (colour === null) {
+            continue;
+        }
+
         ctx.fillStyle = rgbaCss(colour);
         ctx.fillRect(left, top, px(column + 1) - left, px(row + 1) - top);
     }
@@ -402,7 +412,8 @@ function terrainPaint(
  * the animated layer draws them, fallbacks for elements without render
  * data, then textured solids with the game's edge masks on top (the game
  * draws ground over liquids), then tiles. Temperature: the mode's overlay
- * colour per cell, tiles faint. Unknown cells stay hatched; known cells
+ * colour per cell (known cells cleared to the backdrop when the palette a
+ * mode needs is missing), tiles faint. Unknown cells stay hatched; known cells
  * that are not solid show the map backdrop under their fluid, never a page
  * ink mixed into their colour.
  *
@@ -464,14 +475,7 @@ export function paintZoneMap(
     ctx.fillRect(0, 0, width, height);
 
     if (terrain && layer === 'temperature') {
-        if (input.palette) {
-            paintTemperatures(
-                paint,
-                terrain,
-                input.temperatureMode,
-                input.palette,
-            );
-        }
+        paintTemperatures(paint, terrain, input.temperatureMode, input.palette);
     } else if (terrain) {
         forEachKnownCell(terrain, box, (_palette, column, row) => {
             const left = paint.px(column);

@@ -60,6 +60,7 @@ return [
             'state_change' => 'Changement d\'état',
         ],
         'heat_flow_waiting' => 'Le flux thermique s\'affiche dès que le jeu a envoyé une deuxième lecture du terrain.',
+        'overlay_missing' => 'Couleurs du calque absentes : relancez l\'export du jeu.',
         'heat_flow' => [
             'cooling' => 'Refroidit',
             'stable' => 'Stable',

@@ -23,7 +23,7 @@ export const FLUID_FRAGMENT_SHADER = `#version 300 es
 precision highp float;
 precision highp int;
 
-uniform sampler2D uCells;
+uniform highp sampler2D uCells;
 uniform highp sampler2D uPalette;
 uniform vec2 uGrid;
 uniform vec2 uResolution;

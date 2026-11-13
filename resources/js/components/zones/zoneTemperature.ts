@@ -20,8 +20,16 @@ export const ABSOLUTE_INTERVALS_K = [273.15, 10, 10, 10, 7, 63, 1700, 10000];
 /** Share of the zone's min..max span between adaptive thresholds. */
 export const ADAPTIVE_INTERVALS = [0.4, 0.05, 0.05, 0.05, 0.05, 0.2, 0.2];
 
-/** Heat flow (K per second) shown with the first or last heat flow colour. */
+/**
+ * Heat flow (K per second) shown with the first or last heat flow colour.
+ * The rate divides by wall-clock seconds between two slow states, so game
+ * speed and pauses skew it.
+ */
 export const HEAT_FLOW_FULL_SCALE_K_PER_S = 0.05;
+
+/** Fewest stops the overlay needs: one per absolute threshold, and both ends of the heat flow. */
+const MIN_TEMPERATURE_STOPS = ABSOLUTE_INTERVALS_K.length + 1;
+const MIN_HEAT_FLOW_STOPS = 2;
 
 /** Game defaults for an element without a state transition. */
 const DEFAULT_LOW_TEMP_K = 0;
@@ -72,7 +80,7 @@ function parseThresholds(
     return parsed;
 }
 
-/** Overlay palette from `/assets/game/render.json`; null when it is malformed or a colour is missing. */
+/** Overlay palette from `/assets/game/render.json`; null when it is malformed, a colour is missing or stops are too few. */
 export function parseRenderJson(json: unknown): OverlayPalette | null {
     const document = json as {
         temperatureThresholds?: unknown;
@@ -81,7 +89,12 @@ export function parseRenderJson(json: unknown): OverlayPalette | null {
     const temperature = parseThresholds(document?.temperatureThresholds);
     const heatFlow = parseThresholds(document?.heatFlowThresholds);
 
-    if (temperature === null || heatFlow === null) {
+    if (
+        temperature === null ||
+        heatFlow === null ||
+        temperature.length < MIN_TEMPERATURE_STOPS ||
+        heatFlow.length < MIN_HEAT_FLOW_STOPS
+    ) {
         return null;
     }
 
@@ -235,7 +248,11 @@ function hsvToRgba(hue: number, saturation: number, value: number): Rgba {
     return [channel(5), channel(3), channel(1), 255];
 }
 
-/** `SimDebugView.GetStateChangeProximityColour`: red at the transition, cyan far from it. */
+/**
+ * `SimDebugView.GetStateChangeProximityColour`: cyan at the lower transition
+ * (freezing, condensing), red at the upper one (melting, boiling), green far
+ * from both. Needs no overlay palette.
+ */
 export function stateChangeColour(
     kelvin: number,
     state: 'solid' | 'liquid' | 'gas',
@@ -271,26 +288,39 @@ function celsiusLabel(kelvin: number): string {
     return `${Math.round(kelvin - 273.15)} °C`;
 }
 
-/** A legend stop: a °C label, or a lang key (`labelKey`) for the modes without a temperature scale. */
+/**
+ * A legend stop: a °C label, or a lang key (`labelKey`) for the modes without
+ * a temperature scale. `colour` is null when the overlay palette is missing:
+ * the threshold still shows, without its chip.
+ */
 export type LegendStop = {
-    colour: Rgba;
+    colour: Rgba | null;
     label: string;
     labelKey: string | null;
 };
 
+/** Threshold stops in °C; without a palette every threshold shows without its chip. */
+function thresholdStops(
+    edges: number[],
+    palette: OverlayPalette | null,
+): LegendStop[] {
+    return edges.flatMap((kelvin, index) => {
+        const colour = palette ? (palette.temperature[index] ?? null) : null;
+
+        return palette === null || colour !== null
+            ? [{ colour, label: celsiusLabel(kelvin), labelKey: null }]
+            : [];
+    });
+}
+
+/** Legend of the mode; state change needs no palette, heat flow shows nothing without one. */
 export function legendStops(
     mode: TemperatureMode,
-    palette: OverlayPalette,
+    palette: OverlayPalette | null,
     range: TemperatureRange | null,
 ): LegendStop[] {
     if (mode === 'absolute') {
-        return thresholds(0, ABSOLUTE_INTERVALS_K).flatMap((kelvin, index) => {
-            const colour = palette.temperature[index];
-
-            return colour
-                ? [{ colour, label: celsiusLabel(kelvin), labelKey: null }]
-                : [];
-        });
+        return thresholdStops(thresholds(0, ABSOLUTE_INTERVALS_K), palette);
     }
 
     if (mode === 'adaptive') {
@@ -300,19 +330,20 @@ export function legendStops(
 
         const span = range.max - range.min;
 
-        return thresholds(
-            range.min,
-            ADAPTIVE_INTERVALS.map((share) => share * span),
-        ).flatMap((kelvin, index) => {
-            const colour = palette.temperature[index];
-
-            return colour
-                ? [{ colour, label: celsiusLabel(kelvin), labelKey: null }]
-                : [];
-        });
+        return thresholdStops(
+            thresholds(
+                range.min,
+                ADAPTIVE_INTERVALS.map((share) => share * span),
+            ),
+            palette,
+        );
     }
 
     if (mode === 'heatFlow') {
+        if (palette === null) {
+            return [];
+        }
+
         const stops = [...palette.heatFlow].sort((a, b) => a.value - b.value);
         const first = stops[0];
         const last = stops[stops.length - 1];

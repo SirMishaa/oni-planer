@@ -14,7 +14,12 @@ import {
     type ZoneMapLayer,
 } from './zoneMapPainter';
 import { NO_RENDER_ASSETS } from './zoneRenderAssets';
-import type { OverlayPalette, Rgba, TemperatureMode } from './zoneTemperature';
+import {
+    type OverlayPalette,
+    type Rgba,
+    stateChangeColour,
+    type TemperatureMode,
+} from './zoneTemperature';
 
 // region Canvas stub
 
@@ -33,6 +38,7 @@ class StubContext {
     globalCompositeOperation = 'source-over';
     imageSmoothingEnabled = true;
     calls: Call[] = [];
+    clears = 0;
 
     constructor(public canvas: StubCanvas) {}
 
@@ -60,7 +66,10 @@ class StubContext {
         return { data: new Uint8ClampedArray(4) };
     }
 
-    clearRect(): void {}
+    clearRect(): void {
+        this.clears++;
+    }
+
     beginPath(): void {}
     moveTo(): void {}
     lineTo(): void {}
@@ -172,6 +181,7 @@ function paint(
     terrain: ZoneTerrainData,
     layer: ZoneMapLayer = 'materials',
     temperatureMode: TemperatureMode = 'absolute',
+    palette: OverlayPalette | null = overlay,
 ): StubCanvas {
     const canvas = new StubCanvas();
     canvases.push(canvas);
@@ -186,7 +196,7 @@ function paint(
         inks,
         onSpriteLoad: () => undefined,
         temperatureMode,
-        palette: overlay,
+        palette,
         assets: NO_RENDER_ASSETS,
         fluidsAnimated: false,
         showGrid: false,
@@ -325,6 +335,36 @@ describe('paintZoneMap', () => {
             base.width,
             base.height,
         ]);
+    });
+
+    it('paints state change without the overlay palette', () => {
+        const canvas = paint(
+            terrainOf([
+                entry({ state: 'liquid', lowTemp: 273.15, highTemp: 373.15 }),
+            ]),
+            'temperature',
+            'stateChange',
+            null,
+        );
+
+        expect(canvas.context.calls.map((call) => call.style)).toContain(
+            rgbaCss(stateChangeColour(293.15, 'liquid', 273.15, 373.15)),
+        );
+    });
+
+    it('clears known cells to the backdrop when the overlay palette is missing', () => {
+        const canvas = paint(
+            terrainOf([entry({})]),
+            'temperature',
+            'absolute',
+            null,
+        );
+        const solidFills = canvas.context.calls.filter(
+            (call) => typeof call.style === 'string',
+        );
+
+        expect(canvas.context.clears).toBe(1);
+        expect(solidFills).toEqual([]);
     });
 
     it('paints nothing for heat flow before a second reading', () => {
