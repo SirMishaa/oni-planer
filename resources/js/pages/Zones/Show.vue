@@ -237,7 +237,6 @@ function showOnMap(instanceId: string): void {
                         v-if="map"
                         :map="map"
                         :entities="entities"
-                        :border-entities="borderEntities"
                         :layer="layer"
                         :selected-id="selectedId"
                         :zone-name="zone.name"
@@ -273,6 +272,7 @@ function showOnMap(instanceId: string): void {
             >
                 <ZoneEntities
                     :entities="entities"
+                    :border-entities="borderEntities"
                     :plants-known="plantsKnown"
                     :building-states-known="buildingStatesKnown"
                     :selected-id="selectedId"
