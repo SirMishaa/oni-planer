@@ -377,13 +377,13 @@ function paintGrid(paint: TerrainPaint, inks: ZoneMapInks): void {
 }
 
 /**
- * Paints the map box. Growth, materials and problems: textured solids with
- * the game's edge masks, fallbacks for elements without render data, static
- * fluids unless the animated layer draws them, then tiles. Temperature: the
- * mode's overlay colour per cell, tiles faint. Unknown cells stay hatched;
- * known cells that are not solid show what is behind them (solid edges and
- * the map backdrop), never a page ink mixed into their colour. Returns the
- * paint time in milliseconds.
+ * Paints the map box. Growth, materials and problems: static fluids unless
+ * the animated layer draws them, fallbacks for elements without render
+ * data, then textured solids with the game's edge masks on top (the game
+ * draws ground over liquids), then tiles. Temperature: the mode's overlay
+ * colour per cell, tiles faint. Unknown cells stay hatched; known cells
+ * that are not solid show the map backdrop under their fluid, never a page
+ * ink mixed into their colour. Returns the paint time in milliseconds.
  */
 export function paintZoneMap(
     canvas: HTMLCanvasElement,
@@ -450,12 +450,14 @@ export function paintZoneMap(
                 paint.px(row + 1) - top,
             );
         });
-        paintSolidTerrain(paint, terrain, input.assets);
-        paintFallbackCells(paint, terrain);
-
+        // Fluids first: the game draws ground over liquids, so the solids'
+        // organic edges (half a cell of spill) stay on top of them.
         if (!input.fluidsAnimated) {
             paintStaticFluids(paint, terrain);
         }
+
+        paintFallbackCells(paint, terrain);
+        paintSolidTerrain(paint, terrain, input.assets);
     }
     // endregion
 

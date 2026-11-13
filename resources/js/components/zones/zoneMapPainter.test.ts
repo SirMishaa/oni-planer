@@ -177,7 +177,7 @@ function paint(
     canvases.push(canvas);
 
     paintZoneMap(canvas as unknown as HTMLCanvasElement, {
-        box,
+        box: terrain.box,
         terrain,
         tiles: null,
         cellPx: 10,
@@ -231,6 +231,39 @@ describe('paintZoneMap', () => {
         expect(canvas.context.calls.map((call) => call.style)).toContain(
             rgbaCss(overlay.temperature[3]!),
         );
+    });
+
+    it('paints static fluids under the solids so their edges stay on top', () => {
+        const canvas = paint(
+            terrainOf(
+                [
+                    entry({
+                        elementId: 'Granite',
+                        state: 'solid',
+                        renderColour: '#112233ff',
+                    }),
+                    entry({
+                        elementId: 'Oxygen',
+                        state: 'gas',
+                        renderColour: '#aabbcc80',
+                    }),
+                ],
+                {
+                    box: { x: 0, y: 0, width: 2, height: 1 },
+                    element: [0, 1],
+                    mass: [100, 2],
+                    temperature: [293.15, 293.15],
+                },
+            ),
+        );
+        const calls = canvas.context.calls;
+        const gasFill = calls.findIndex(
+            (call) => call.style === 'rgb(170 187 204 / 0.5019607843137255)',
+        );
+        const solidDraw = calls.findIndex((call) => call.op === 'drawImage');
+
+        expect(gasFill).toBeGreaterThanOrEqual(0);
+        expect(solidDraw).toBeGreaterThan(gasFill);
     });
 
     it('paints nothing for heat flow before a second reading', () => {
