@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Services\Uplink\IngestBench;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -11,6 +12,7 @@ use Illuminate\Process\InvokedProcess;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Sleep;
+use RuntimeException;
 
 /**
  * Measures how the local Reverb handles Uplink-sized messages: runs the k6
@@ -30,7 +32,12 @@ use Illuminate\Support\Sleep;
     {--port= : Port Reverb listens on, defaults to reverb.servers.reverb.port}
     {--timeout=30000 : Milliseconds to wait for one acknowledgement}
     {--encoding=json : How data is sent: json, or base64 (Reverb keeps it opaque)}
-    {--profile : Start a temporary Reverb (on --port, default 8099) profiled with Excimer and print where the time goes}')]
+    {--profile : Start a temporary Reverb (on --port, default 8099) profiled with Excimer and print where the time goes}
+    {--ingest : Measure ingestion end to end instead: zone states through Reverb and the queue workers into the database}
+    {--rates=7,50,150,400 : With --ingest: messages per second, one run each}
+    {--duration=20 : With --ingest: seconds per rate}
+    {--zones=30 : With --ingest: zones of the bench colony}
+    {--scale=1 : With --ingest: repeat factor of the large-colony state contents}')]
 final class UplinkBenchCommand extends Command
 {
     private const string SCRIPT = 'tests/Performance/uplink-ws.js';
@@ -49,6 +56,10 @@ final class UplinkBenchCommand extends Command
             $this->error('REVERB_APP_KEY is not set.');
 
             return self::FAILURE;
+        }
+
+        if ($this->option('ingest')) {
+            return $this->ingest($key);
         }
 
         $sizes = array_values(array_filter(array_map(intval(...), explode(',', (string) $this->option('sizes'))), fn (int $size): bool => $size > 0));
@@ -114,6 +125,58 @@ final class UplinkBenchCommand extends Command
         if ($server instanceof InvokedProcess) {
             $this->printProfile($profilePrefix);
         }
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * Runs the end-to-end ingest bench and prints one row per rate.
+     */
+    private function ingest(string $key): int
+    {
+        $rates = explode(',', (string) $this->option('rates'));
+        if (array_filter($rates, fn (string $rate): bool => ! ctype_digit($rate) || (int) $rate < 1) !== []) {
+            $this->error('--rates must list positive messages per second, comma separated.');
+
+            return self::FAILURE;
+        }
+
+        try {
+            $results = app(IngestBench::class)->run(
+                $this->url($key),
+                array_map(intval(...), $rates),
+                max(1, (int) $this->option('duration')),
+                max(1, (int) $this->option('zones')),
+                max(1, (int) $this->option('scale')),
+                fn (string $line) => $this->line($line),
+            );
+        } catch (RuntimeException $exception) {
+            $this->error($exception->getMessage());
+
+            return self::FAILURE;
+        }
+
+        $this->table(
+            ['Rate', 'Sent', 'Stored', 'Lost', 'Throughput/s', 'Median', 'p95', 'Max'],
+            array_map(function (array $result): array {
+                $latencies = $result['latencies'];
+                sort($latencies);
+                $count = count($latencies);
+                $at = fn (float $quantile): string => $count === 0 ? 'n/a' : $latencies[min($count - 1, (int) floor($quantile * $count))].' ms';
+
+                return [
+                    $result['rate'].'/s',
+                    (string) $result['sent'],
+                    (string) $result['stored'],
+                    (string) max(0, $result['sent'] - $result['stored']),
+                    number_format($result['throughput'], 1),
+                    $at(0.5),
+                    $at(0.95),
+                    $count === 0 ? 'n/a' : end($latencies).' ms',
+                ];
+            }, $results),
+        );
+        $this->line('Latency: send to state stored (Reverb, queue, worker, database). Needs Reverb and the queue workers running (composer run dev).');
 
         return self::SUCCESS;
     }
