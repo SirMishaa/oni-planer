@@ -1362,8 +1362,9 @@ const temperatureLegend = computed(() => {
     z-index: 5;
 }
 
-.zone-entity--selected .zone-entity__sprite,
-.zone-entity--selected .zone-entity__placeholder {
+/* Two classes: beats the hover rule (:hover counts as one), so a hovered entity shows its selection at once. */
+.zone-entity.zone-entity--selected .zone-entity__sprite,
+.zone-entity.zone-entity--selected .zone-entity__placeholder {
     transform: translateY(-3px) scale(1.08);
     filter: drop-shadow(2px 0 0 var(--sticker))
         drop-shadow(-2px 0 0 var(--sticker)) drop-shadow(0 2px 0 var(--sticker))
