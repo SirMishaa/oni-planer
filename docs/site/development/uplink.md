@@ -59,7 +59,7 @@ Le site envoie `uplink.command` sur `uplink-data` : `{schema, id, colonyId, type
 
 <Model name="UplinkCommand" />
 
-La seule commande pour l'instant est `zone.resync` : le mod renvoie le layout et les deux états d'une zone. Le site l'envoie seul pour une zone toujours sans layout 30 s après sa création, ou à la main :
+La seule commande pour l'instant est `zone.resync` : le mod renvoie le layout et les deux états d'une zone. Le site l'envoie seul pour une zone toujours sans layout 30 s après sa création (puis attend 10 min si le mod n'a pas répondu), ou à la main :
 
 <Artisan command="uplink:resync-zone" />
 

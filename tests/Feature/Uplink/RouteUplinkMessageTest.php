@@ -62,7 +62,6 @@ it('ignores malformed frames without throwing', function (string $frame): void {
     'no channel' => ['{"event":"client-zone.slow"}'],
     'ping' => ['{"event":"pusher:ping","data":{}}'],
     'unknown client event' => ['{"event":"client-foo","channel":"uplink-data","data":{}}'],
-    'colony state on the data channel' => ['{"event":"client-colony.state","channel":"uplink-data","data":{}}'],
     'zone state on the colony channel' => ['{"event":"client-zone.slow","channel":"uplink","data":{}}'],
     'json list' => ['[1,2]'],
 ]);
@@ -72,3 +71,12 @@ it('ignores a frame whose event is not within the first 200 bytes', function ():
 
     Queue::assertNothingPushed();
 });
+
+it('sends unreadable or misrouted colony states to their job, which journals them', function (string $frame): void {
+    routeFrame($frame);
+
+    Queue::assertPushedOn('uplink-state', UplinkMessageType::ColonyState->job());
+})->with([
+    'broken json' => ['{"event":"client-colony.state","channel":"uplink","data":{'],
+    'on the data channel' => ['{"event":"client-colony.state","channel":"uplink-data","data":{}}'],
+]);

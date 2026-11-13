@@ -28,6 +28,19 @@ final class ReceiveZoneLayout implements ShouldQueue
             return;
         }
 
+        // A malformed layout would fail on every resend: acknowledge and drop it.
+        $wellFormed = is_int($message['version'] ?? null)
+            && (is_int($message['gameSeconds'] ?? null) || is_float($message['gameSeconds'] ?? null))
+            && array_is_list($message['cells'])
+            && array_filter($message['cells'], is_int(...)) === $message['cells'];
+
+        if (! $wellFormed) {
+            $reader->drop($message, UplinkMessageType::ZoneLayout, 'malformed layout');
+            $reader->acknowledge($message);
+
+            return;
+        }
+
         if ($storeLayout->handle($message)) {
             $reader->acknowledge($message);
         }

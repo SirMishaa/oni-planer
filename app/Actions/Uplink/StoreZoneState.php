@@ -6,6 +6,7 @@ namespace App\Actions\Uplink;
 
 use App\Events\Uplink\ZoneStateStored;
 use App\Models\Zone;
+use App\Services\Uplink\UplinkSessionId;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -34,7 +35,11 @@ final class StoreZoneState
      */
     public function handle(string $kind, array $message): bool
     {
-        $sessionId = is_string($message['sessionId'] ?? null) ? $message['sessionId'] : null;
+        if (array_key_exists('sessionId', $message) && ! UplinkSessionId::isValid($message['sessionId'])) {
+            return false;
+        }
+
+        $sessionId = $message['sessionId'] ?? null;
         $gameSeconds = (float) ($message['gameSeconds'] ?? 0);
         $current = '(select session_id from uplink_sessions where uplink_sessions.colony_guid = zones.colony_guid order by started_at desc, id desc limit 1)';
         $own = $sessionId === null ? $current : DB::getPdo()->quote($sessionId).'::varchar';

@@ -27,7 +27,15 @@ final class ReceiveZoneList implements ShouldQueue
             return;
         }
 
-        $syncZoneList->handle($message);
+        // A malformed entry would fail on every resend: acknowledge and drop the whole list.
+        if ($reader->entriesMatch($message['zones'], [
+            'zoneId' => is_string(...), 'name' => is_string(...), 'worldId' => is_int(...), 'version' => is_int(...), 'cellCount' => is_int(...), 'orphaned' => is_bool(...),
+        ])) {
+            $syncZoneList->handle($message);
+        } else {
+            $reader->drop($message, UplinkMessageType::ZoneList, 'malformed zone entry');
+        }
+
         $reader->acknowledge($message);
     }
 }

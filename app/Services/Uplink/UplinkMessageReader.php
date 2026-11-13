@@ -38,6 +38,43 @@ final class UplinkMessageReader
     }
 
     /**
+     * Whether every entry is an object whose listed keys pass their check.
+     *
+     * @param  array<mixed>  $entries
+     * @param  array<string, callable(mixed): bool>  $checks
+     */
+    public function entriesMatch(array $entries, array $checks): bool
+    {
+        foreach ($entries as $entry) {
+            if (! is_array($entry)) {
+                return false;
+            }
+
+            foreach ($checks as $key => $check) {
+                if (! $check($entry[$key] ?? null)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Logs a message dropped as malformed (at most once per hour per type and colony).
+     *
+     * @param  array<string, mixed>  $message
+     */
+    public function drop(array $message, UplinkMessageType $type, string $reason): void
+    {
+        $colony = is_string($message['colonyId'] ?? null) ? $message['colonyId'] : '?';
+
+        if (Cache::add("uplink:dropped:{$type->value}:{$colony}", true, now()->addHour())) {
+            Log::warning("Uplink: dropped {$type->value} of colony {$colony}: {$reason}");
+        }
+    }
+
+    /**
      * @param  array<string, mixed>  $message
      */
     private function isAcceptedSchema(array $message, UplinkMessageType $type): bool

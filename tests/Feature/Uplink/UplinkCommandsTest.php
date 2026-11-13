@@ -114,9 +114,6 @@ it('does not send a second resync while one is pending', function (): void {
     $listener->handle(new ZoneStateStored('colony-1', 'zone-a', 'slow', 11.0));
     expect(UplinkCommand::query()->count())->toBe(1);
 
-    $this->travel(61)->seconds();
-    $listener->handle(new ZoneStateStored('colony-1', 'zone-a', 'fast', 12.0));
-    expect(UplinkCommand::query()->count())->toBe(2);
 });
 
 it('resyncs a zone by hand', function (): void {

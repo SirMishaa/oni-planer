@@ -24,14 +24,18 @@ final class RouteUplinkMessage
             }
 
             $envelope = json_decode($event->message, true);
+            $type = null;
 
-            if (! is_array($envelope) || array_is_list($envelope)) {
-                return;
+            if (is_array($envelope) && ! array_is_list($envelope)) {
+                $channel = $envelope['channel'] ?? null;
+                $name = $envelope['event'] ?? null;
+                $type = UplinkMessageType::fromFrame(is_string($channel) ? $channel : null, is_string($name) ? $name : null);
             }
 
-            $channel = $envelope['channel'] ?? null;
-            $name = $envelope['event'] ?? null;
-            $type = UplinkMessageType::fromFrame(is_string($channel) ? $channel : null, is_string($name) ? $name : null);
+            // An unreadable or misrouted colony state still goes to its job, which journals the refusal for the inspector.
+            if ($type === null && str_contains(mb_substr($event->message, 0, 200, '8bit'), UplinkMessageType::ColonyState->value)) {
+                $type = UplinkMessageType::ColonyState;
+            }
 
             if ($type === null) {
                 return;

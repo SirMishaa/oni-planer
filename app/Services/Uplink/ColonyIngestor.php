@@ -81,7 +81,11 @@ final class ColonyIngestor
             return $this->journal($rawMessage, [...$identity, 'outcome' => 'refused', 'reason' => $reason]);
         }
 
-        $sessionId = is_string($data['sessionId'] ?? null) ? $data['sessionId'] : null;
+        if (array_key_exists('sessionId', $data) && ! UplinkSessionId::isValid($data['sessionId'])) {
+            return $this->journal($rawMessage, [...$identity, 'outcome' => 'refused', 'reason' => 'invalid_session']);
+        }
+
+        $sessionId = $data['sessionId'] ?? null;
         $gameSeconds = is_int($data['gameSeconds'] ?? null) || is_float($data['gameSeconds'] ?? null) ? (float) $data['gameSeconds'] : null;
 
         return DB::transaction(function () use ($rawMessage, $identity, $guid, $name, $cycle, $schema, $data, $sessionId, $gameSeconds): UplinkMessage {

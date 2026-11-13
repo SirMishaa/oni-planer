@@ -52,4 +52,10 @@ final class UplinkCommand extends Model
             'acked_at' => 'datetime',
         ];
     }
+
+    /** A pending command past its expiry reads as expired even before expireStale() wrote it. */
+    public function getStatusAttribute(?string $status): ?string
+    {
+        return $status === self::PENDING && $this->expires_at?->lte(now()) === true ? self::EXPIRED : $status;
+    }
 }
