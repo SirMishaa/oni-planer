@@ -6,6 +6,7 @@ namespace App\Services\Uplink;
 
 use App\Models\Colony;
 use App\Models\UplinkMessage;
+use App\Models\UplinkSession;
 use App\Models\Zone;
 use Illuminate\Support\Facades\DB;
 
@@ -80,12 +81,23 @@ final class ColonyIngestor
             return $this->journal($rawMessage, [...$identity, 'outcome' => 'refused', 'reason' => $reason]);
         }
 
-        return DB::transaction(function () use ($rawMessage, $identity, $guid, $name, $cycle, $schema, $data): UplinkMessage {
+        $sessionId = is_string($data['sessionId'] ?? null) ? $data['sessionId'] : null;
+        $gameSeconds = is_int($data['gameSeconds'] ?? null) || is_float($data['gameSeconds'] ?? null) ? (float) $data['gameSeconds'] : null;
+
+        return DB::transaction(function () use ($rawMessage, $identity, $guid, $name, $cycle, $schema, $data, $sessionId, $gameSeconds): UplinkMessage {
+            $colony = Colony::query()->where('guid', $guid)->lockForUpdate()->first();
+
+            if ($sessionId !== null && $gameSeconds !== null && $this->isStale($guid, $colony, $sessionId, $gameSeconds)) {
+                return $this->journal($rawMessage, [...$identity, 'outcome' => 'refused', 'reason' => 'stale']);
+            }
+
             Colony::query()->updateOrCreate(['guid' => $guid], [
                 'name' => $name ?? '',
                 'cycle' => $cycle ?? 0,
                 'state' => $data,
                 'schema' => $schema,
+                'session_id' => $sessionId,
+                'game_seconds' => $gameSeconds,
                 'last_seen_at' => now(),
             ]);
 
@@ -104,6 +116,23 @@ final class ColonyIngestor
     }
 
     /** Whether an unparsable message names the colony-state event near its start. */
+    /**
+     * A state of another session than the colony's current one (latest session
+     * start), or older than the stored state of the same session, is stale. A
+     * state without session fields (older mod) is never stale: last write wins.
+     */
+    private function isStale(string $guid, ?Colony $colony, string $sessionId, float $gameSeconds): bool
+    {
+        $current = UplinkSession::query()->where('colony_guid', $guid)->latest('started_at')->latest('id')->value('session_id');
+
+        if ($current !== null && $current !== $sessionId) {
+            return true;
+        }
+
+        return $colony !== null && $colony->session_id === $sessionId
+            && $colony->game_seconds !== null && $colony->game_seconds >= $gameSeconds;
+    }
+
     private function looksLikeColonyState(string $rawMessage): bool
     {
         return str_contains(mb_substr($rawMessage, 0, 200, '8bit'), self::EVENT);

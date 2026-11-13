@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Model;
  * (keyed by the save's colony guid). User data, not game data: it is never
  * truncated by `game:import`.
  */
-#[Fillable(['guid', 'name', 'cycle', 'state', 'schema', 'last_seen_at'])]
+#[Fillable(['guid', 'name', 'cycle', 'state', 'schema', 'session_id', 'game_seconds', 'last_seen_at'])]
 final class Colony extends Model
 {
     /** @use HasFactory<ColonyFactory> */
@@ -32,6 +32,7 @@ final class Colony extends Model
             'cycle' => 'integer',
             'state' => 'array',
             'schema' => 'integer',
+            'game_seconds' => 'float',
             'last_seen_at' => 'datetime',
         ];
     }

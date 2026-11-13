@@ -43,6 +43,8 @@ final class Zone extends Model
             'layout_at' => 'datetime',
             'slow_state_at' => 'datetime',
             'fast_state_at' => 'datetime',
+            'slow_game_seconds' => 'float',
+            'fast_game_seconds' => 'float',
         ];
     }
 

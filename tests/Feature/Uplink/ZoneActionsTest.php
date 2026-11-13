@@ -36,7 +36,12 @@ it('keeps the previous slow temperatures when a new slow state arrives', functio
     Event::fake([ZoneUpdated::class]);
     Zone::factory()->create(['colony_guid' => 'colony-1', 'zone_guid' => 'zone-a']);
     $boxA = ['x' => 1, 'y' => 2, 'width' => 2, 'height' => 1];
-    $slow = fn (array $box, array $temperature): array => ['colonyId' => 'colony-1', 'zoneId' => 'zone-a', 'box' => $box, 'temperature' => $temperature];
+    $seconds = 0.0;
+    $slow = function (array $box, array $temperature) use (&$seconds): array {
+        $seconds += 30;
+
+        return ['colonyId' => 'colony-1', 'zoneId' => 'zone-a', 'gameSeconds' => $seconds, 'box' => $box, 'temperature' => $temperature];
+    };
 
     app(StoreZoneState::class)->handle('slow', $slow($boxA, [280.0, 290.0]));
     expect(Zone::query()->sole()->previous_slow_temperature)->toBeNull();
