@@ -133,6 +133,7 @@ return [
             'problems' => 'Problèmes',
             'plants' => 'Plantes',
             'buildings' => 'Bâtiments',
+            'border' => 'Bord',
         ],
         'none' => 'Rien dans ce filtre.',
         'not_applicable' => 'sans objet',

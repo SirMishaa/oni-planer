@@ -268,6 +268,7 @@ export type ZoneShowData = {
     map: ZoneMapData | null;
     entities: ZoneEntityData[];
     problems: ZoneEntityData[];
+    borderEntities: ZoneEntityData[];
     counts: ZoneCountsData;
     plantsKnown: boolean;
     buildingStatesKnown: boolean;

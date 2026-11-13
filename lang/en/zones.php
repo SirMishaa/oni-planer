@@ -133,6 +133,7 @@ return [
             'problems' => 'Problems',
             'plants' => 'Plants',
             'buildings' => 'Buildings',
+            'border' => 'Border',
         ],
         'none' => 'Nothing in this filter.',
         'not_applicable' => 'n/a',

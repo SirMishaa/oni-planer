@@ -23,6 +23,7 @@ const props = defineProps<{
     map: ZoneShowData['map'];
     entities: ZoneShowData['entities'];
     problems: ZoneShowData['problems'];
+    borderEntities: ZoneShowData['borderEntities'];
     counts: ZoneShowData['counts'];
     plantsKnown: boolean;
     buildingStatesKnown: boolean;
@@ -42,6 +43,7 @@ const { live, ageLabel, gone } = useZoneLive({
         'map',
         'entities',
         'problems',
+        'borderEntities',
         'counts',
         'plantsKnown',
         'buildingStatesKnown',
@@ -235,6 +237,7 @@ function showOnMap(instanceId: string): void {
                         v-if="map"
                         :map="map"
                         :entities="entities"
+                        :border-entities="borderEntities"
                         :layer="layer"
                         :selected-id="selectedId"
                         :zone-name="zone.name"

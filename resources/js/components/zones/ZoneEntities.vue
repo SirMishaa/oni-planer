@@ -11,6 +11,8 @@ import type { ZoneEntityData } from '@/types/App/Data/data.d';
 const props = defineProps<{
     /** Problems first, then by time to harvest (the server's order). */
     entities: ZoneEntityData[];
+    /** Doors, ladders and stairs on the zone or its border ring: shown apart, never a problem. */
+    borderEntities: ZoneEntityData[];
     plantsKnown: boolean;
     buildingStatesKnown: boolean;
     selectedId: string | null;
@@ -43,26 +45,39 @@ const buildings = computed(() =>
 const filters = computed<
     { key: Filter; icon: 'list' | 'alert' | 'leaf' | 'cube'; count: number }[]
 >(() => [
-    { key: 'all', icon: 'list', count: props.entities.length },
+    {
+        key: 'all',
+        icon: 'list',
+        count: props.entities.length + props.borderEntities.length,
+    },
     { key: 'problems', icon: 'alert', count: withProblems.value.length },
     { key: 'plants', icon: 'leaf', count: plants.value.length },
-    { key: 'buildings', icon: 'cube', count: buildings.value.length },
+    {
+        key: 'buildings',
+        icon: 'cube',
+        count: buildings.value.length + props.borderEntities.length,
+    },
 ]);
 
-/** Row groups of the filter; `all` splits problems out, then plants, then buildings. */
+/** Row groups of the filter; `all` splits problems out, then plants, then buildings, then the border. */
 const groups = computed(() => {
     const healthy = (list: ZoneEntityData[]) =>
         list.filter((entity) => entity.problems.length === 0);
 
-    const all: { key: Filter; rows: ZoneEntityData[] }[] = {
+    const border = { key: 'border' as const, rows: props.borderEntities };
+    const all: { key: Filter | 'border'; rows: ZoneEntityData[] }[] = {
         all: [
             { key: 'problems' as const, rows: withProblems.value },
             { key: 'plants' as const, rows: healthy(plants.value) },
             { key: 'buildings' as const, rows: healthy(buildings.value) },
+            border,
         ],
         problems: [{ key: 'problems' as const, rows: withProblems.value }],
         plants: [{ key: 'plants' as const, rows: plants.value }],
-        buildings: [{ key: 'buildings' as const, rows: buildings.value }],
+        buildings: [
+            { key: 'buildings' as const, rows: buildings.value },
+            border,
+        ],
     }[filter.value];
 
     return all.filter((group) => group.rows.length > 0);

@@ -33,3 +33,11 @@ export type SubstanceTexture =
     | 'Mucus'
     | 'Ink'
     | 'PollutedBrine';
+export type UplinkMessageType =
+    | 'client-session.start'
+    | 'client-zone.list'
+    | 'client-zone.layout'
+    | 'client-zone.slow'
+    | 'client-zone.fast'
+    | 'client-colony.state'
+    | 'client-command.ack';
