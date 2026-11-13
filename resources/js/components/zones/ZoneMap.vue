@@ -38,7 +38,6 @@ import {
 } from './zoneRenderAssets';
 import {
     absoluteColour,
-    adaptiveColour,
     legendStops,
     type OverlayPalette,
     type TemperatureMode,
@@ -522,7 +521,7 @@ const temperatureSpan = computed(() =>
     temperatureRange(props.map.terrain?.temperature ?? null),
 );
 
-/** The mode's band name (absolute, adaptive) or signed rate (heat flow) of a cell; null when unknown. */
+/** The band name (absolute only: band names are absolute ranges) or signed rate (heat flow) of a cell; null when unknown. */
 function temperatureDetail(index: number, kelvin: number): string | null {
     const terrain = props.map.terrain;
     const palette = overlayPalette.value ?? NO_PALETTE;
@@ -534,13 +533,6 @@ function temperatureDetail(index: number, kelvin: number): string | null {
                     absoluteColour(kelvin, palette).band
                 ] ?? null
             );
-        case 'adaptive':
-            return temperatureSpan.value
-                ? (props.map.temperatureBands[
-                      adaptiveColour(kelvin, temperatureSpan.value, palette)
-                          .band
-                  ] ?? null)
-                : null;
         case 'heatFlow': {
             const previous = terrain?.previousTemperature?.[index] ?? null;
             const seconds = terrain?.previousSeconds ?? 0;
@@ -549,6 +541,7 @@ function temperatureDetail(index: number, kelvin: number): string | null {
                 ? null
                 : text.celsiusPerSecond((kelvin - previous) / seconds);
         }
+        case 'adaptive':
         case 'stateChange':
             return null;
     }
