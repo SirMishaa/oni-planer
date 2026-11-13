@@ -18,13 +18,10 @@ export const TERRAIN_TEXTURE_CELLS = 4;
 const MASK_ATLAS_FLIP_V = true;
 
 /**
- * The game's dark rim along terrain edges. The mask atlas has not been seen
- * yet (no real export), so the rim is derived: the element's mask, filled
- * with this ink, drawn shifted by a few device pixels under the texture.
- * If the real atlas already carries the rim, set this to false.
+ * The game's dark rim along terrain edges lives in the mask atlas itself:
+ * its alpha is the mask, its colour is white inside and ink along the edge.
+ * The texture is multiplied by that colour, so the rim comes from the game.
  */
-const DERIVE_INK_OUTLINE = true;
-const INK_OUTLINE = 'rgb(6 9 12 / 0.7)';
 
 /** What a palette entry draws as. */
 export type CellKind = 'solid' | 'fluid' | 'empty' | 'fallback';
@@ -285,10 +282,7 @@ export function paintSolidTerrain(
         }
     }
 
-    const scratch = {
-        mask: createCanvas(1, 1),
-        ink: DERIVE_INK_OUTLINE ? createCanvas(1, 1) : null,
-    };
+    const scratch = { mask: createCanvas(1, 1) };
 
     for (const order of [...quadsByOrder.keys()].sort((a, b) => a - b)) {
         paintSolidLayer(
@@ -306,7 +300,7 @@ function paintSolidLayer(
     entry: ZoneTerrainElementData | undefined,
     quads: VertexQuad[],
     assets: RenderAssets,
-    scratch: { mask: HTMLCanvasElement; ink: HTMLCanvasElement | null },
+    scratch: { mask: HTMLCanvasElement },
 ): void {
     const { ctx, px } = paint;
     const canvasWidth = ctx.canvas.width;
@@ -340,27 +334,6 @@ function paintSolidLayer(
     }
     // endregion
 
-    // region Ink rim
-    const inkCtx = scratch.ink ? resize(scratch.ink, width, height) : null;
-
-    if (scratch.ink && inkCtx) {
-        inkCtx.drawImage(scratch.mask, 0, 0);
-        inkCtx.globalCompositeOperation = 'source-in';
-        inkCtx.fillStyle = INK_OUTLINE;
-        inkCtx.fillRect(0, 0, width, height);
-        const rim = Math.max(1, Math.round((paint.cellPx * paint.dpr) / 20));
-
-        for (const [dx, dy] of [
-            [-rim, 0],
-            [rim, 0],
-            [0, -rim],
-            [0, rim],
-        ] as const) {
-            ctx.drawImage(scratch.ink, left + dx, top + dy);
-        }
-    }
-    // endregion
-
     // region Texture
     maskCtx.globalCompositeOperation = 'source-in';
     const texture = entry?.terrainTexture
@@ -380,6 +353,14 @@ function paintSolidLayer(
         maskCtx.fillStyle = paint.stripe;
         maskCtx.fillRect(0, 0, width, height);
     }
+
+    // region Ink rim (the atlas colour: white inside, ink along the edge)
+    maskCtx.globalCompositeOperation = 'multiply';
+
+    for (const quad of quads) {
+        drawMaskQuad(maskCtx, paint, quad, assets, left, top);
+    }
+    // endregion
 
     maskCtx.globalCompositeOperation = 'source-over';
     ctx.drawImage(scratch.mask, left, top);

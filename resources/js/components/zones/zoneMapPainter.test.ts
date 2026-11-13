@@ -6,6 +6,7 @@ import type {
 } from '@/types/App/Data/data.d';
 import type { SubstanceTexture } from '@/types/App/Enums/data.d';
 import { SUBSTANCE_TEXTURE_PATTERNS } from './substanceTexturePatterns';
+import { fluidAlpha } from './zoneFluids';
 import { rgbCss } from './zoneMapGeometry';
 import {
     paintZoneMap,
@@ -268,7 +269,9 @@ describe('paintZoneMap', () => {
         );
         const calls = canvas.context.calls;
         const gasFill = calls.findIndex(
-            (call) => call.style === 'rgb(170 187 204 / 0.5019607843137255)',
+            (call) =>
+                call.style ===
+                `rgb(170 187 204 / ${Math.round(255 * fluidAlpha(0x80, 'gas', false)) / 255})`,
         );
         const solidDraw = calls.findIndex((call) => call.op === 'drawImage');
 
@@ -318,7 +321,7 @@ describe('paintZoneMap', () => {
             solidsCanvas: solids as unknown as HTMLCanvasElement,
         });
 
-        const gas = 'rgb(170 187 204 / 0.5019607843137255)';
+        const gas = `rgb(170 187 204 / ${Math.round(255 * fluidAlpha(0x80, 'gas', false)) / 255})`;
         const styles = (canvas: StubCanvas): unknown[] =>
             canvas.context.calls.map((call) => call.style);
 

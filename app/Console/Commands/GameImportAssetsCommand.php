@@ -87,7 +87,7 @@ final class GameImportAssetsCommand extends Command
         }
 
         if ($solidsWithoutTexture !== []) {
-            $this->error('Solid elements without a terrain texture: '.implode(', ', $solidsWithoutTexture));
+            $this->warn('Solid elements without a terrain texture in the game (drawn flat with a stripe): '.implode(', ', $solidsWithoutTexture));
         }
 
         if ($solidsWithoutAsset !== []) {
@@ -98,7 +98,7 @@ final class GameImportAssetsCommand extends Command
             $this->error('Missing render files in the export: '.implode(', ', $missingRenderFiles));
         }
 
-        return $solidsWithoutTexture === [] && $solidsWithoutAsset === [] && $missingRenderFiles === []
+        return $solidsWithoutAsset === [] && $missingRenderFiles === []
             ? self::SUCCESS
             : self::FAILURE;
     }

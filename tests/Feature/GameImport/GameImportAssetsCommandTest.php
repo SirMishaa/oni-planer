@@ -131,15 +131,21 @@ it('publishes terrain textures, the mask atlas and render.json', function (): vo
         ->and(File::get($this->assets.'/render.json'))->toBe(File::get($fixtures.'/database/planner_render.json'));
 });
 
-it('fails and lists solids without a terrain texture asset', function (): void {
+it('fails and lists solids whose terrain texture has no asset', function (): void {
     Element::factory()->solid()->create(['element_id' => 'Granite', 'terrain_texture' => 'granite']);
-    Element::factory()->solid()->create(['element_id' => 'Obsidian', 'terrain_texture' => null]);
     Element::factory()->gas()->create(['element_id' => 'Oxygen']);
 
     $this->artisan('game:import-assets')
         ->expectsOutputToContain('Granite (granite)')
-        ->expectsOutputToContain('Obsidian')
         ->assertFailed();
+});
+
+it('warns about solids the game gives no terrain texture', function (): void {
+    Element::factory()->solid()->create(['element_id' => 'Brick', 'terrain_texture' => null]);
+
+    $this->artisan('game:import-assets')
+        ->expectsOutputToContain('Solid elements without a terrain texture in the game (drawn flat with a stripe): Brick')
+        ->assertSuccessful();
 });
 
 it('fails and lists the missing mask atlas and render.json', function (): void {

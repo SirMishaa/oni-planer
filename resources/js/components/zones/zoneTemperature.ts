@@ -27,8 +27,11 @@ export const ADAPTIVE_INTERVALS = [0.4, 0.05, 0.05, 0.05, 0.05, 0.2, 0.2];
  */
 export const HEAT_FLOW_FULL_SCALE_K_PER_S = 0.05;
 
-/** Fewest stops the overlay needs: one per absolute threshold, and both ends of the heat flow. */
-const MIN_TEMPERATURE_STOPS = ABSOLUTE_INTERVALS_K.length + 1;
+/**
+ * Fewest stops the overlay needs to blend (the game ships 8 temperature
+ * colours: its last interval is never reached, the scale stops at 1800 °C).
+ */
+const MIN_TEMPERATURE_STOPS = 2;
 const MIN_HEAT_FLOW_STOPS = 2;
 
 /** Game defaults for an element without a state transition. */

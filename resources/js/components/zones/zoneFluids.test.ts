@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { ZoneBoxData, ZoneTerrainData } from '@/types/App/Data/data.d';
-import { fluidCells, gasStrength, liquidFill } from './zoneFluids';
+import {
+    fluidAlpha,
+    fluidCells,
+    GAS_ALPHA_SCALE,
+    gasStrength,
+    LIQUID_ALPHA_SCALE,
+    liquidFill,
+} from './zoneFluids';
 
 const entry = (
     state: 'solid' | 'liquid' | 'gas',
@@ -87,5 +94,24 @@ describe('unreadable masses', () => {
         expect(liquidFill(Number.NaN, 1000)).toBe(0);
         expect(liquidFill(500, Number.NaN)).toBe(1);
         expect(gasStrength(Number.NaN)).toBe(0);
+    });
+});
+
+describe('fluidAlpha', () => {
+    it('keeps opaque liquids solid', () => {
+        expect(fluidAlpha(255, 'liquid', true)).toBe(1);
+    });
+
+    it("scales a liquid's own alpha so opaque-coloured water stays see-through", () => {
+        expect(fluidAlpha(255, 'liquid', false)).toBeCloseTo(
+            LIQUID_ALPHA_SCALE,
+        );
+        expect(fluidAlpha(255, 'liquid', false)).toBeLessThan(1);
+    });
+
+    it("scales a gas's own alpha", () => {
+        expect(fluidAlpha(0x85, 'gas', false)).toBeCloseTo(
+            (0x85 / 255) * GAS_ALPHA_SCALE,
+        );
     });
 });

@@ -169,6 +169,24 @@ it('drops an unknown substance texture family and reports it', function (): void
     }
 });
 
+it('stores an empty terrain texture name as none', function (): void {
+    $root = sys_get_temp_dir().'/oni-export-'.uniqid();
+    mkdir($root.'/database', recursive: true);
+    $extras = json_decode((string) file_get_contents(base_path('tests/Fixtures/OniExport/database/planner_extras.json')), true);
+    $extras['elements']['SandStone']['render']['terrainTexture'] = '';
+    file_put_contents($root.'/database/planner_extras.json', json_encode($extras));
+    copy(base_path('tests/Fixtures/OniExport/database/building.json'), $root.'/database/building.json');
+
+    try {
+        $export = new OniExport($root);
+        $records = new ElementReader($export, ModCatalog::fromExport($export, $root.'/mods', []))->records();
+
+        expect(collect($records)->firstWhere('element_id', 'SandStone')['terrain_texture'])->toBeNull();
+    } finally {
+        File::deleteDirectory($root);
+    }
+});
+
 it('reports the non-special elements without a render block', function (): void {
     $root = base_path('tests/Fixtures/OniExport');
     $export = new OniExport($root);

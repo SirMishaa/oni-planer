@@ -3,7 +3,7 @@ import type {
     ZoneTerrainElementData,
 } from '@/types/App/Data/data.d';
 import { patternFor } from './substanceTexturePatterns';
-import type { FluidCell } from './zoneFluids';
+import { type FluidCell, fluidAlpha } from './zoneFluids';
 import { FLUID_FRAGMENT_SHADER, FLUID_VERTEX_SHADER } from './zoneFluidShaders';
 import { parseRgba } from './zoneTemperature';
 
@@ -110,7 +110,11 @@ export function packPalette(palette: ZoneTerrainElementData[]): Float32Array {
                     colour[0] / 255,
                     colour[1] / 255,
                     colour[2] / 255,
-                    opaque ? 1 : colour[3] / 255,
+                    fluidAlpha(
+                        colour[3],
+                        entry.state === 'gas' ? 'gas' : 'liquid',
+                        opaque,
+                    ),
                 ],
                 offset,
             );

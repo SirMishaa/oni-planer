@@ -4,7 +4,7 @@ import type {
     ZoneTileData,
 } from '@/types/App/Data/data.d';
 import { patternFor } from './substanceTexturePatterns';
-import { fluidCells } from './zoneFluids';
+import { fluidAlpha, fluidCells } from './zoneFluids';
 import {
     cellToLocal,
     layerIndex,
@@ -299,14 +299,18 @@ function paintStaticFluids(
                 colour[0],
                 colour[1],
                 colour[2],
-                Math.round(colour[3] * cell.amount),
+                Math.round(
+                    255 * fluidAlpha(colour[3], 'gas', false) * cell.amount,
+                ),
             ]);
             ctx.fillRect(left, top, width, height);
             continue;
         }
 
         const filled = Math.max(1, Math.round(height * cell.amount));
-        const alpha = entry.opaqueLiquid ? 255 : colour[3];
+        const alpha = Math.round(
+            255 * fluidAlpha(colour[3], 'liquid', entry.opaqueLiquid),
+        );
         ctx.fillStyle = rgbaCss([colour[0], colour[1], colour[2], alpha]);
         ctx.fillRect(left, top + height - filled, width, filled);
 

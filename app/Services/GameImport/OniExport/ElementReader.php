@@ -134,7 +134,7 @@ final class ElementReader
                 'is_opaque_liquid' => (bool) ($render['opaqueLiquid'] ?? false),
                 'liquid_scroll_speed' => isset($render['scrollSpeed']) ? (float) $render['scrollSpeed'] : null,
                 'max_mass' => isset($render['maxMass']) ? (float) $render['maxMass'] : null,
-                'terrain_texture' => is_string($render['terrainTexture'] ?? null) ? $render['terrainTexture'] : null,
+                'terrain_texture' => is_string($render['terrainTexture'] ?? null) && $render['terrainTexture'] !== '' ? $render['terrainTexture'] : null,
                 'specific_heat_capacity' => (float) $element['specificHeatCapacity'],
                 'thermal_conductivity' => (float) $element['thermalConductivity'],
                 'low_temp' => $this->transitionTemperature($element, 'lowTemp', 'lowTempTransitionTarget'),

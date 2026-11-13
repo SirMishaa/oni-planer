@@ -53,6 +53,22 @@ describe('absolute scale', () => {
             palette.temperature[8],
         );
     });
+
+    it("stops at 1800 °C with the game's eight colours", () => {
+        const eight = {
+            ...palette,
+            temperature: palette.temperature.slice(0, 8),
+        };
+
+        expect(absoluteColour(2073.15, eight)).toEqual({
+            colour: eight.temperature[7],
+            band: 7,
+        });
+        expect(absoluteColour(5000, eight)).toEqual({
+            colour: eight.temperature[7],
+            band: 7,
+        });
+    });
 });
 
 describe('adaptive scale', () => {
@@ -145,10 +161,19 @@ describe('parseRenderJson', () => {
         expect(parsed?.heatFlow.map((stop) => stop.value)).toEqual([-1, 1]);
     });
 
+    it("accepts the game's eight temperature colours", () => {
+        const parsed = parseRenderJson({
+            temperatureThresholds: nineStops.slice(0, 8),
+            heatFlowThresholds: [entry(1, '#00ff00ff'), entry(-1, '#0000ffff')],
+        });
+
+        expect(parsed?.temperature).toHaveLength(8);
+    });
+
     it('rejects too few temperature or heat flow stops', () => {
         expect(
             parseRenderJson({
-                temperatureThresholds: nineStops.slice(0, 8),
+                temperatureThresholds: nineStops.slice(0, 1),
                 heatFlowThresholds: [
                     entry(1, '#00ff00ff'),
                     entry(-1, '#0000ffff'),

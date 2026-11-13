@@ -12,7 +12,7 @@ import {
     packPalette,
     shouldAnimate,
 } from './zoneFluidRenderer';
-import type { FluidCell } from './zoneFluids';
+import { type FluidCell, fluidAlpha } from './zoneFluids';
 
 const entry = (
     overrides: Partial<ZoneTerrainElementData>,
@@ -120,7 +120,9 @@ describe('packPalette', () => {
         );
         expect(texel(0, 1)).toEqual([2, 0.45, 0.2, 1].map(Math.fround));
         expect(texel(0, 2)).toEqual([1, 0, 0, 0.02].map(Math.fround));
-        expect(texel(1, 0)[3]).toBe(Math.fround(128 / 255));
+        expect(texel(1, 0)[3]).toBe(
+            Math.fround(fluidAlpha(0x80, 'gas', false)),
+        );
         expect(texel(1, 2)).toEqual([0, 1, 0, 0]);
     });
 
