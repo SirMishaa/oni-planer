@@ -50,6 +50,33 @@ final class ZonePresenter
      *
      * @var list<string>
      */
+    /**
+     * Passages of the game and of the player's mods (doors, ladders, fire
+     * poles, stairs). On the zone or its border ring they are shown apart, as
+     * the zone's border: never content, never a problem. Any other building
+     * on the ring (feeder, fishing station, modded or unknown) is content.
+     *
+     * @var list<string>
+     */
+    public const array PASSAGE_PREFABS = [
+        'Door',
+        'ManualPressureDoor',
+        'PressureDoor',
+        'BunkerDoor',
+        'InsulatedDoor',
+        'GlassDoorSimple',
+        'GlassDoorComplex',
+        'WoodenDoor',
+        'AIO_FacilityDoor',
+        'AIO_WoodenDoor',
+        'TinyDoor',
+        'Ladder',
+        'LadderFast',
+        'AIO_MetalLadder',
+        'FirePole',
+        'Stairs',
+    ];
+
     public const array PROBLEM_STATUS_IDS = [
         'MaterialsUnavailable',
         'MaterialsUnavailableForRefill',
@@ -105,7 +132,7 @@ final class ZonePresenter
             : null;
 
         $fastPlants = self::listOrNull($zone->fast_state['plants'] ?? null);
-        $fastBuildings = self::listOrNull($zone->fast_state['buildings'] ?? null);
+        [$fastBuildings, $borderBuildings] = self::splitPassages(self::listOrNull($zone->fast_state['buildings'] ?? null));
         $layoutBuildings = self::listOrNull($layout['buildings'] ?? null);
         $anchorsByInstance = [];
         foreach ($layoutBuildings ?? [] as $building) {
@@ -119,6 +146,7 @@ final class ZonePresenter
             ...array_map(fn (array $plant): ZoneEntityData => $this->plantEntity($plant, $position($plant['cell'] ?? null)), $fastPlants ?? []),
             ...array_map(fn (array $building): ZoneEntityData => $this->buildingEntity($building, $anchorsByInstance, $position), $fastBuildings ?? []),
         ];
+        $borderEntities = array_map(fn (array $building): ZoneEntityData => $this->buildingEntity($building, $anchorsByInstance, $position, passage: true), $borderBuildings);
         usort($entities, fn (ZoneEntityData $a, ZoneEntityData $b): int => [$a->problems === [], $a->secondsUntilHarvest ?? INF] <=> [$b->problems === [], $b->secondsUntilHarvest ?? INF]);
         $problems = array_values(array_filter($entities, fn (ZoneEntityData $entity): bool => $entity->problems !== []));
 
@@ -156,6 +184,7 @@ final class ZonePresenter
             ) : null,
             entities: $entities,
             problems: $problems,
+            borderEntities: $borderEntities,
             counts: new ZoneCountsData(
                 plants: count($fastPlants ?? []),
                 buildings: count($fastBuildings ?? []),
@@ -176,7 +205,7 @@ final class ZonePresenter
     public function problemSummary(Zone $zone): array
     {
         $plants = self::listOrNull($zone->fast_state['plants'] ?? null);
-        $buildings = self::listOrNull($zone->fast_state['buildings'] ?? null);
+        [$buildings] = self::splitPassages(self::listOrNull($zone->fast_state['buildings'] ?? null));
 
         if ($plants === null && $buildings === null) {
             return ['count' => null, 'partial' => false];
@@ -297,6 +326,27 @@ final class ZonePresenter
         return self::stringOrNull($value) ?? '';
     }
 
+    /**
+     * Splits fast-state buildings into content and border passages, in the
+     * order received; null (not read) stays null on both sides.
+     *
+     * @param  list<array<mixed>>|null  $buildings
+     * @return array{0: list<array<mixed>>|null, 1: list<array<mixed>>}
+     */
+    private static function splitPassages(?array $buildings): array
+    {
+        if ($buildings === null) {
+            return [null, []];
+        }
+
+        $isPassage = fn (array $building): bool => in_array($building['prefabId'] ?? null, self::PASSAGE_PREFABS, true);
+
+        return [
+            array_values(array_filter($buildings, fn (array $building): bool => ! $isPassage($building))),
+            array_values(array_filter($buildings, $isPassage)),
+        ];
+    }
+
     /** Root-relative URL of a game sprite, or null when it was not imported; checked once per prefab. */
     private function sprite(string $category, string $id): ?string
     {
@@ -345,13 +395,14 @@ final class ZonePresenter
      * @param  array<mixed>  $building  a fast-state building
      * @param  array<string, mixed>  $anchorsByInstance  anchor cell of each layout building, by instance id
      * @param  callable(mixed): (array{0: int, 1: int}|null)  $position
+     * @param  bool  $passage  a border passage: shown without problems
      */
-    private function buildingEntity(array $building, array $anchorsByInstance, callable $position): ZoneEntityData
+    private function buildingEntity(array $building, array $anchorsByInstance, callable $position, bool $passage = false): ZoneEntityData
     {
         $prefabId = self::string($building['prefabId'] ?? null);
         $instanceId = self::stringOrNull($building['instanceId'] ?? null);
         $cell = $position($instanceId === null ? null : ($anchorsByInstance[$instanceId] ?? null));
-        $problems = $this->buildingProblems($building);
+        $problems = $passage ? [] : $this->buildingProblems($building);
 
         return new ZoneEntityData(
             kind: 'building',

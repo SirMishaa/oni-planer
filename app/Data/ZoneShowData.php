@@ -18,6 +18,8 @@ final class ZoneShowData extends Data
         public array $entities,
         /** @var list<ZoneEntityData> the entities with at least one problem */
         public array $problems,
+        /** @var list<ZoneEntityData> passages (doors, ladders, stairs) on the zone or its border ring, never a problem */
+        public array $borderEntities,
         public ZoneCountsData $counts,
         /** False until a fast state carried the plants: plant entities are then unknown, not absent. */
         public bool $plantsKnown,

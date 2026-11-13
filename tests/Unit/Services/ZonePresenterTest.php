@@ -374,3 +374,58 @@ it('drops the previous temperatures when their time is unreadable', function ():
     expect($terrain?->previousTemperature)->toBeNull()
         ->and($terrain?->previousSeconds)->toBeNull();
 });
+
+/** @param  list<array<string, mixed>>  $buildings */
+function zoneWithFastBuildings(array $buildings): Zone
+{
+    $zone = Zone::factory()->sodicaneFarm()->create();
+    $zone->update(['fast_state' => [...$zone->fast_state, 'plants' => [], 'buildings' => $buildings]]);
+
+    return $zone;
+}
+
+/** @return array<string, mixed> */
+function fastBuilding(string $instanceId, string $prefabId, bool $operational = true): array
+{
+    return [
+        'instanceId' => $instanceId,
+        'prefabId' => $prefabId,
+        'operational' => $operational,
+        'active' => $operational,
+        'statusItems' => $operational ? [] : [['id' => 'NeedPower', 'name' => null]],
+        'storage' => null,
+    ];
+}
+
+it('counts a fishing station on the border as zone content', function (): void {
+    $shown = app(ZonePresenter::class)->present(zoneWithFastBuildings([
+        fastBuilding('9001', 'FishingStation', operational: false),
+        fastBuilding('9002', 'Door'),
+    ]));
+
+    expect(collect($shown->entities)->pluck('instanceId')->all())->toBe(['9001'])
+        ->and(collect($shown->problems)->pluck('instanceId')->all())->toBe(['9001'])
+        ->and($shown->counts->buildings)->toBe(1)
+        ->and(collect($shown->borderEntities)->pluck('instanceId')->all())->toBe(['9002']);
+});
+
+it('keeps passages out of the problems even with a problem status', function (): void {
+    $zone = zoneWithFastBuildings([
+        fastBuilding('9101', 'Door', operational: false),
+        fastBuilding('9102', 'Stairs', operational: false),
+    ]);
+    $presenter = app(ZonePresenter::class);
+    $shown = $presenter->present($zone);
+
+    expect($shown->problems)->toBe([])
+        ->and($shown->borderEntities)->toHaveCount(2)
+        ->and(collect($shown->borderEntities)->every(fn (ZoneEntityData $entity): bool => $entity->problems === []))->toBeTrue()
+        ->and($presenter->problemSummary($zone)['count'])->toBe(0);
+});
+
+it('treats an unknown modded building as content', function (): void {
+    $shown = app(ZonePresenter::class)->present(zoneWithFastBuildings([fastBuilding('9201', 'SomeModThing')]));
+
+    expect(collect($shown->entities)->pluck('instanceId')->all())->toBe(['9201'])
+        ->and($shown->borderEntities)->toBe([]);
+});
