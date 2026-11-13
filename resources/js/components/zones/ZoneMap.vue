@@ -1323,15 +1323,60 @@ const temperatureLegend = computed(() => {
     z-index: 3;
 }
 
-.zone-entity:focus-visible,
-.zone-entity--selected {
-    outline: 2px solid var(--color-oni-amber);
-    outline-offset: 1px;
+/* region Sticker selection: an outline that follows the sprite's silhouette, lifted like a sticker */
+.zone-entity {
+    --sticker: oklch(97% 0.012 85);
+    --sticker-shadow: oklch(15% 0.02 230 / 0.55);
 }
 
-.zone-entity:hover {
-    filter: brightness(1.15);
+.zone-entity__sprite,
+.zone-entity__placeholder {
+    transform-origin: 50% 100%;
+    transition:
+        transform 220ms cubic-bezier(0.25, 1, 0.5, 1),
+        filter 220ms cubic-bezier(0.25, 1, 0.5, 1);
 }
+
+.zone-entity:hover .zone-entity__sprite,
+.zone-entity:hover .zone-entity__placeholder {
+    transform: translateY(-1px) scale(1.03);
+    filter: drop-shadow(1px 0 0 var(--sticker))
+        drop-shadow(-1px 0 0 var(--sticker)) drop-shadow(0 1px 0 var(--sticker))
+        drop-shadow(0 -1px 0 var(--sticker)) brightness(1.06);
+}
+
+.zone-entity--selected {
+    z-index: 5;
+}
+
+.zone-entity--selected .zone-entity__sprite,
+.zone-entity--selected .zone-entity__placeholder {
+    transform: translateY(-3px) scale(1.08);
+    filter: drop-shadow(2px 0 0 var(--sticker))
+        drop-shadow(-2px 0 0 var(--sticker)) drop-shadow(0 2px 0 var(--sticker))
+        drop-shadow(0 -2px 0 var(--sticker))
+        drop-shadow(0 5px 5px var(--sticker-shadow)) brightness(1.08);
+}
+
+.zone-entity:focus-visible {
+    outline: 1.5px solid var(--sticker);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .zone-entity__sprite,
+    .zone-entity__placeholder {
+        transition: none;
+    }
+
+    .zone-entity:hover .zone-entity__sprite,
+    .zone-entity:hover .zone-entity__placeholder,
+    .zone-entity--selected .zone-entity__sprite,
+    .zone-entity--selected .zone-entity__placeholder {
+        transform: none;
+    }
+}
+/* endregion */
 
 .zone-entity--dimmed {
     opacity: 0.3;
