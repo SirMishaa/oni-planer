@@ -65,3 +65,19 @@ it('does not find an archived zone', function (): void {
 
     $this->get(route('zones.show', $zone))->assertNotFound();
 });
+
+it('shares the active zones of the latest colony with every page, for the side navigation', function (): void {
+    $older = Colony::factory()->create(['last_seen_at' => now()->subDay()]);
+    $latest = Colony::factory()->create();
+    $pacu = Zone::factory()->create(['colony_guid' => $latest->guid, 'name' => 'Pacu']);
+    $farm = Zone::factory()->create(['colony_guid' => $latest->guid, 'name' => 'Farm']);
+    Zone::factory()->create(['colony_guid' => $latest->guid, 'name' => 'Old room', 'archived_at' => now()]);
+    Zone::factory()->create(['colony_guid' => $older->guid, 'name' => 'Other colony']);
+
+    $this->get(route('zones.show', $pacu))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('navZones', [
+                ['id' => $farm->id, 'name' => 'Farm'],
+                ['id' => $pacu->id, 'name' => 'Pacu'],
+            ]));
+});

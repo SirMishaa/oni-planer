@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Models\Colony;
+use App\Models\Zone;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -44,6 +46,28 @@ final class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'locale' => fn (): string => app()->getLocale(),
             'translations' => fn (): array => ['colony' => trans('colony'), 'zones' => trans('zones')],
+            'navZones' => fn (): array => $this->navZones(),
         ];
+    }
+
+    /**
+     * The active zones of the most recently seen colony, by name, for the side navigation.
+     *
+     * @return list<array{id: int, name: string}>
+     */
+    private function navZones(): array
+    {
+        $colonyGuid = Colony::query()->latest('last_seen_at')->value('guid');
+
+        if ($colonyGuid === null) {
+            return [];
+        }
+
+        return Zone::query()->active()->where('colony_guid', $colonyGuid)
+            ->orderBy('name')->orderBy('id')
+            ->get(['id', 'name'])
+            ->map(fn (Zone $zone): array => ['id' => $zone->id, 'name' => $zone->name])
+            ->values()
+            ->all();
     }
 }

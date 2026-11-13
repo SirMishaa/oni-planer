@@ -91,6 +91,17 @@ function startsGroup(index: number): boolean {
     return group !== undefined && navItems[index - 1]?.group !== group;
 }
 
+/** Zones of the latest colony, shared with every page (`HandleInertiaRequests::navZones`). */
+const navZones = computed(
+    () =>
+        (page.props.navZones as { id: number; name: string }[] | undefined) ??
+        [],
+);
+
+function isZoneActive(id: number): boolean {
+    return page.url.split('?')[0] === ZoneController.show.url(id);
+}
+
 function isActive(item: NavItem): boolean {
     const url = page.url;
     if (item.href === '/') return url === '/' || url.startsWith('/elements');
@@ -702,6 +713,35 @@ function isActive(item: NavItem): boolean {
                             </span>
                         </div>
                     </div>
+
+                    <!-- Zones of the colony, to switch from one to the next -->
+                    <ul
+                        v-if="
+                            item.key === 'zones' &&
+                            expanded &&
+                            navZones.length > 0
+                        "
+                        class="nav-zones mt-0.5 mb-1 ml-5 max-h-64 space-y-px overflow-y-auto border-l border-shell-border pl-2"
+                        :aria-label="item.label"
+                    >
+                        <li v-for="zone in navZones" :key="zone.id">
+                            <Link
+                                :href="ZoneController.show.url(zone.id)"
+                                class="block truncate rounded px-2 py-1 text-[12px] text-shell-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+                                :class="
+                                    isZoneActive(zone.id)
+                                        ? 'bg-shell-active text-oni-amber!'
+                                        : ''
+                                "
+                                :title="zone.name"
+                                :aria-current="
+                                    isZoneActive(zone.id) ? 'page' : undefined
+                                "
+                            >
+                                {{ zone.name }}
+                            </Link>
+                        </li>
+                    </ul>
                 </template>
             </nav>
             <!-- endregion -->
