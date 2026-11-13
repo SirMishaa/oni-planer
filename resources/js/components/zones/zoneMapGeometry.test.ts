@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     cellToLocal,
     hexToRgb,
+    footprintTouchesBox,
     layerIndex,
     localToCell,
     mixSrgb,
@@ -56,5 +57,18 @@ describe('colours', () => {
 
     it('mixes in sRGB by the share of the first colour', () => {
         expect(mixSrgb([200, 100, 0], [0, 0, 100], 0.45)).toEqual([90, 45, 55]);
+    });
+});
+
+describe('footprintTouchesBox', () => {
+    const box = { x: 10, y: 10, width: 5, height: 5 };
+
+    it('keeps a building whose anchor is left of and below the box but whose footprint reaches in', () => {
+        expect(footprintTouchesBox(7, 8, 4, 3, box)).toBe(true);
+    });
+
+    it('drops a building entirely outside the box', () => {
+        expect(footprintTouchesBox(4, 10, 3, 1, box)).toBe(false);
+        expect(footprintTouchesBox(10, 15, 1, 2, box)).toBe(false);
     });
 });

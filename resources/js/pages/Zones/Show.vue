@@ -107,10 +107,16 @@ const LAYERS: {
     { key: 'problems', icon: 'alert' },
 ];
 
+/** Content and border passages: everything the map and the selection can show a state for. */
+const knownEntities = computed(() => [
+    ...props.entities,
+    ...props.borderEntities,
+]);
+
 /** The selection survives reloads while the entity is still there. */
 const selected = computed(
     () =>
-        props.entities.find(
+        knownEntities.value.find(
             (entity) => entity.instanceId === selectedId.value,
         ) ?? null,
 );
@@ -236,7 +242,7 @@ function showOnMap(instanceId: string): void {
                     <ZoneMap
                         v-if="map"
                         :map="map"
-                        :entities="entities"
+                        :entities="knownEntities"
                         :layer="layer"
                         :selected-id="selectedId"
                         :zone-name="zone.name"

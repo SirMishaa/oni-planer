@@ -107,3 +107,19 @@ export function zoneOutlinePath(
 }
 
 // endregion
+
+/** Whether a footprint anchored at its bottom-left cell (x, y) has at least one cell in the box. */
+export function footprintTouchesBox(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    box: ZoneBoxData,
+): boolean {
+    return (
+        x + width > box.x &&
+        x < box.x + box.width &&
+        y + height > box.y &&
+        y < box.y + box.height
+    );
+}

@@ -68,3 +68,27 @@ it('toggles the grid', function (): void {
         ->assertAttribute('[data-test="zone-map-grid"]', 'aria-pressed', 'true')
         ->assertNoJavaScriptErrors();
 });
+
+it('lists a door on the zone border apart and knows its state on the map', function (): void {
+    $zone = Zone::factory()->sodicaneFarm()->create(['name' => 'Bassin']);
+    $layout = $zone->layout;
+    $anchor = end($layout['cells']);
+    $layout['buildings'][] = ['instanceId' => '7101', 'prefabId' => 'Door', 'anchorCell' => $anchor, 'width' => 1, 'height' => 2, 'orientation' => 'Neutral'];
+    $zone->update([
+        'layout' => $layout,
+        'fast_state' => [...$zone->fast_state, 'buildings' => [
+            ...$zone->fast_state['buildings'],
+            ['instanceId' => '7101', 'prefabId' => 'Door', 'operational' => true, 'active' => false, 'statusItems' => [], 'storage' => null],
+        ]],
+    ]);
+
+    $page = visit(route('zones.show', $zone));
+
+    $page->click('#zone-tab-entities')
+        ->click('.zone-filters button:nth-child(4)')
+        ->assertSee(__('zones.entities.groups.border'))
+        ->click('[aria-label="'.__('zones.entities.show_on_map', ['name' => 'Door']).'"]')
+        ->assertSeeIn('.zone-panel', 'Door')
+        ->assertDontSee(__('zones.panel.state_unknown'))
+        ->assertNoJavaScriptErrors();
+});

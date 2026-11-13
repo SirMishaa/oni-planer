@@ -19,6 +19,7 @@ import {
 } from './zoneFluidRenderer';
 import { fluidCells, liquidFill } from './zoneFluids';
 import {
+    footprintTouchesBox,
     layerIndex,
     localToCell,
     zoneOutlinePath,
@@ -415,8 +416,14 @@ const mapEntities = computed<MapEntity[]>(() => {
         };
     });
 
-    return [...buildings, ...plants].filter(
-        (entity) => layerIndex(entity.x, entity.y, box) !== null,
+    return [...buildings, ...plants].filter((entity) =>
+        footprintTouchesBox(
+            entity.x,
+            entity.y,
+            entity.width,
+            entity.height,
+            box,
+        ),
     );
 });
 
