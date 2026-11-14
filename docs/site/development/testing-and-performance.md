@@ -24,7 +24,7 @@ Les tests tournent sur la base PostgreSQL `oni_planner_testing` (voir [Installat
 `tests/Feature/Uplink/MessageBaselineTest.php` tourne avec la suite normale. Pour chaque type de message, il passe un message de grosse colonie (format réel, dans `tests/Fixtures/Uplink/perf`) dans son job, et vérifie deux choses :
 
 - la médiane reste sous un budget d'environ 3 fois la médiane mesurée (minimum 5 ms, une remesure avant d'échouer) ;
-- le nombre de requêtes d'un passage est exact.
+- le nombre de requêtes d'un passage est exact (un état rapide en fait 3, dont la lecture de la zone par le contrôle de surpeuplement).
 
 Un nouveau type de message fait échouer ce test tant qu'il n'a pas de fixture, de budget et de nombre de requêtes.
 

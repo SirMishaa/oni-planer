@@ -121,3 +121,42 @@ it('runs when a fast state is stored', function (): void {
 
     expect($zone->fresh()->crowding_mismatches)->toHaveCount(1);
 });
+
+it('does not flag a confined state only the planner sees', function (): void {
+    $zone = crowdedZone(['cellCount' => 104]);
+    CritterMorph::query()->where('morph_id', 'Pacu')->update(['overcrowding_threshold' => 8]);
+    $states = $zone->fast_state;
+    $states['crowding'][0]['cellCount'] = 4;
+    $states['crowding'][0]['occupied'] = 88;
+    $states['crowding'][0]['states']['Pacu'] = ['overcrowded' => true, 'cramped' => true, 'confined' => false, 'modifier' => -11];
+    $zone->update(['fast_state' => $states]);
+
+    checkCrowding();
+
+    $fields = array_column($zone->fresh()->crowding_mismatches ?? [], 'field');
+    expect($fields)->not->toContain('confined');
+});
+
+it('flags a confined state only the game sees', function (): void {
+    $zone = crowdedZone();
+    $states = $zone->fast_state;
+    $states['crowding'][0]['states']['Pacu']['confined'] = true;
+    $zone->update(['fast_state' => $states]);
+
+    checkCrowding();
+
+    expect(array_column($zone->fresh()->crowding_mismatches, 'field'))->toBe(['confined']);
+});
+
+it('logs and stores a persisting mismatch once, keeping its first time', function (): void {
+    Log::spy();
+    $zone = crowdedZone(['occupied' => 96]);
+
+    checkCrowding();
+    $first = $zone->fresh()->crowding_mismatches[0]['at'];
+    $this->travel(30)->seconds();
+    checkCrowding();
+
+    expect($zone->fresh()->crowding_mismatches[0]['at'])->toBe($first);
+    Log::shouldHaveReceived('warning')->with('crowding mismatch', Mockery::type('array'))->once();
+});

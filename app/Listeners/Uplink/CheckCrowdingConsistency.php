@@ -17,7 +17,10 @@ use Illuminate\Support\Facades\Log;
  *
  * Eggs come from the slow state and lag behind the fast one, so the planner takes `eggOccupied` from the game:
  * only `occupied` and, per species, `overcrowded`, `confined` and `modifier` are compared. `cramped` and
- * `eggOccupied` depend on the egg list and are never compared.
+ * `eggOccupied` depend on the egg list and are never compared. `confined` is compared one way only: a mismatch
+ * is the game saying confined while the planner does not, because the planner cannot know the confinement
+ * immunity of a burrowed or digger species. A mismatch is logged and stored only when the set of mismatches
+ * (ignoring `at`) changes, so a persisting one keeps its first `at`.
  */
 final class CheckCrowdingConsistency
 {
@@ -72,19 +75,22 @@ final class CheckCrowdingConsistency
                     'confined' => [$game['confined'], $planner->confined],
                     'modifier' => [$game['modifier'], $planner->happinessModifier],
                 ] as $field => [$gameValue, $plannerValue]) {
-                    if ($gameValue !== $plannerValue) {
+                    $oneWay = $field === 'confined';
+                    if ($gameValue !== $plannerValue && ! ($oneWay && ! $gameValue)) {
                         $mismatches[] = $this->mismatch($region->id, (string) $prefabId, $field, $gameValue, $plannerValue, $at);
                     }
                 }
             }
         }
 
-        if ($mismatches !== []) {
-            Log::warning('crowding mismatch', ['zone' => $zone->zone_guid, 'mismatches' => $mismatches]);
+        $previous = $zone->crowding_mismatches ?? [];
+        $withoutTime = static fn (array $rows): array => array_map(static fn (array $row): array => array_diff_key($row, ['at' => true]), $rows);
+        if ($withoutTime($mismatches) === $withoutTime($previous)) {
+            return;
         }
 
-        if ($mismatches === [] && $zone->crowding_mismatches === null) {
-            return;
+        if ($mismatches !== []) {
+            Log::warning('crowding mismatch', ['zone' => $zone->zone_guid, 'mismatches' => $mismatches]);
         }
 
         $zone->forceFill(['crowding_mismatches' => $mismatches === [] ? null : $mismatches])->saveQuietly();
