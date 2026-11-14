@@ -22,6 +22,7 @@
         "infer-conventions",
         "laravel-best-practices",
         "testing-best-practices",
+        "mcp-development",
         "octane-development",
         "wayfinder-development",
         "inertia-vue-development",

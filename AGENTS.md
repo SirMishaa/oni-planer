@@ -226,19 +226,19 @@ Search and read the docs with the `larecipe` MCP server. Never write configurati
 
 13 pages. One line per page: path, title, description. Read a page with the `read_page` tool of the `larecipe` MCP server, or open its file in `docs/site/`. Refresh this index with `php artisan larecipe:agents-md`.
 
-- `index`: Introduction. What ONI Planner is, where its data comes from and how these docs are organised.
-- `development/architecture`: Architecture. How game data and live colony data reach the planner, and which process does what.
-- `development/data-model`: Data model. The reference tables imported from the game and the colony tables filled by Uplink.
-- `development/game-data-import`: Game data import. Turn the OniExtract export into the reference tables, translation catalogs and WebP assets.
-- `development/local-setup`: Local setup. Install the app, import the game data and run the dev stack with Octane and Reverb.
-- `development/testing-and-performance`: Testing and performance. Run the test suites and measure Uplink message handling with the k6 benchmark and Excimer.
-- `development/uplink`: Uplink. How the Uplink mod talks to the planner over Reverb, what each listener stores and the rules they follow.
-- `product/buildings`: Buildings. Find a building by category or by name and read its construction, footprint, heat and production.
-- `product/codex`: Codex. Read the game's in-game database entries, with links to the matching building and element pages.
-- `product/colony`: My colony. Link the game to the planner with the Uplink mod, then follow your colony's food viability and see what the game sends.
-- `product/critters-and-ranch`: Critters and the ranch planner. Read each critter family and its morphs, then balance a ranch's food, outputs and eggs per cycle.
-- `product/elements`: Elements. Browse every element of the game and read its state, category, thermal properties and phase changes.
-- `product/getting-started`: Getting started. Find your way around the planner's sections and link it to your game.
+- `index`: Introduction. Ce qu'est ONI Planner, d'où viennent ses données et comment cette doc est organisée.
+- `development/architecture`: Architecture. Comment les données du jeu et celles de la colonie en direct arrivent au planner, et quel processus fait quoi.
+- `development/data-model`: Modèle de données. Les tables de référence importées du jeu et les tables de colonie remplies par Uplink.
+- `development/game-data-import`: Import des données du jeu. Transformer l'export OniExtract en tables de référence, catalogues de traduction et images WebP.
+- `development/local-setup`: Installation locale. Installer l'application, importer les données du jeu et lancer la stack de dev avec Octane et Reverb.
+- `development/testing-and-performance`: Tests et performance. Lancer les suites de tests et mesurer le traitement des messages Uplink avec le benchmark k6 et Excimer.
+- `development/uplink`: Uplink. Comment le mod Uplink parle au planner via Reverb, comment chaque message est traité en file et les règles d'ordre et…
+- `product/buildings`: Bâtiments. Trouver un bâtiment par catégorie ou par nom et lire sa construction, son emprise, sa chaleur et sa production.
+- `product/codex`: Codex. Lire les entrées de la base de données du jeu, avec des liens vers les pages des bâtiments et éléments correspondants.
+- `product/colony`: Ma colonie. Relier le jeu au planner avec le mod Uplink, puis suivre la viabilité alimentaire de ta colonie, la carte de tes zones…
+- `product/critters-and-ranch`: Créatures et ranch. Lire chaque famille de créatures et ses variantes, puis équilibrer la nourriture, les productions et les œufs d'un…
+- `product/elements`: Éléments. Parcourir tous les éléments du jeu et lire leur état, leur catégorie, leurs propriétés thermiques et leurs changements…
+- `product/getting-started`: Bien démarrer. Se repérer dans les sections du planner et le relier à ta partie.
 
 For docs work, use the LaRecipe skills: `larecipe-write-docs` to write new pages (and run onboarding), `larecipe-update-docs` to update the pages a change made stale, `larecipe-audit-docs` to review the whole set, and `larecipe-upgrade-v2` to finish a LaRecipe 2.x upgrade.
 
