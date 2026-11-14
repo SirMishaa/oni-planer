@@ -11,7 +11,7 @@ it('belongs to its zone, newest first, and gives the game cycle', function (): v
     $latest = ZoneCapture::factory()->for($zone)->create(['taken_at' => now(), 'game_seconds' => 247_500.0]);
 
     expect($zone->captures()->first()?->is($latest))->toBeTrue()
-        ->and($latest->cycle)->toBe(412)
+        ->and($latest->cycle())->toBe(412)
         ->and($latest->zone->is($zone))->toBeTrue()
         ->and(ZoneCapture::KEEP)->toBe(15);
 });

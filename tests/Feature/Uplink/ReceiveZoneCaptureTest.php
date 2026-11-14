@@ -54,7 +54,7 @@ it('copies the capture, records it and broadcasts it', function (): void {
         ->and($capture->trigger)->toBe('auto')
         ->and($capture->layout_signature)->toBe('sig-1')
         ->and([$capture->width, $capture->height])->toBe([704, 128])
-        ->and($capture->cycle)->toBe(412)
+        ->and($capture->cycle())->toBe(412)
         ->and(Storage::disk('public')->get($capture->path))->toBe('png-bytes');
     Event::assertDispatched(ZoneUpdated::class, fn (ZoneUpdated $event): bool => $event->kind === 'capture' && $event->zoneGuid === 'zone-a');
 });

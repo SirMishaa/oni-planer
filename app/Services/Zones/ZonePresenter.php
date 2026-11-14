@@ -6,6 +6,8 @@ namespace App\Services\Zones;
 
 use App\Data\ZoneBoxData;
 use App\Data\ZoneBuildingData;
+use App\Data\ZoneCaptureData;
+use App\Data\ZoneCaptureRequestData;
 use App\Data\ZoneCountsData;
 use App\Data\ZoneData;
 use App\Data\ZoneEntityData;
@@ -19,7 +21,9 @@ use App\Data\ZoneTileData;
 use App\Enums\BuildLocationRule;
 use App\Models\Building;
 use App\Models\Element;
+use App\Models\UplinkCommand;
 use App\Models\Zone;
+use App\Models\ZoneCapture;
 use App\Services\GameText;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -208,6 +212,8 @@ final class ZonePresenter
             ),
             plantsKnown: $fastPlants !== null,
             buildingStatesKnown: $fastBuildings !== null,
+            captures: $this->captures($zone),
+            captureRequest: self::captureRequest($zone),
         );
     }
 
@@ -231,6 +237,22 @@ final class ZonePresenter
             + count(array_filter($buildings ?? [], fn (array $building): bool => $this->buildingProblems($building) !== []));
 
         return ['count' => $withProblems, 'partial' => $plants === null || $buildings === null];
+    }
+
+    private static function captureRequest(Zone $zone): ?ZoneCaptureRequestData
+    {
+        $command = UplinkCommand::query()
+            ->where('colony_guid', $zone->colony_guid)
+            ->where('type', 'zone.capture')
+            ->where('payload->zoneId', $zone->zone_guid)
+            ->latest('issued_at')
+            ->first();
+
+        return $command === null ? null : new ZoneCaptureRequestData(
+            status: $command->status,
+            reason: $command->reason,
+            issuedAt: $command->issued_at->toIso8601String(),
+        );
     }
 
     /**
@@ -417,6 +439,23 @@ final class ZonePresenter
         }
 
         return $caps;
+    }
+
+    /** @return list<ZoneCaptureData> */
+    private function captures(Zone $zone): array
+    {
+        $layoutSignature = self::stringOrNull($zone->layout['signature'] ?? null);
+
+        return $zone->captures()->get()->map(fn (ZoneCapture $capture): ZoneCaptureData => new ZoneCaptureData(
+            id: $capture->id,
+            url: '/storage/'.$capture->path,
+            takenAt: $capture->taken_at->toIso8601String(),
+            cycle: $capture->cycle(),
+            trigger: $capture->trigger,
+            matchesLayout: $capture->layout_signature !== null && $capture->layout_signature === $layoutSignature,
+            width: $capture->width,
+            height: $capture->height,
+        ))->values()->all();
     }
 
     /**

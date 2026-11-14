@@ -40,4 +40,5 @@ export type UplinkMessageType =
     | 'client-zone.slow'
     | 'client-zone.fast'
     | 'client-colony.state'
-    | 'client-command.ack';
+    | 'client-command.ack'
+    | 'client-zone.capture';

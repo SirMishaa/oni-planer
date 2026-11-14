@@ -8,6 +8,7 @@ use App\Http\Controllers\ColonyController;
 use App\Http\Controllers\CritterController;
 use App\Http\Controllers\ElementController;
 use App\Http\Controllers\RanchController;
+use App\Http\Controllers\ZoneCaptureController;
 use App\Http\Controllers\ZoneController;
 use Illuminate\Support\Facades\Route;
 
@@ -37,3 +38,4 @@ Route::get('/colony/uplink', [ColonyController::class, 'uplink'])->name('colony.
 
 Route::get('/zones', [ZoneController::class, 'index'])->name('zones.index');
 Route::get('/zones/{zone}', [ZoneController::class, 'show'])->name('zones.show');
+Route::post('/zones/{zone}/captures', [ZoneCaptureController::class, 'store'])->name('zones.captures.store');

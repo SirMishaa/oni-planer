@@ -25,6 +25,10 @@ final class ZoneShowData extends Data
         public bool $plantsKnown,
         /** False until a fast state carried the building states: building entities and their problems are then unknown. */
         public bool $buildingStatesKnown,
+        /** @var list<ZoneCaptureData> the game's pictures of the zone, newest first */
+        public array $captures = [],
+        /** The latest capture asked for this zone, null when none was. */
+        public ?ZoneCaptureRequestData $captureRequest = null,
         /** @var array{channel: 'uplink', event: '.zone.updated'} Echo subscription of the live updates */
         #[LiteralTypeScriptType("{ channel: 'uplink'; event: '.zone.updated' }")]
         public array $echo = ['channel' => 'uplink', 'event' => '.zone.updated'],

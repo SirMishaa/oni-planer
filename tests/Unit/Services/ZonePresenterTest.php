@@ -524,3 +524,39 @@ it('leaves other buildings unflipped and without a sprite rect', function (): vo
     expect($farmStation?->flipped)->toBeFalse()
         ->and($farmStation?->spriteRect)->toBeNull();
 });
+
+it('lists the zone captures newest first and says which match the current layout', function (): void {
+    $zone = Zone::factory()->sodicaneFarm()->create();
+    $layout = $zone->layout;
+    $layout['signature'] = 'current';
+    $zone->update(['layout' => $layout]);
+    App\Models\ZoneCapture::factory()->for($zone)->create(['path' => 'zone-captures/z/old.png', 'taken_at' => now()->subHour(), 'layout_signature' => 'older']);
+    App\Models\ZoneCapture::factory()->for($zone)->create(['path' => 'zone-captures/z/new.png', 'taken_at' => now(), 'layout_signature' => 'current', 'game_seconds' => 247_500.0, 'trigger' => 'manual']);
+
+    $captures = app(ZonePresenter::class)->present($zone)->captures;
+
+    expect($captures)->toHaveCount(2)
+        ->and($captures[0]->url)->toBe('/storage/zone-captures/z/new.png')
+        ->and($captures[0]->matchesLayout)->toBeTrue()
+        ->and($captures[0]->cycle)->toBe(412)
+        ->and($captures[0]->trigger)->toBe('manual')
+        ->and($captures[1]->matchesLayout)->toBeFalse();
+});
+
+it('reports the latest capture request of the zone', function (): void {
+    $zone = Zone::factory()->sodicaneFarm()->create();
+
+    expect(app(ZonePresenter::class)->present($zone)->captureRequest)->toBeNull();
+
+    App\Models\UplinkCommand::factory()->create(['colony_guid' => $zone->colony_guid, 'type' => 'zone.capture', 'payload' => ['zoneId' => 'another-zone'], 'issued_at' => now()]);
+    App\Models\UplinkCommand::factory()->create(['colony_guid' => $zone->colony_guid, 'type' => 'zone.capture', 'payload' => ['zoneId' => $zone->zone_guid], 'issued_at' => now()->subMinute()]);
+    App\Models\UplinkCommand::factory()->create([
+        'colony_guid' => $zone->colony_guid, 'type' => 'zone.capture', 'payload' => ['zoneId' => $zone->zone_guid],
+        'issued_at' => now(), 'status' => App\Models\UplinkCommand::REFUSED, 'reason' => 'zone on another world',
+    ]);
+
+    $request = app(ZonePresenter::class)->present($zone)->captureRequest;
+
+    expect($request?->status)->toBe('refused')
+        ->and($request?->reason)->toBe('zone on another world');
+});

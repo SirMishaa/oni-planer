@@ -6,7 +6,6 @@ namespace App\Models;
 
 use Database\Factories\ZoneCaptureFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,8 +14,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * A picture of a zone rendered by the game (Uplink `client-zone.capture`), stored on the public
  * disk at `path`. The last {@see self::KEEP} of each zone are kept. User data: never truncated
  * by `game:import`.
- *
- * @property-read int $cycle
  */
 #[Fillable(['zone_id', 'path', 'taken_at', 'game_seconds', 'layout_signature', 'trigger', 'command_id', 'width', 'height'])]
 final class ZoneCapture extends Model
@@ -46,9 +43,9 @@ final class ZoneCapture extends Model
         return $this->belongsTo(Zone::class);
     }
 
-    /** @return Attribute<int, never> the game cycle the capture was taken in */
-    protected function cycle(): Attribute
+    /** The game cycle the capture was taken in. */
+    public function cycle(): int
     {
-        return Attribute::get(fn (): int => intdiv((int) $this->game_seconds, self::CYCLE_SECONDS));
+        return intdiv((int) $this->game_seconds, self::CYCLE_SECONDS);
     }
 }

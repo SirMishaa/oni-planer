@@ -1,7 +1,7 @@
 {
-    "types\/App\/Data\/data.d.ts": "3fde45f16531ae7632335169b88918cd",
+    "types\/App\/Data\/data.d.ts": "c9bd594367c5b235844cdf9ee6b8985b",
     "types\/App\/Data\/Viability\/data.d.ts": "8e9d38448055cdf378b19442b82ccf15",
-    "types\/App\/Enums\/data.d.ts": "32834630653d56f91eaa4582680b1280",
+    "types\/App\/Enums\/data.d.ts": "2b22d45f09d5cbe9b8a20521d9844f6a",
     "types\/Illuminate\/data.d.ts": "c49cb82ab295a835fb8553e262cc508a",
     "types\/Spatie\/LaravelData\/data.d.ts": "ee4628e9e001e85b7867e5940ed12619"
 }

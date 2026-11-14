@@ -203,6 +203,21 @@ export type ZoneBuildingData = {
     flipped: boolean;
     spriteRect: ZoneSpriteRectData | null;
 };
+export type ZoneCaptureData = {
+    id: number;
+    url: string;
+    takenAt: string;
+    cycle: number;
+    trigger: string;
+    matchesLayout: boolean;
+    width: number;
+    height: number;
+};
+export type ZoneCaptureRequestData = {
+    status: string;
+    reason: string | null;
+    issuedAt: string;
+};
 export type ZoneCountsData = {
     plants: number;
     buildings: number;
@@ -276,6 +291,8 @@ export type ZoneShowData = {
     counts: ZoneCountsData;
     plantsKnown: boolean;
     buildingStatesKnown: boolean;
+    captures: ZoneCaptureData[];
+    captureRequest: ZoneCaptureRequestData | null;
     echo: { channel: 'uplink'; event: '.zone.updated' };
 };
 export type ZoneSpriteRectData = {
