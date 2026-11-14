@@ -449,3 +449,78 @@ it('treats an unknown modded building as content', function (): void {
     expect(collect($shown->entities)->pluck('instanceId')->all())->toBe(['9201'])
         ->and($shown->borderEntities)->toBe([]);
 });
+
+/**
+ * The farm zone with extra layout buildings and tiles, and stair cap assets for Stairs masks 1, 2 and 17.
+ *
+ * @param  list<array<string, mixed>>  $buildings
+ * @param  list<array<string, mixed>>  $tiles
+ */
+function presentStairs(array $buildings, array $tiles = []): App\Data\ZoneShowData
+{
+    $assets = sys_get_temp_dir().'/zone-assets-'.uniqid();
+    File::ensureDirectoryExists("{$assets}/stair_caps/Stairs");
+    foreach ([1, 2, 17] as $mask) {
+        File::put("{$assets}/stair_caps/Stairs/{$mask}.webp", '');
+    }
+    File::put("{$assets}/stair_caps/rects.json", json_encode(['Stairs' => [
+        '1' => ['x' => -0.5, 'y' => 0, 'w' => 1.5, 'h' => 1],
+        '2' => ['x' => 0, 'y' => 0, 'w' => 1, 'h' => 1],
+        '17' => ['x' => -0.5, 'y' => 0, 'w' => 1.5, 'h' => 1.05],
+    ]]));
+    config(['game.assets_path' => $assets]);
+
+    $zone = Zone::factory()->sodicaneFarm()->create();
+    $layout = $zone->layout;
+    $layout['buildings'] = [...$layout['buildings'], ...$buildings];
+    $layout['tiles'] = [...($layout['tiles'] ?? []), ...$tiles];
+    $zone->update(['layout' => $layout]);
+
+    $shown = app(ZonePresenter::class)->present($zone);
+    File::deleteDirectory($assets);
+
+    return $shown;
+}
+
+/** @return array<string, mixed> */
+function stair(int $x, int $y, string $orientation = 'Neutral'): array
+{
+    return ['instanceId' => "stair-{$x}-{$y}", 'prefabId' => 'Stairs', 'anchorCell' => zoneCell($x, $y), 'width' => 1, 'height' => 1, 'orientation' => $orientation];
+}
+
+it('draws each stair with the end caps its neighbours give it, placed and flipped like the game', function (): void {
+    $buildings = collect(presentStairs([stair(117, 201), stair(118, 202), stair(105, 201, 'FlipH')])->map?->buildings)
+        ->keyBy(fn (App\Data\ZoneBuildingData $building): string => (string) $building->instanceId);
+
+    expect($buildings['stair-117-201']->sprite)->toBe('/assets/game/stair_caps/Stairs/1.webp')
+        ->and($buildings['stair-117-201']->spriteRect?->toArray())->toBe(['x' => -0.5, 'y' => 0.0, 'w' => 1.5, 'h' => 1.0])
+        ->and($buildings['stair-117-201']->flipped)->toBeFalse()
+        ->and($buildings['stair-118-202']->sprite)->toBe('/assets/game/stair_caps/Stairs/17.webp')
+        ->and($buildings['stair-105-201']->sprite)->toBe('/assets/game/stair_caps/Stairs/17.webp')
+        ->and($buildings['stair-105-201']->flipped)->toBeTrue();
+});
+
+it('closes a stair under a tile that makes its cell solid', function (): void {
+    Building::factory()->create(['building_id' => 'Tile', 'sim_cell_occupier' => true]);
+
+    $stair = collect(presentStairs([stair(117, 201)], [['cell' => zoneCell(117, 202), 'prefabId' => 'Tile']])->map?->buildings)
+        ->firstWhere('prefabId', 'Stairs');
+
+    expect($stair?->sprite)->toBe('/assets/game/stair_caps/Stairs/2.webp');
+});
+
+it('keeps the building image of a stair whose cap variant was not imported', function (): void {
+    $stair = collect(presentStairs([stair(117, 201), stair(117, 200)])->map?->buildings)
+        ->firstWhere('instanceId', 'stair-117-201');
+
+    expect($stair?->sprite)->toBeNull()
+        ->and($stair?->spriteRect)->toBeNull()
+        ->and($stair?->flipped)->toBeFalse();
+});
+
+it('leaves other buildings unflipped and without a sprite rect', function (): void {
+    $farmStation = presentZone()->map?->buildings[0];
+
+    expect($farmStation?->flipped)->toBeFalse()
+        ->and($farmStation?->spriteRect)->toBeNull();
+});

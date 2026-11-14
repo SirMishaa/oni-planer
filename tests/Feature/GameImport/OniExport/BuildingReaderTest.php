@@ -135,3 +135,23 @@ it('skips a building with an unknown build location rule and reports it', functi
 
     File::deleteDirectory($dir);
 });
+
+it('reads whether a building makes its cells solid', function (): void {
+    $dir = fixtureExportCopy(function (array $file): array {
+        foreach ($file['bBuildingDefList'] as &$def) {
+            if ($def['name'] === 'FlushToilet') {
+                $def['simCellOccupier'] = true;
+            }
+        }
+
+        return $file;
+    });
+
+    $export = new OniExport($dir);
+    $buildings = collect(new BuildingReader($export, ModCatalog::fromExport($export, $dir.'/mods', []))->records())->keyBy('building_id');
+
+    expect($buildings['FlushToilet']['sim_cell_occupier'])->toBeTrue()
+        ->and($buildings['Generator']['sim_cell_occupier'])->toBeFalse();
+
+    File::deleteDirectory($dir);
+});

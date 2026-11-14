@@ -509,6 +509,10 @@ type MapEntity = {
     height: number;
     /** Built on a ceiling: the render hangs from the top of the footprint. */
     hanging: boolean;
+    /** Drawn mirrored (orientation FlipH). */
+    flipped: boolean;
+    /** Where the render is drawn, in cells, when it is not the footprint (a stair's art overhangs it). */
+    drawBox: { x: number; y: number; width: number; height: number } | null;
     growth: number | null;
     secondsUntilHarvest: number | null;
     state: ZoneEntityData['state'] | null;
@@ -533,6 +537,7 @@ const mapEntities = computed<MapEntity[]>(() => {
     const buildings = (props.map.buildings ?? []).map(
         (building, index): MapEntity => {
             const entity = stateOf(building.instanceId);
+            const rect = building.spriteRect;
 
             return {
                 key: `b${building.instanceId ?? index}`,
@@ -545,6 +550,20 @@ const mapEntities = computed<MapEntity[]>(() => {
                 width: building.width,
                 height: building.spriteHeight,
                 hanging: building.hangsFromCeiling,
+                flipped: building.flipped,
+                drawBox:
+                    rect === null
+                        ? null
+                        : {
+                              x:
+                                  building.x +
+                                  (building.flipped
+                                      ? building.width - rect.x - rect.w
+                                      : rect.x),
+                              y: building.y + rect.y,
+                              width: rect.w,
+                              height: rect.h,
+                          },
                 growth: null,
                 secondsUntilHarvest: null,
                 state: entity?.state ?? null,
@@ -570,6 +589,8 @@ const mapEntities = computed<MapEntity[]>(() => {
                 Math.min(PLANT_HEIGHT_CELLS, top - plant.y + 1),
             ),
             hanging: false,
+            flipped: false,
+            drawBox: null,
             growth: plant.growth,
             secondsUntilHarvest: plant.secondsUntilHarvest,
             state:
@@ -591,17 +612,18 @@ const mapEntities = computed<MapEntity[]>(() => {
 });
 
 function entityStyle(entity: MapEntity): Record<string, string> {
+    const box = entity.drawBox ?? entity;
     const { column, row } = cellToLocal(
-        entity.x,
-        entity.y + entity.height - 1,
+        box.x,
+        box.y + box.height - 1,
         props.map.box,
     );
 
     return {
         left: `${column * cellPx.value}px`,
         top: `${row * cellPx.value}px`,
-        width: `${entity.width * cellPx.value}px`,
-        height: `${entity.height * cellPx.value}px`,
+        width: `${box.width * cellPx.value}px`,
+        height: `${box.height * cellPx.value}px`,
     };
 }
 
@@ -1057,6 +1079,7 @@ const temperatureLegend = computed(() => {
                             class="zone-entity__sprite"
                             :class="{
                                 'zone-entity__sprite--hanging': entity.hanging,
+                                'zone-entity__sprite--flipped': entity.flipped,
                             }"
                             decoding="async"
                         />
@@ -1521,6 +1544,11 @@ const temperatureLegend = computed(() => {
 
 .zone-entity__sprite--hanging {
     object-position: left top;
+}
+
+/* Mirrored with `scale`, which composes with the hover and selection `transform`. */
+.zone-entity__sprite--flipped {
+    scale: -1 1;
 }
 
 .zone-entity__placeholder {

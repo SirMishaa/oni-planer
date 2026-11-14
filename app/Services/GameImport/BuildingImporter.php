@@ -57,6 +57,7 @@ final readonly class BuildingImporter
                 'overlay' => $raw['overlay'] ?? null,
                 'is_foundation' => $raw['is_foundation'] ?? false,
                 'is_tile' => $raw['is_tile'] ?? false,
+                'sim_cell_occupier' => $raw['sim_cell_occupier'] ?? false,
                 'is_utility' => $raw['is_utility'] ?? false,
                 'drag_build' => $raw['drag_build'] ?? false,
                 'replaceable' => $raw['replaceable'] ?? false,

@@ -12,6 +12,7 @@ use App\Data\ZoneEntityData;
 use App\Data\ZoneMapData;
 use App\Data\ZonePlantData;
 use App\Data\ZoneShowData;
+use App\Data\ZoneSpriteRectData;
 use App\Data\ZoneTerrainData;
 use App\Data\ZoneTerrainElementData;
 use App\Data\ZoneTileData;
@@ -120,8 +121,14 @@ final class ZonePresenter
     /** @var array<string, string>|null element id by lower-cased name in any locale, for one present() call */
     private ?array $elementsByName = null;
 
-    /** @var array<string, array{height: int, onCeiling: bool}> game definition of each layout prefab, for one present() call */
+    /** @var array<string, array{height: int, onCeiling: bool, solid: bool}> game definition of each layout prefab, for one present() call */
     private array $buildingDefinitions = [];
+
+    /** @var array<string, array<string, array{x: float, y: float, w: float, h: float}>> Stairs mod cap variants: prefab => mask => placement, for one present() call */
+    private array $stairCaps = [];
+
+    /** @var array<int, array{stair: bool, facingLeft: bool, solid: bool}> what stands on each cell of the layout's building layer, for one present() call */
+    private array $occupants = [];
 
     public function __construct(private readonly GameText $text) {}
 
@@ -139,7 +146,10 @@ final class ZonePresenter
         $fastPlants = self::listOrNull($zone->fast_state['plants'] ?? null);
         [$fastBuildings, $borderBuildings] = self::splitPassages(self::listOrNull($zone->fast_state['buildings'] ?? null));
         $layoutBuildings = self::listOrNull($layout['buildings'] ?? null);
-        $this->buildingDefinitions = self::buildingDefinitions(array_values(array_filter($layoutBuildings ?? [], is_array(...))));
+        $layoutTiles = self::listOrNull($layout['tiles'] ?? null);
+        $this->buildingDefinitions = self::buildingDefinitions(array_values(array_filter([...$layoutBuildings ?? [], ...$layoutTiles ?? []], is_array(...))));
+        $this->stairCaps = self::stairCaps();
+        $this->occupants = $placed ? $this->occupants($layoutBuildings ?? [], $layoutTiles ?? [], $gridWidth) : [];
         $anchorsByInstance = [];
         foreach ($layoutBuildings ?? [] as $building) {
             $instanceId = self::stringOrNull($building['instanceId'] ?? null);
@@ -369,12 +379,85 @@ final class ZonePresenter
 
         return Building::query()
             ->whereIn('building_id', $prefabIds)
-            ->get(['building_id', 'height', 'build_location_rule'])
+            ->get(['building_id', 'height', 'build_location_rule', 'sim_cell_occupier'])
             ->mapWithKeys(fn (Building $building): array => [$building->building_id => [
                 'height' => (int) $building->height,
                 'onCeiling' => $building->build_location_rule === BuildLocationRule::OnCeiling->name,
+                'solid' => (bool) $building->sim_cell_occupier,
             ]])
             ->all();
+    }
+
+    /**
+     * The Stairs mod's cap variants published by game:import-assets (OniExtract stair_caps.json).
+     *
+     * @return array<string, array<string, array{x: float, y: float, w: float, h: float}>>
+     */
+    private static function stairCaps(): array
+    {
+        $path = config()->string('game.assets_path').'/stair_caps/rects.json';
+        $decoded = is_file($path) ? json_decode((string) file_get_contents($path), true) : null;
+
+        if (! is_array($decoded)) {
+            return [];
+        }
+
+        $caps = [];
+        foreach ($decoded as $prefabId => $masks) {
+            foreach (is_array($masks) ? $masks : [] as $mask => $rect) {
+                if (is_array($rect)) {
+                    $caps[(string) $prefabId][(string) $mask] = [
+                        'x' => self::floatOrNull($rect['x'] ?? null) ?? 0.0,
+                        'y' => self::floatOrNull($rect['y'] ?? null) ?? 0.0,
+                        'w' => self::floatOrNull($rect['w'] ?? null) ?? 1.0,
+                        'h' => self::floatOrNull($rect['h'] ?? null) ?? 1.0,
+                    ];
+                }
+            }
+        }
+
+        return $caps;
+    }
+
+    /**
+     * The building layer of the layout, cell by cell: which cells hold a stair (and which way it
+     * faces) or a building that makes its cell solid. Read by {@see StairCaps}.
+     *
+     * @param  list<mixed>  $buildings
+     * @param  list<mixed>  $tiles
+     * @return array<int, array{stair: bool, facingLeft: bool, solid: bool}>
+     */
+    private function occupants(array $buildings, array $tiles, int $gridWidth): array
+    {
+        $occupants = [];
+
+        foreach ($tiles as $tile) {
+            if (is_array($tile) && is_numeric($tile['cell'] ?? null)) {
+                $prefabId = self::string($tile['prefabId'] ?? null);
+                $occupants[(int) $tile['cell']] = ['stair' => false, 'facingLeft' => false, 'solid' => $this->buildingDefinitions[$prefabId]['solid'] ?? false];
+            }
+        }
+
+        foreach ($buildings as $building) {
+            if (! is_array($building) || ! is_numeric($building['anchorCell'] ?? null)) {
+                continue;
+            }
+
+            $prefabId = self::string($building['prefabId'] ?? null);
+            $occupant = [
+                'stair' => isset($this->stairCaps[$prefabId]),
+                'facingLeft' => ($building['orientation'] ?? null) === 'FlipH',
+                'solid' => $this->buildingDefinitions[$prefabId]['solid'] ?? false,
+            ];
+            $anchor = (int) $building['anchorCell'];
+            for ($dy = 0; $dy < self::int($building['height'] ?? null, 1); $dy++) {
+                for ($dx = 0; $dx < self::int($building['width'] ?? null, 1); $dx++) {
+                    $occupants[$anchor + $dx + $dy * $gridWidth] = $occupant;
+                }
+            }
+        }
+
+        return $occupants;
     }
 
     /** Root-relative URL of a game sprite, or null when it was not imported; checked once per prefab. */
@@ -630,6 +713,9 @@ final class ZonePresenter
         $definition = $this->buildingDefinitions[$prefabId] ?? null;
         $upright = in_array($orientation, [null, 'Neutral', 'FlipH'], true);
 
+        [$sprite, $spriteRect] = $this->stairSprite($prefabId, $anchor, $orientation === 'FlipH', $gridWidth)
+            ?? [$this->sprite('buildings', $prefabId), null];
+
         return new ZoneBuildingData(
             instanceId: self::stringOrNull($building['instanceId'] ?? null),
             x: $anchor % $gridWidth,
@@ -639,10 +725,31 @@ final class ZonePresenter
             orientation: $orientation,
             prefabId: $prefabId,
             name: $this->text->name($prefabId),
-            sprite: $this->sprite('buildings', $prefabId),
+            sprite: $sprite,
             hangsFromCeiling: $definition['onCeiling'] ?? false,
             spriteHeight: $upright ? max($height, $definition['height'] ?? 0) : $height,
+            flipped: $spriteRect !== null && $orientation === 'FlipH',
+            spriteRect: $spriteRect,
         );
+    }
+
+    /**
+     * The cap variant a stair shows from its neighbours, with its placement; null for any other
+     * building, or when that variant was not imported.
+     *
+     * @return array{string, ZoneSpriteRectData}|null
+     */
+    private function stairSprite(string $prefabId, int $cell, bool $facingLeft, int $gridWidth): ?array
+    {
+        if (! isset($this->stairCaps[$prefabId])) {
+            return null;
+        }
+
+        $mask = (string) StairCaps::mask($cell, $facingLeft, $gridWidth, fn (int $neighbour): ?array => $this->occupants[$neighbour] ?? null);
+        $rect = $this->stairCaps[$prefabId][$mask] ?? null;
+        $sprite = $this->sprite('stair_caps', $prefabId.'/'.$mask);
+
+        return $rect === null || $sprite === null ? null : [$sprite, new ZoneSpriteRectData(...$rect)];
     }
 
     /** @param  array<mixed>  $plant */

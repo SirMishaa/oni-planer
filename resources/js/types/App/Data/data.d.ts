@@ -200,6 +200,8 @@ export type ZoneBuildingData = {
     sprite: string | null;
     hangsFromCeiling: boolean;
     spriteHeight: number;
+    flipped: boolean;
+    spriteRect: ZoneSpriteRectData | null;
 };
 export type ZoneCountsData = {
     plants: number;
@@ -275,6 +277,12 @@ export type ZoneShowData = {
     plantsKnown: boolean;
     buildingStatesKnown: boolean;
     echo: { channel: 'uplink'; event: '.zone.updated' };
+};
+export type ZoneSpriteRectData = {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
 };
 export type ZoneTerrainData = {
     box: ZoneBoxData;

@@ -76,13 +76,13 @@ final class GameSyncExportCommand extends Command
      */
     private static function modsToSync(string $exportPath): array
     {
-        $supported = array_values(array_map(strval(...), (array) config('game.supported_mods')));
+        $supported = array_values(array_filter(config()->array('game.supported_mods'), is_string(...)));
 
         if (! in_array(ModCatalog::EVERY_MOD, $supported, true)) {
             return $supported;
         }
 
-        $exported = ModCatalog::fromExport(new OniExport($exportPath), (string) config('game.mods_path'), [])->workshopIds();
+        $exported = ModCatalog::fromExport(new OniExport($exportPath), config()->string('game.mods_path'), [])->workshopIds();
 
         return array_values(array_unique([...$exported, ...array_diff($supported, [ModCatalog::EVERY_MOD])]));
     }

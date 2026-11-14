@@ -32,5 +32,13 @@ final class ZoneBuildingData extends Data
          * reaches the ceiling one cell higher), the footprint's height otherwise.
          */
         public int $spriteHeight = 1,
+        /** Drawn mirrored (orientation FlipH); set for the stairs only for now. */
+        public bool $flipped = false,
+        /**
+         * Where the render sits around the footprint, before mirroring, when it is known and
+         * differs from the footprint (a stair's art reaches half a cell past it); null draws the
+         * render in the footprint.
+         */
+        public ?ZoneSpriteRectData $spriteRect = null,
     ) {}
 }

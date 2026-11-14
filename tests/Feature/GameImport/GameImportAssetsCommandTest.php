@@ -157,3 +157,17 @@ it('fails and lists the missing mask atlas and render.json', function (): void {
 
     expect($this->assets.'/render.json')->not->toBeFile();
 });
+
+it('converts the stair cap variants and publishes their placement', function (): void {
+    Building::factory()->create(['building_id' => 'Stairs']);
+    writePng($this->export.'/ui_image/Stairs.png');
+    writePng($this->export.'/stair_caps/Stairs/17.png', 6, 4);
+    writePng($this->export.'/stair_caps/Stairs/2.png', 6, 4);
+    File::put($this->export.'/stair_caps.json', '{"Stairs":{"17":{"x":-0.5,"y":0,"w":1.5,"h":1}}}');
+
+    $this->artisan('game:import-assets')->assertSuccessful();
+
+    expect(getimagesize($this->assets.'/stair_caps/Stairs/17.webp')['mime'])->toBe('image/webp')
+        ->and($this->assets.'/stair_caps/Stairs/2.webp')->toBeFile()
+        ->and(json_decode(File::get($this->assets.'/stair_caps/rects.json'), true))->toBe(['Stairs' => ['17' => ['x' => -0.5, 'y' => 0, 'w' => 1.5, 'h' => 1]]]);
+});

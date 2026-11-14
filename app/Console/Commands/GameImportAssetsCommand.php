@@ -47,6 +47,8 @@ final class GameImportAssetsCommand extends Command
             }
         }
 
+        $connections += $this->importStairCaps($converter, $export, $assets);
+
         $cells = $export.'/connection_sprite_cells.json';
         if (File::isFile($cells) && $this->isStale($cells, $assets.'/connections/cells.json')) {
             File::ensureDirectoryExists($assets.'/connections');
@@ -101,6 +103,30 @@ final class GameImportAssetsCommand extends Command
         return $solidsWithoutAsset === [] && $missingRenderFiles === []
             ? self::SUCCESS
             : self::FAILURE;
+    }
+
+    /**
+     * Publishes the Stairs mod's end-cap variants (`stair_caps/{prefab}/{mask}.png`) and their
+     * placement (`stair_caps.json`, read by the zone presenter as `stair_caps/rects.json`).
+     *
+     * @return int converted variants
+     */
+    private function importStairCaps(AssetConverter $converter, string $export, string $assets): int
+    {
+        $converted = 0;
+
+        foreach (array_filter(File::glob("{$export}/stair_caps/*/*.png") ?: [], is_string(...)) as $source) {
+            $prefabId = basename(dirname($source));
+            $converted += (int) $this->convert($converter, $source, "{$assets}/stair_caps/{$prefabId}/".pathinfo($source, PATHINFO_FILENAME).'.webp');
+        }
+
+        $rects = "{$export}/stair_caps.json";
+        if (File::isFile($rects) && $this->isStale($rects, "{$assets}/stair_caps/rects.json")) {
+            File::ensureDirectoryExists("{$assets}/stair_caps");
+            File::copy($rects, "{$assets}/stair_caps/rects.json");
+        }
+
+        return $converted;
     }
 
     /**
