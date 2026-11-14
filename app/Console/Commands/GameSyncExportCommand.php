@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Services\GameImport\OniExport\ModCatalog;
+use App\Services\GameImport\OniExport\OniExport;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -40,8 +42,8 @@ final class GameSyncExportCommand extends Command
 
         $this->info(sprintf('Mirrored export: %d files into %s', $mirrored, $exportPath));
 
-        foreach ((array) config('game.supported_mods') as $workshopId) {
-            $this->syncMod((string) $workshopId);
+        foreach (self::modsToSync($exportPath) as $workshopId) {
+            $this->syncMod($workshopId);
         }
 
         return self::SUCCESS;
@@ -65,6 +67,24 @@ final class GameSyncExportCommand extends Command
         }
 
         return $count;
+    }
+
+    /**
+     * The listed workshop ids; with the wildcard, every workshop mod of the freshly mirrored export.
+     *
+     * @return list<string>
+     */
+    private static function modsToSync(string $exportPath): array
+    {
+        $supported = array_values(array_map(strval(...), (array) config('game.supported_mods')));
+
+        if (! in_array(ModCatalog::EVERY_MOD, $supported, true)) {
+            return $supported;
+        }
+
+        $exported = ModCatalog::fromExport(new OniExport($exportPath), (string) config('game.mods_path'), [])->workshopIds();
+
+        return array_values(array_unique([...$exported, ...array_diff($supported, [ModCatalog::EVERY_MOD])]));
     }
 
     private function syncMod(string $workshopId): void

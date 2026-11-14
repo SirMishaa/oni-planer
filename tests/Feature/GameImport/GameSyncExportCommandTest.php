@@ -54,3 +54,16 @@ it('fails when the mirror holds fewer files than the export', function (): void 
         ->expectsOutputToContain('incomplete')
         ->assertFailed();
 });
+
+it('syncs every workshop mod of the export with the wildcard', function (): void {
+    config(['game.supported_mods' => ['*']]);
+    File::copyDirectory(base_path('tests/Fixtures/OniExport/database'), $this->workDir.'/src-export/database');
+    File::copyDirectory(base_path('tests/Fixtures/OniExport/mods/3557584850'), $this->workDir.'/src-mods/3557584850');
+    File::ensureDirectoryExists($this->workDir.'/src-mods/2012810337');
+    File::put($this->workDir.'/src-mods/2012810337/mod.yaml', "title: Stairs\n");
+
+    $this->artisan('game:sync-export')->assertSuccessful();
+
+    expect($this->workDir.'/out/mods/3557584850/mod.yaml')->toBeFile()
+        ->and($this->workDir.'/out/mods/2012810337/mod.yaml')->toBeFile();
+});

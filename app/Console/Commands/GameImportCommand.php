@@ -175,7 +175,8 @@ final class GameImportCommand extends Command
             }
         }
 
-        foreach ($supportedMods as $workshopId) {
+        // The wildcard imports what the export holds: a mod without a synced folder only lacks its translations.
+        foreach (array_diff($supportedMods, [ModCatalog::EVERY_MOD]) as $workshopId) {
             if (! File::isDirectory($modsPath.'/'.$workshopId)) {
                 $this->error(sprintf('Supported mod %s not found in %s. Run game:sync-export.', $workshopId, $modsPath));
 

@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\File;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * Resolves which mod owns a prefab and whether the mod is supported.
+ * Resolves which mod owns a prefab and whether the mod is supported. The supported
+ * list holds workshop ids, or {@see self::EVERY_MOD} to support every mod of the export.
  *
  * Ownership comes from the export: building.json `mods[].buildings` for
  * buildings, planner_extras.json `entities` / `elements` `sourceMod` for the
@@ -20,6 +21,9 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class ModCatalog
 {
+    /** Supported-list entry standing for every mod the export knows. */
+    public const string EVERY_MOD = '*';
+
     /** @var array<string, int|null> */
     private array $modIds = [];
 
@@ -100,7 +104,7 @@ final class ModCatalog
      */
     public function modIdForStringKey(string $stringKey): ?int
     {
-        foreach ($this->supported as $workshopId) {
+        foreach ($this->supportedOwners() as $workshopId) {
             $pot = $this->modsPath.'/'.$workshopId.'/translation_template.pot';
 
             if (! File::isFile($pot)) {
@@ -126,10 +130,20 @@ final class ModCatalog
         return $this->modIds[$workshopId];
     }
 
+    /**
+     * Workshop ids of the mods the export knows (local mods without a workshop id left out).
+     *
+     * @return list<string>
+     */
+    public function workshopIds(): array
+    {
+        return array_values(array_filter(array_map(strval(...), array_keys($this->exportMods)), fn (string $owner): bool => ctype_digit($owner)));
+    }
+
     /** Upserts a Mod row per supported mod present in the export or in the synced mods directory. */
     public function persist(): void
     {
-        foreach ($this->supported as $workshopId) {
+        foreach ($this->supportedOwners() as $workshopId) {
             $metadata = $this->modYaml($workshopId);
             $exported = $this->exportMods[$workshopId] ?? null;
 
@@ -194,7 +208,22 @@ final class ModCatalog
 
     private function isSupportedOwner(string $owner): bool
     {
-        return in_array($owner, $this->supported, true);
+        return in_array(self::EVERY_MOD, $this->supported, true) || in_array($owner, $this->supported, true);
+    }
+
+    /**
+     * The owners to persist and to read translations from: every owner of the export for the
+     * wildcard, the listed workshop ids otherwise.
+     *
+     * @return list<string>
+     */
+    private function supportedOwners(): array
+    {
+        if (! in_array(self::EVERY_MOD, $this->supported, true)) {
+            return $this->supported;
+        }
+
+        return array_values(array_unique([...array_map(strval(...), array_keys($this->exportMods)), ...array_diff($this->supported, [self::EVERY_MOD])]));
     }
 
     /** @return array<string, mixed>|null */
@@ -213,7 +242,7 @@ final class ModCatalog
     {
         $paths = [];
 
-        foreach ($this->supported as $workshopId) {
+        foreach ($this->supportedOwners() as $workshopId) {
             foreach ($pathsFor($workshopId) as $path) {
                 if (File::isFile($path)) {
                     $paths[] = $path;

@@ -20,12 +20,13 @@ return [
     'assets_path' => public_path('assets/game'),
 
     /*
-     * Workshop ids of the mods whose content is imported. Content of any other
-     * mod found in the export is skipped.
+     * Workshop ids of the mods whose content is imported, or '*' for every mod
+     * found in the export (the colony map and the future build menu need the
+     * buildings of every mod the player runs). Content of an unlisted mod is skipped.
      *
      * @var list<string>
      */
-    'supported_mods' => ['3557584850'],
+    'supported_mods' => ['*'],
 
     /* Local dev directory (Windows side) the Uplink mod is deployed to. */
     'uplink_mod_path' => env('UPLINK_MOD_PATH', '/mnt/c/Users/misha/Documents/Klei/OxygenNotIncluded/mods/dev/Uplink'),

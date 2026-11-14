@@ -123,3 +123,23 @@ it('decodes an export file only once per instance', function (): void {
 
     expect($export->json('building.json'))->toEqual($first);
 });
+
+it('supports every mod of the export with the wildcard', function (): void {
+    $catalog = modCatalog(['*']);
+    $catalog->persist();
+
+    $stairs = Mod::query()->where('workshop_id', '2012810337')->sole();
+
+    expect($stairs->title)->toBe('Stairs')
+        ->and($catalog->modIdFor('Stairs'))->toBe($stairs->id)
+        ->and($catalog->isSkipped('Stairs'))->toBeFalse()
+        ->and($catalog->modIdFor('BlueprintsV2_Element_Note'))->toBe(Mod::query()->where('workshop_id', '3468585385')->value('id'))
+        ->and($catalog->modIdFor('Mining_MineralDrill'))->toBe(Mod::query()->where('workshop_id', '3557584850')->value('id'))
+        ->and($catalog->skippedReport())->toBe([]);
+});
+
+it('lists the workshop mods of the export', function (): void {
+    expect(modCatalog()->workshopIds())
+        ->toContain('2012810337', '3557584850', '3468585385')
+        ->each->toMatch('/^\d+$/');
+});

@@ -187,3 +187,13 @@ it('skips the octane reload when octane is not running', function (): void {
         ->expectsOutputToContain('Octane is not running')
         ->assertSuccessful();
 });
+
+it('imports the buildings of every mod with the wildcard, even without their mod folder', function (): void {
+    config(['game.supported_mods' => ['*']]);
+
+    $this->artisan('game:import', ($this->importOptions)())->assertSuccessful();
+
+    expect(Building::query()->where('building_id', 'Stairs')->value('mod_id'))
+        ->toBe(Mod::query()->where('workshop_id', '2012810337')->value('id'))
+        ->not->toBeNull();
+});
