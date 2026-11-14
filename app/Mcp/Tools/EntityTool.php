@@ -8,7 +8,6 @@ use App\Mcp\Tools\Concerns\ResolvesColony;
 use App\Models\Colony;
 use App\Models\Zone;
 use App\Services\GameText;
-use App\Services\Mcp\McpColony;
 use App\Services\Mcp\McpFormat;
 use App\Services\Mcp\McpHeader;
 use App\Services\Zones\ZoneGeometry;
@@ -32,15 +31,21 @@ final class EntityTool extends Tool
 
     public function handle(Request $request, GameText $text): Response
     {
-        $request->validate(['instanceId' => ['required', 'string']]);
-        $instanceId = (string) $request->get('instanceId');
+        $request->validate(['instanceId' => ['required']]);
+        $instanceId = $request->get('instanceId');
+        if (! is_string($instanceId) && ! is_int($instanceId)) {
+            return Response::error('instanceId must be the id printed after # (a string or a number).');
+        }
+        $instanceId = (string) $instanceId;
 
         $colony = $this->colony($request);
         if (! $colony instanceof Colony) {
-            return Response::error(McpColony::NOT_SYNCED);
+            return Response::error($this->colonyMissing($request));
         }
 
-        $zones = Zone::query()->active()->where('colony_guid', $colony->guid)->orderBy('id')->get();
+        $zones = Zone::query()->active()->where('colony_guid', $colony->guid)->orderBy('id')
+            ->get(['id', 'name', 'layout', 'fast_state', 'layout_at', 'slow_state_at', 'fast_state_at']);
+        $source = null;
         $found = null;
         $layoutEntry = null;
         $containing = [];
@@ -56,6 +61,7 @@ final class EntityTool extends Tool
             }
 
             $containing[] = sprintf('#%d %s', $zone->id, $zone->name);
+            $source ??= $zone;
             $found ??= $plant !== null ? ['plant', $plant] : ($building !== null ? ['building', $building] : null);
             $layoutEntry ??= $layout;
             $gridWidth = $gridWidth ?: (int) ($zone->layout['gridWidth'] ?? 0);
@@ -67,7 +73,7 @@ final class EntityTool extends Tool
 
         [$kind, $entity] = $found ?? ['building', []];
         $prefabId = (string) ($entity['id'] ?? $entity['prefabId'] ?? $layoutEntry['prefabId'] ?? '?');
-        $lines = [McpHeader::line($colony), '', sprintf('%s %s (%s) #%s', $kind, $text->name($prefabId), $prefabId, $instanceId)];
+        $lines = [McpHeader::line($colony, $source), '', sprintf('%s %s (%s) #%s', $kind, $text->name($prefabId), $prefabId, $instanceId)];
 
         $cell = $kind === 'plant' ? ($entity['cell'] ?? null) : ($layoutEntry['anchorCell'] ?? null);
         if (is_int($cell) && $gridWidth > 0) {

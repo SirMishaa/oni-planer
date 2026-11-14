@@ -7,7 +7,6 @@ namespace App\Mcp\Tools\Concerns;
 use App\Exceptions\McpLookupException;
 use App\Models\Colony;
 use App\Models\Zone;
-use App\Services\Mcp\McpColony;
 use App\Services\Mcp\McpZones;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
@@ -41,16 +40,20 @@ trait ResolvesZone
      */
     protected function rect(Request $request, bool $required = false): ?array
     {
-        $request->validate([
-            'rect' => [$required ? 'required' : 'nullable', 'array'],
-            'rect.x' => ['required_with:rect', 'integer'],
-            'rect.y' => ['required_with:rect', 'integer'],
-            'rect.width' => ['required_with:rect', 'integer', 'min:1'],
-            'rect.height' => ['required_with:rect', 'integer', 'min:1'],
-        ]);
+        $request->validate(['rect' => [$required ? 'required' : 'nullable', 'array']]);
         $rect = $request->get('rect');
+        if ($rect === null) {
+            return null;
+        }
 
-        return is_array($rect) ? ['x' => (int) $rect['x'], 'y' => (int) $rect['y'], 'width' => (int) $rect['width'], 'height' => (int) $rect['height']] : null;
+        $request->validate([
+            'rect.x' => ['required', 'integer'],
+            'rect.y' => ['required', 'integer'],
+            'rect.width' => ['required', 'integer', 'min:1'],
+            'rect.height' => ['required', 'integer', 'min:1'],
+        ]);
+
+        return ['x' => (int) $rect['x'], 'y' => (int) $rect['y'], 'width' => (int) $rect['width'], 'height' => (int) $rect['height']];
     }
 
     /**
@@ -60,7 +63,7 @@ trait ResolvesZone
     {
         $colony = $this->colony($request);
         if (! $colony instanceof Colony) {
-            return Response::error(McpColony::NOT_SYNCED);
+            return Response::error($this->colonyMissing($request));
         }
 
         $zone = $request->get('zone');

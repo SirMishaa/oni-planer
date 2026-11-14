@@ -40,3 +40,24 @@ it('flags a colony the game stopped sending', function (): void {
 it('says when no colony was synced', function (): void {
     OniServer::tool(ColonyStatusTool::class)->assertHasErrors(['No colony synced yet']);
 });
+
+it('counts an overdue command as expired without writing to the database', function (): void {
+    $colony = Colony::factory()->create();
+    $command = UplinkCommand::factory()->create(['colony_guid' => $colony->guid, 'status' => UplinkCommand::PENDING, 'expires_at' => now()->subMinute()]);
+
+    OniServer::tool(ColonyStatusTool::class)->assertOk()->assertSee('pending 0')->assertSee('expired 1');
+
+    expect($command->fresh()->getRawOriginal('status'))->toBe(UplinkCommand::PENDING);
+});
+
+it('reports food autonomy from the viability calculation', function (): void {
+    Colony::factory()->create(['state' => [
+        'schema' => 1,
+        'colony' => ['cycle' => 10],
+        'duplicants' => [['id' => 'd1', 'name' => 'Ada', 'model' => 'Minion', 'calories' => ['value' => 3_000_000, 'max' => 4_000_000]]],
+        'food' => [['id' => 'MushBar', 'worldId' => 0, 'units' => 5.0, 'calories' => 4_000_000.0]],
+        'plants' => [],
+    ]]);
+
+    OniServer::tool(ColonyStatusTool::class)->assertOk()->assertSee('consumption 1000 kcal/cycle')->assertSee('autonomy');
+});

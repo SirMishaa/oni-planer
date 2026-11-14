@@ -44,3 +44,10 @@ it('does not claim no problems for a building known only from the layout', funct
         ->assertSee('problems: unavailable')
         ->assertDontSee('problems: none');
 });
+
+it('dates the entity with the age of its zone data and accepts a numeric id', function (): void {
+    OniServer::tool(EntityTool::class, ['instanceId' => 7001])
+        ->assertOk()
+        ->assertSee('zone fast')
+        ->assertSee('(FarmStation) #7001');
+});

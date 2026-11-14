@@ -29,7 +29,6 @@ final class ZoneCapturesTool extends Tool
 
     public function handle(Request $request): Response|ResponseFactory
     {
-        $request->validate(['capture' => ['nullable', 'string']]);
 
         $resolved = $this->colonyAndZone($request);
         if ($resolved instanceof Response) {
@@ -38,7 +37,7 @@ final class ZoneCapturesTool extends Tool
         [$colony, $zone] = $resolved;
 
         $captures = $zone->captures()->get();
-        $wanted = $request->get('capture');
+        $wanted = is_scalar($request->get('capture')) ? (string) $request->get('capture') : null;
 
         if (! is_string($wanted) || $wanted === '') {
             return Response::text(implode("\n", [McpHeader::line($colony, $zone), '', ...$this->listing($zone, $captures->all())]));
@@ -90,7 +89,6 @@ final class ZoneCapturesTool extends Tool
             $lines[] = ' none yet: request_capture asks the game for one.';
         }
 
-        UplinkCommand::expireStale();
         $request = UplinkCommand::query()
             ->where('colony_guid', $zone->colony_guid)
             ->where('type', 'zone.capture')

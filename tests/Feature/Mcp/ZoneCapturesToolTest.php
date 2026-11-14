@@ -57,3 +57,12 @@ it('names a capture whose file is missing', function (): void {
     OniServer::tool(ZoneCapturesTool::class, ['zone' => 'Sodicane', 'capture' => (string) $capture->id])
         ->assertHasErrors(['#'.$capture->id, 'file missing']);
 });
+
+it('accepts a numeric capture id', function (): void {
+    $capture = ZoneCapture::factory()->create(['zone_id' => $this->zone->id, 'path' => 'zone-captures/z/2.webp']);
+    Storage::disk('public')->put('zone-captures/z/2.webp', 'numeric');
+
+    OniServer::tool(ZoneCapturesTool::class, ['zone' => 'Sodicane', 'capture' => $capture->id])
+        ->assertOk()
+        ->assertSee(base64_encode('numeric'));
+});

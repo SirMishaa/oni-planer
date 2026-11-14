@@ -24,4 +24,12 @@ trait ResolvesColony
 
         return McpColony::resolve(is_string($guid) ? $guid : null);
     }
+
+    /** Why no colony resolved: nothing synced yet, or no colony with the guid asked for. */
+    protected function colonyMissing(Request $request): string
+    {
+        $guid = $request->get('colony');
+
+        return is_string($guid) && $guid !== '' ? McpColony::unknown($guid) : McpColony::NOT_SYNCED;
+    }
 }

@@ -7,7 +7,6 @@ namespace App\Mcp\Tools;
 use App\Mcp\Tools\Concerns\ResolvesColony;
 use App\Models\Colony;
 use App\Models\Zone;
-use App\Services\Mcp\McpColony;
 use App\Services\Mcp\McpHeader;
 use App\Services\Zones\ZoneProblems;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -31,13 +30,14 @@ final class ListZonesTool extends Tool
         $colony = $this->colony($request);
 
         if (! $colony instanceof Colony) {
-            return Response::error(McpColony::NOT_SYNCED);
+            return Response::error($this->colonyMissing($request));
         }
 
         $zones = Zone::query()->active()->where('colony_guid', $colony->guid)
+            ->select(['id', 'name', 'world_id', 'cell_count', 'orphaned', 'layout', 'fast_state', 'layout_at', 'slow_state_at', 'fast_state_at'])
             ->withCount('captures')
             ->orderBy('name')->orderBy('id')
-            ->get(['id', 'name', 'world_id', 'cell_count', 'orphaned', 'layout', 'fast_state', 'layout_at', 'slow_state_at', 'fast_state_at']);
+            ->get();
 
         $lines = [McpHeader::line($colony), ''];
         foreach ($zones as $zone) {

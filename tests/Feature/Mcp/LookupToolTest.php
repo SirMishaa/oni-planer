@@ -114,6 +114,14 @@ it('returns the sprite only when asked', function (): void {
     OniServer::tool(LookupTool::class, ['query' => 'Oxygen', 'image' => true])->assertOk()->assertSee(base64_encode($webp));
 });
 
+it('gives the real total when matches exceed the cap', function (): void {
+    foreach (range(1, 24) as $index) {
+        Element::factory()->create(['element_id' => 'Oxyfake'.$index, 'state' => 'gas', 'name' => ['en' => 'Oxyfake '.$index]]);
+    }
+
+    OniServer::tool(LookupTool::class, ['query' => 'oxy'])->assertOk()->assertSee('25 matches, first 20');
+});
+
 it('says when nothing matches', function (): void {
     OniServer::tool(LookupTool::class, ['query' => 'unobtainable thing'])->assertHasErrors(['No game object matches']);
 });

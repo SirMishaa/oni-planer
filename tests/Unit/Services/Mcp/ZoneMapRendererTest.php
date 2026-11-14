@@ -74,3 +74,34 @@ it('says unavailable when the layout is missing', function (): void {
 
     expect(app(ZoneMapRenderer::class)->render($zone, $colony, null, ['terrain', 'occupancy']))->toContain('layout unavailable');
 });
+
+it('keeps pool glyphs the same in every rect of a zone', function (): void {
+    $colony = Colony::factory()->create();
+    $zone = Zone::factory()->sodicaneFarm()->create(['colony_guid' => $colony->guid]);
+    $layout = $zone->layout;
+    $cell = fn (int $x, int $y): int => $y * 606 + $x;
+    $layout['buildings'][] = ['instanceId' => '8001', 'prefabId' => 'AAAModdedThing', 'anchorCell' => $cell(101, 201), 'width' => 1, 'height' => 1, 'orientation' => 'Neutral'];
+    $layout['buildings'][] = ['instanceId' => '8002', 'prefabId' => 'ZZZModdedThing', 'anchorCell' => $cell(118, 201), 'width' => 1, 'height' => 1, 'orientation' => 'Neutral'];
+    $zone->update(['layout' => $layout]);
+    $renderer = app(ZoneMapRenderer::class);
+
+    $whole = $renderer->render($zone, $colony, null, ['occupancy']);
+    $right = $renderer->render($zone, $colony, ['x' => 117, 'y' => 200, 'width' => 4, 'height' => 4], ['occupancy']);
+
+    preg_match('/^ (\S) ZZZModdedThing/m', $whole, $wholeGlyph);
+    preg_match('/^ (\S) ZZZModdedThing/m', $right, $rightGlyph);
+    expect($rightGlyph[1])->toBe($wholeGlyph[1]);
+});
+
+it('gives a gas permeable membrane its own glyph next to mesh tiles', function (): void {
+    $colony = Colony::factory()->create();
+    $zone = Zone::factory()->sodicaneFarm()->create(['colony_guid' => $colony->guid]);
+    $layout = $zone->layout;
+    $layout['tiles'][0]['prefabId'] = 'MeshTile';
+    $layout['tiles'][1]['prefabId'] = 'GasPermeableMembrane';
+    $zone->update(['layout' => $layout]);
+
+    $map = app(ZoneMapRenderer::class)->render($zone, $colony, null, ['terrain']);
+
+    expect($map)->toContain('= MeshTile')->not->toContain('= GasPermeableMembrane')->toContain('GasPermeableMembrane');
+});

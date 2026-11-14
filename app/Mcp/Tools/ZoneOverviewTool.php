@@ -70,6 +70,19 @@ final class ZoneOverviewTool extends Tool
         return ['zone' => $this->zoneSchema($schema), 'colony' => $this->colonySchema($schema)];
     }
 
+    /** " drops CrabShell 60, ShellfishMeat 1.2", or "" when the game sent none. */
+    private static function drops(mixed $drops): string
+    {
+        $parts = [];
+        foreach (is_array($drops) ? $drops : [] as $drop) {
+            if (is_array($drop) && is_string($drop['id'] ?? null)) {
+                $parts[] = $drop['id'].' '.(is_numeric($drop['units'] ?? null) ? McpFormat::number((float) $drop['units']) : '?');
+            }
+        }
+
+        return $parts === [] ? '' : ' drops '.implode(', ', $parts);
+    }
+
     /** "12.5/100", or "unavailable". */
     private static function valueOfMax(mixed $amount): string
     {
@@ -192,7 +205,7 @@ final class ZoneOverviewTool extends Tool
         foreach ($critters as $critter) {
             [$x, $y] = ZoneGeometry::xy((int) $critter['cell'], $gridWidth);
             $lines[] = sprintf(
-                ' %s (%s) @ %s %s age %s cal %s (derived)',
+                ' %s (%s) @ %s %s age %s cal %s%s (derived)',
                 $text->name((string) ($critter['id'] ?? '?')),
                 $critter['id'] ?? '?',
                 McpFormat::world($x, $y),
@@ -203,6 +216,7 @@ final class ZoneOverviewTool extends Tool
                 },
                 self::valueOfMax($critter['age'] ?? null),
                 self::valueOfMax($critter['calories'] ?? null),
+                self::drops($critter['drops'] ?? null),
             );
         }
         if ($critters === []) {

@@ -7,7 +7,8 @@ namespace App\Services\Mcp;
 /**
  * The glyphs of zone_map. Common elements, tiles and buildings have a fixed glyph, the same
  * in every zone and every call, so the assistant learns them; anything else gets a glyph
- * from a pool, assigned per map and always named in its legend.
+ * from a pool, assigned per zone (the same in every rect of that zone, not across zones)
+ * and always named in its legend.
  */
 final class MapGlyphs
 {
@@ -15,7 +16,7 @@ final class MapGlyphs
     public const array TILES = [
         'Tile' => '#',
         'MeshTile' => '=',
-        'GasPermeableMembrane' => '=',
+        'GasPermeableMembrane' => '"',
     ];
 
     /** Glyphs for the other tile prefabs, in order of appearance. */

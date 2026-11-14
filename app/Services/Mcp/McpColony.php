@@ -15,6 +15,11 @@ final class McpColony
 {
     public const string NOT_SYNCED = 'No colony synced yet: start the game with the Uplink mod linked.';
 
+    public static function unknown(string $guid): string
+    {
+        return sprintf('No colony with guid "%s": call colony_status without colony for the current one.', $guid);
+    }
+
     public static function resolve(?string $guid): ?Colony
     {
         $query = Colony::query();

@@ -31,15 +31,16 @@ final class GameObjectSearch
 
     /**
      * Exact id or name matches only when there are any; otherwise prefix, then fragment matches.
+     * At most {@see self::MAX_RESULTS} matches; total counts them all.
      *
-     * @return list<array{kind: string, id: string, nameFr: string, nameEn: string}>
+     * @return array{matches: list<array{kind: string, id: string, nameFr: string, nameEn: string}>, total: int}
      */
     public function search(string $query, ?string $kind = null): array
     {
         $this->nameKeys = null;
         $needle = self::normalise($query);
         if ($needle === '') {
-            return [];
+            return ['matches' => [], 'total' => 0];
         }
 
         $matches = [];
@@ -62,7 +63,9 @@ final class GameObjectSearch
         usort($matches, fn (array $a, array $b): int => [$a[0], $a[1]['id']] <=> [$b[0], $b[1]['id']]);
         $exact = array_values(array_filter($matches, fn (array $match): bool => $match[0] === 0));
 
-        return array_column(array_slice($exact !== [] ? $exact : $matches, 0, self::MAX_RESULTS), 1);
+        $kept = $exact !== [] ? $exact : $matches;
+
+        return ['matches' => array_column(array_slice($kept, 0, self::MAX_RESULTS), 1), 'total' => count($kept)];
     }
 
     /** The name of a prefab in a locale from the game catalogs, or null. */

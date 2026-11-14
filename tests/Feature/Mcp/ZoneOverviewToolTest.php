@@ -48,3 +48,12 @@ it('names the candidates when the zone is ambiguous', function (): void {
 
     OniServer::tool(ZoneOverviewTool::class, ['zone' => 'aquafarm'])->assertHasErrors(['AquaFarm/PacuTwo']);
 });
+
+it('lists what each critter drops', function (): void {
+    $colony = Colony::factory()->create(['state' => ['critters' => [
+        ['id' => 'Crab', 'worldId' => 0, 'cell' => 201 * 606 + 105, 'tame' => true, 'drops' => [['id' => 'CrabShell', 'units' => 60]]],
+    ]]]);
+    Zone::factory()->sodicaneFarm()->create(['colony_guid' => $colony->guid, 'name' => 'Sodicane']);
+
+    OniServer::tool(ZoneOverviewTool::class, ['zone' => 'Sodicane'])->assertOk()->assertSee('drops CrabShell 60');
+});

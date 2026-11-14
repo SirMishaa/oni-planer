@@ -35,15 +35,15 @@ final class ZoneMapRenderer
         $this->assigned = [];
         $layout = $zone->layout;
         $gridWidth = (int) ($layout['gridWidth'] ?? 0);
-        $box = $layout['box'] ?? null;
+        $box = ZoneGeometry::box($layout['box'] ?? null);
         $title = sprintf('Zone #%d "%s" v%d', $zone->id, $zone->name, $zone->version);
 
-        if (! is_array($layout) || $gridWidth <= 0 || ! is_array($box)) {
+        if (! is_array($layout) || $gridWidth <= 0 || $box === null) {
             return $title.' · layout unavailable';
         }
 
-        $box = ['x' => (int) $box['x'], 'y' => (int) $box['y'], 'width' => (int) $box['width'], 'height' => (int) $box['height']];
-        $area = $rect === null ? $box : $this->clip($rect, $box);
+        $this->seedGlyphs($zone, $colony);
+        $area = $rect === null ? $box : ZoneGeometry::intersect($rect, $box);
 
         if ($area === null) {
             return sprintf('%s · the rect does not overlap the zone box %dx%d @ %s', $title, $box['width'], $box['height'], McpFormat::world($box['x'], $box['y']));
@@ -89,21 +89,6 @@ final class ZoneMapRenderer
         }
 
         return implode("\n", $lines);
-    }
-
-    /**
-     * @param  array{x: int, y: int, width: int, height: int}  $rect
-     * @param  array{x: int, y: int, width: int, height: int}  $box
-     * @return array{x: int, y: int, width: int, height: int}|null
-     */
-    private function clip(array $rect, array $box): ?array
-    {
-        $left = max((int) $rect['x'], $box['x']);
-        $bottom = max((int) $rect['y'], $box['y']);
-        $right = min((int) $rect['x'] + (int) $rect['width'], $box['x'] + $box['width']);
-        $top = min((int) $rect['y'] + (int) $rect['height'], $box['y'] + $box['height']);
-
-        return $right > $left && $top > $bottom ? ['x' => $left, 'y' => $bottom, 'width' => $right - $left, 'height' => $top - $bottom] : null;
     }
 
     /** @return list<string> a tens line (beyond 10 columns) and a units line, aligned with the grids */
@@ -285,6 +270,43 @@ final class ZoneMapRenderer
     private function buildingState(?array $state): string
     {
         return (($state['operational'] ?? null) === false ? ' NOT operational' : '').(($state['active'] ?? null) === true ? ' active' : '');
+    }
+
+    /**
+     * Assigns pool glyphs over the whole zone, in sorted order, before any rect is drawn, so
+     * a prefab keeps its glyph in every rect of the zone (not across zones).
+     */
+    private function seedGlyphs(Zone $zone, Colony $colony): void
+    {
+        $tiles = array_unique(array_filter(array_map(fn (mixed $tile): ?string => is_array($tile) && is_string($tile['prefabId'] ?? null) ? $tile['prefabId'] : null, (array) ($zone->layout['tiles'] ?? []))));
+        sort($tiles);
+        foreach ($tiles as $prefabId) {
+            $this->glyph('tile:'.$prefabId, MapGlyphs::TILES[$prefabId] ?? null, MapGlyphs::TILE_POOL);
+        }
+
+        $palette = array_values(array_filter((array) ($zone->slow_state['palette'] ?? []), is_string(...)));
+        $solids = $palette === [] ? [] : Element::query()->whereIn('element_id', $palette)->where('state', 'solid')->orderBy('element_id')->pluck('element_id')->all();
+        foreach ($solids as $elementId) {
+            if (! isset(MapGlyphs::SOLIDS[$elementId]) && ! isset(MapGlyphs::FLUIDS[$elementId])) {
+                $this->glyph('solid:'.$elementId, null, MapGlyphs::SOLID_POOL);
+            }
+        }
+
+        $buildings = array_unique(array_filter(array_map(fn (mixed $building): ?string => is_array($building) && is_string($building['prefabId'] ?? null) ? $building['prefabId'] : null, (array) ($zone->layout['buildings'] ?? []))));
+        usort($buildings, fn (string $a, string $b): int => [! isset(MapGlyphs::BUILDINGS[$a]), $a] <=> [! isset(MapGlyphs::BUILDINGS[$b]), $b]);
+        foreach ($buildings as $prefabId) {
+            $this->glyph('building:'.$prefabId, MapGlyphs::BUILDINGS[$prefabId] ?? null, MapGlyphs::BUILDING_POOL, array_values(MapGlyphs::BUILDINGS));
+        }
+
+        $entities = [
+            ...array_map(fn (mixed $plant): ?string => is_array($plant) && is_string($plant['id'] ?? null) ? $plant['id'] : null, (array) ($zone->fast_state['plants'] ?? [])),
+            ...array_map(fn (array $critter): ?string => is_string($critter['id'] ?? null) ? $critter['id'] : null, ZoneCritters::in($zone, $colony)),
+        ];
+        $entities = array_unique(array_filter($entities));
+        sort($entities);
+        foreach ($entities as $prefabId) {
+            $this->entityGlyph($prefabId);
+        }
     }
 
     /** Lowercase initial of the prefab, else the next free lowercase letter. */

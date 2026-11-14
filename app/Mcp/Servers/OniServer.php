@@ -37,8 +37,10 @@ use Laravel\Mcp\Server\Attributes\Version;
     Units: kg, °C, seconds; a cycle is 600 s.
 
     zone_map prints two aligned grids: T (terrain: elements and tiles) and O (occupancy:
-    buildings over their whole footprint, critters and plants in lowercase). Its legend lists
-    only the glyphs present, with one line per building instance.
+    buildings over their whole footprint, critters and plants in lowercase). Common tiles,
+    elements and buildings have fixed glyphs; the others get a glyph per zone, stable across
+    rects of that zone but not between zones. The legend lists only the glyphs present, with
+    one line per building prefab and its instances.
 
     "derived" marks a value the planner computed rather than read from the game (critters are
     matched to a zone by their cell). "unavailable" means the game did not send it.

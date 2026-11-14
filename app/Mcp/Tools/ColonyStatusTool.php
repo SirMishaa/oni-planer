@@ -6,12 +6,13 @@ namespace App\Mcp\Tools;
 
 use App\Mcp\Tools\Concerns\ResolvesColony;
 use App\Models\Colony;
+use App\Models\Food;
 use App\Models\UplinkCommand;
 use App\Models\UplinkSession;
 use App\Models\Zone;
 use App\Services\GameText;
-use App\Services\Mcp\McpColony;
 use App\Services\Mcp\McpHeader;
+use App\Services\Viability\FoodViability;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
 use Laravel\Mcp\Request;
@@ -33,7 +34,7 @@ final class ColonyStatusTool extends Tool
         $colony = $this->colony($request);
 
         if (! $colony instanceof Colony) {
-            return Response::error(McpColony::NOT_SYNCED);
+            return Response::error($this->colonyMissing($request));
         }
 
         $lines = [McpHeader::line($colony), ''];
@@ -44,9 +45,9 @@ final class ColonyStatusTool extends Tool
             ? sprintf('session started %s · loaded at cycle %d', McpHeader::ago($session->started_at), $session->cycle)
             : 'session unavailable';
 
-        UplinkCommand::expireStale();
         $commands = UplinkCommand::query()->where('colony_guid', $colony->guid)
-            ->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+            ->get(['status', 'expires_at'])
+            ->countBy(fn (UplinkCommand $command): string => (string) $command->status);
         $lines[] = 'commands '.implode(', ', array_map(
             fn (string $status): string => sprintf('%s %d', $status, (int) ($commands[$status] ?? 0)),
             [UplinkCommand::PENDING, UplinkCommand::DONE, UplinkCommand::REFUSED, UplinkCommand::EXPIRED],
@@ -69,6 +70,7 @@ final class ColonyStatusTool extends Tool
         $lines[] = 'critters: '.$this->bySpecies($state['critters'] ?? null, $text);
         $lines[] = 'plants: '.$this->bySpecies($state['plants'] ?? null, $text);
         $lines[] = 'food: '.$this->food($state['food'] ?? null, $text);
+        $lines[] = 'food autonomy: '.$this->autonomy(is_array($state) ? $state : []);
 
         return Response::text(implode("\n", $lines));
     }
@@ -79,6 +81,30 @@ final class ColonyStatusTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return ['colony' => $this->colonySchema($schema)];
+    }
+
+    /**
+     * The colony viability page's reading: verdict, consumption, stock and autonomy with
+     * automatic harvests counted.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    private function autonomy(array $state): string
+    {
+        if (! is_array($state['duplicants'] ?? null) || ! is_array($state['food'] ?? null)) {
+            return 'unavailable';
+        }
+
+        $result = FoodViability::compute($state, array_map(floatval(...), Food::query()->pluck('calories_per_unit', 'food_id')->all()));
+        $autonomy = $result['scenarios']['automatic']['autonomy'];
+
+        return sprintf(
+            '%s · consumption %d kcal/cycle · stock %d kcal · autonomy %s (automatic harvests counted)',
+            $result['verdict'],
+            round($result['consumptionKcalPerCycle']),
+            round($result['stockKcal']),
+            $autonomy === null ? 'beyond the horizon' : $autonomy.' cycles',
+        );
     }
 
     /** "Pokeshell (Crab) 2, …" or "unavailable". */

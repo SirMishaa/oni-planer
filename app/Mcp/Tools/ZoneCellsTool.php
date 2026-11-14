@@ -20,7 +20,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[Name('zone_cells')]
-#[Description('Per-cell detail of a small rect of a zone (at most 100 cells): world position, element, mass, temperature, tile, building, and whether the cell is in the zone, on its border ring or outside its box.')]
+#[Description('Per-cell detail of a small rect of a zone (at most 100 cells): world position, element, mass, temperature, tile, building, and whether the cell is in the zone or on its border ring; the rect is clipped to the zone box.')]
 #[IsReadOnly]
 final class ZoneCellsTool extends Tool
 {
@@ -43,9 +43,24 @@ final class ZoneCellsTool extends Tool
 
         $layout = $zone->layout;
         $gridWidth = (int) ($layout['gridWidth'] ?? 0);
-        $box = $layout['box'] ?? null;
-        if (! is_array($layout) || $gridWidth <= 0 || ! is_array($box)) {
+        $box = ZoneGeometry::box($layout['box'] ?? null);
+        if (! is_array($layout) || $gridWidth <= 0 || $box === null) {
             return Response::text(McpHeader::line($colony, $zone)."\n\nlayout unavailable");
+        }
+
+        $requested = $rect;
+        $rect = ZoneGeometry::intersect($requested, $box);
+        if ($rect === null) {
+            return Response::text(sprintf(
+                "%s\n\nThe rect %dx%d @ %s does not overlap the zone box %dx%d @ %s (world coordinates).",
+                McpHeader::line($colony, $zone),
+                $requested['width'],
+                $requested['height'],
+                McpFormat::world($requested['x'], $requested['y']),
+                $box['width'],
+                $box['height'],
+                McpFormat::world($box['x'], $box['y']),
+            ));
         }
 
         $tiles = [];
@@ -63,7 +78,6 @@ final class ZoneCellsTool extends Tool
             }
         }
         $inZone = array_flip(ZoneCritters::cells($zone));
-        $inBox = fn (int $x, int $y): bool => $x >= $box['x'] && $x < $box['x'] + $box['width'] && $y >= $box['y'] && $y < $box['y'] + $box['height'];
 
         $lines = [McpHeader::line($colony, $zone), ''];
         for ($y = $rect['y'] + $rect['height'] - 1; $y >= $rect['y']; $y--) {
@@ -77,8 +91,7 @@ final class ZoneCellsTool extends Tool
                     isset($buildings[$cell]) ? implode(' ', $buildings[$cell]) : null,
                     match (true) {
                         isset($inZone[$cell]) => 'zone',
-                        $inBox($x, $y) => 'border',
-                        default => 'outside',
+                        default => 'border',
                     },
                 ]));
             }

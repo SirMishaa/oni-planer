@@ -49,7 +49,7 @@ final class LookupTool extends Tool
         ]);
 
         $kind = $request->get('kind');
-        $matches = $search->search((string) $request->get('query'), is_string($kind) ? $kind : null);
+        ['matches' => $matches, 'total' => $total] = $search->search((string) $request->get('query'), is_string($kind) ? $kind : null);
 
         if ($matches === []) {
             return Response::error(sprintf('No game object matches "%s"%s.', $request->get('query'), is_string($kind) ? ' among '.$kind.'s' : ''));
@@ -61,7 +61,7 @@ final class LookupTool extends Tool
             return Response::text(implode("\n", [
                 $exact
                     ? sprintf('%d exact matches of different kinds: pass kind to pick one.', count($matches))
-                    : sprintf('%d matches%s (narrow with an exact id or kind):', count($matches), count($matches) === GameObjectSearch::MAX_RESULTS ? ', first '.GameObjectSearch::MAX_RESULTS : ''),
+                    : sprintf('%d matches%s (narrow with an exact id or kind):', $total, $total > count($matches) ? ', first '.count($matches) : ''),
                 ...array_map(fn (array $match): string => sprintf(' %s %s · %s / %s', $match['kind'], $match['id'], $match['nameFr'], $match['nameEn']), $matches),
             ]));
         }

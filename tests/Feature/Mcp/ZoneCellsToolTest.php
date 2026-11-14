@@ -28,3 +28,17 @@ it('refuses a rect over 100 cells', function (): void {
 it('requires a rect', function (): void {
     OniServer::tool(ZoneCellsTool::class, ['zone' => 'Sodicane'])->assertHasErrors();
 });
+
+it('says when the rect does not overlap the zone box', function (): void {
+    OniServer::tool(ZoneCellsTool::class, ['zone' => 'Sodicane', 'rect' => ['x' => 0, 'y' => 0, 'width' => 3, 'height' => 3]])
+        ->assertOk()
+        ->assertSee('does not overlap')
+        ->assertDontSee('outside');
+});
+
+it('clips the rect to the zone box', function (): void {
+    OniServer::tool(ZoneCellsTool::class, ['zone' => 'Sodicane', 'rect' => ['x' => 118, 'y' => 203, 'width' => 5, 'height' => 1]])
+        ->assertOk()
+        ->assertSee('w(120,203)')
+        ->assertDontSee('w(121,203)');
+});
