@@ -44,12 +44,27 @@ Ouvre une zone (<Route name="zones.index" />) pour voir sa carte, dessinée comm
 - La carte s'ajuste à ton écran (100 %). Les boutons **−** et **+** changent le zoom de 10 points, un clic sur le pourcentage revient à 100 %, et Ctrl (ou ⌘) avec la molette zoome sous le curseur. Glisse la carte pour la déplacer.
 - Clique une plante ou un bâtiment pour le sélectionner : il se soulève, cerné de blanc, et ses détails s'affichent à côté.
 - Les cases que le jeu n'a pas lues restent hachurées.
+- **Comparer avec le jeu** affiche la dernière capture du jeu à côté de la carte (en dessous si la zone est plus large que haute), à la même échelle et au même zoom (voir [Captures du jeu](#captures-du-jeu)).
 
 ### Entités et bord
 
 L'onglet **Entités** liste les plantes et les bâtiments de la zone, ceux qui ont un problème en premier. Les bâtiments posés sur les murs, le sol ou le plafond de la zone comptent avec elle : une station de pêche ou un distributeur collé au bassin apparaît dans les entités et peut signaler un problème.
 
 Les portes, échelles, poteaux de pompier et escaliers sur ce bord sont rangés à part, dans le groupe **Bord** : ils restent sur la carte, mais ne comptent ni dans les bâtiments ni dans les problèmes.
+
+### Captures du jeu
+
+L'onglet **Captures** montre la zone telle que le jeu la dessine, pour la comparer à la carte : passe d'un onglet à l'autre, l'image tombe exactement sur la carte.
+
+- **Capturer** demande une capture au jeu. Le bouton est grisé tant que le jeu n'est pas relié ; une pause ne le bloque pas.
+- Le jeu en prend aussi une tout seul après un chantier : quand le plan de la zone a changé puis n'a plus bougé pendant deux minutes de jeu, au plus une toutes les dix minutes par zone.
+- Les 15 dernières captures de chaque zone sont gardées. La plus récente s'affiche en grand, les autres en miniatures ; chacune indique quand elle a été prise, au cycle près, et si elle montre le **plan actuel** de la zone ou un plan plus ancien.
+
+<Accordion title="Quand une capture ne vient pas">
+
+Le jeu ne dessine que l'astéroïde affiché : une zone d'un autre astéroïde est refusée, avec la raison sous le bouton. Une capture attend aussi que l'outil Zone soit fermé, pour ne pas le photographier. L'écran se fige le temps d'une ou deux images pendant la capture.
+
+</Accordion>
 
 ### Calque température
 

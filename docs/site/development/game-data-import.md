@@ -10,7 +10,7 @@ order: 3
 Les données de référence viennent du mod **OniExtract**, qui exporte en JSON les données du jeu (bâtiments, entités, éléments, recettes, images) depuis le menu pause. Trois commandes les font entrer dans l'application, dans cet ordre :
 
 ```bash
-php artisan game:sync-export     # copie l'export et les mods pris en charge dans game-data/
+php artisan game:sync-export     # copie l'export et les fichiers des mods dans game-data/
 php artisan game:import          # reconstruit les tables du jeu et les catalogues lang/game
 php artisan game:import-assets   # convertit les images exportées en WebP
 ```
@@ -24,6 +24,7 @@ php artisan game:import-assets   # convertit les images exportées en WebP
 - Les readers de `app/Services/GameImport/OniExport/` lisent l'export en enregistrements ; les importers les persistent.
 - Tout l'import tourne dans une seule transaction. Les catalogues de traduction de `lang/game/` sont générés en parallèle et ne remplacent les anciens qu'après le commit.
 - Si Octane tourne, la commande recharge ses workers pour qu'ils servent les nouveaux catalogues. Si le rechargement échoue, elle affiche la commande `php artisan octane:reload` à lancer à la main.
+- Le contenu de tous les mods présents dans l'export est importé, pour que la carte des zones (et plus tard un menu de construction) connaisse chaque bâtiment de ta partie. `game.supported_mods` peut limiter l'import à une liste de mods ; la valeur `*` les prend tous. `game:sync-export` copie les traductions de chaque mod de l'export ; un mod sans dossier copié est importé sans ses traductions.
 - `game:sync-export` copie l'export avec `cp`, puis vérifie qu'il a autant de fichiers que la source. Sous WSL, les itérateurs de dossier de PHP sautent des fichiers sur le disque Windows : sans cette vérification, la copie restait incomplète sans erreur. Si la commande signale une copie incomplète, relance-la.
 
 <Accordion title="Référence des commandes">
@@ -44,7 +45,10 @@ La carte des zones dessine les éléments avec les données de rendu du jeu. Si 
 
 - `render/terrain/*.png` vers `terrain/*.webp`, une texture par solide ;
 - `render/mask_atlas.png` vers `terrain/mask_atlas.webp`, l'atlas des masques de bord ;
-- `database/planner_render.json` vers `render.json`.
+- `database/planner_render.json` vers `render.json` ;
+- `stair_caps/{bâtiment}/{masque}.png` vers `stair_caps/{bâtiment}/{masque}.webp`, et `stair_caps.json` vers `stair_caps/rects.json` : les variantes des escaliers du mod Stairs, qui raccordent chaque marche à ses voisines comme dans le jeu.
+
+L'import lit aussi, pour chaque bâtiment, s'il rend sa case pleine (`simCellOccupier` : dalles, portes…), rangé dans `sim_cell_occupier`. La carte s'en sert pour raccorder les escaliers.
 
 La commande échoue (code de sortie non nul) si un solide n'a pas de texture de terrain, si l'image de sa texture n'a pas été publiée, ou si `render/mask_atlas.png` ou `database/planner_render.json` manque dans l'export.
 

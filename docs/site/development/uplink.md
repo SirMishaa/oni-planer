@@ -1,7 +1,7 @@
 ---
 title: Uplink
 description: Comment le mod Uplink parle au planner via Reverb, comment chaque message est traité en file et les règles d'ordre et de commande.
-sources: ["app/Listeners/RouteUplinkMessage.php", "app/Listeners/Uplink/**", "app/Enums/UplinkMessageType.php", "app/Jobs/Uplink/**", "app/Events/Uplink/**", "app/Services/Uplink/**", "app/Actions/Uplink/**", "app/Events/ZoneUpdated.php", "app/Models/UplinkCommand.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Console/Commands/UplinkResyncZoneCommand.php", "app/Services/Zones/ZonePresenter.php"]
+sources: ["app/Listeners/RouteUplinkMessage.php", "app/Listeners/Uplink/**", "app/Enums/UplinkMessageType.php", "app/Jobs/Uplink/**", "app/Events/Uplink/**", "app/Services/Uplink/**", "app/Actions/Uplink/**", "app/Events/ZoneUpdated.php", "app/Models/UplinkCommand.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Console/Commands/UplinkResyncZoneCommand.php", "app/Console/Commands/UplinkCaptureCommand.php", "app/Http/Controllers/ZoneCaptureController.php", "app/Services/Zones/ZonePresenter.php"]
 order: 4
 ---
 
@@ -14,7 +14,7 @@ Uplink est un mod du jeu (dépôt séparé) qui se connecte à Reverb comme clie
 | Canal | Événements | File |
 | --- | --- | --- |
 | `uplink` | `client-colony.state` | `uplink-state` |
-| `uplink-data` | `client-session.start`, `client-zone.list`, `client-zone.layout`, `client-command.ack` (fiables) | `uplink-reliable` |
+| `uplink-data` | `client-session.start`, `client-zone.list`, `client-zone.layout`, `client-command.ack`, `client-zone.capture` (fiables) | `uplink-reliable` |
 | `uplink-data` | `client-zone.slow`, `client-zone.fast` (dernier état) | `uplink-state` |
 
 Chaque événement a un job dans `app/Jobs/Uplink` (par exemple `ReceiveZoneLayout`), listé par l'enum `UplinkMessageType`. Ajouter un type de message, c'est un cas de l'enum et un job.
@@ -67,9 +67,25 @@ Le site envoie `uplink.command` sur `uplink-data` : `{schema, id, colonyId, type
 
 <Model name="UplinkCommand" />
 
-La seule commande pour l'instant est `zone.resync` : le mod renvoie le layout et les deux états d'une zone. Le site l'envoie seul pour une zone toujours sans layout 30 s après sa création (puis attend 10 min si le mod n'a pas répondu), ou à la main :
+Deux commandes existent :
+
+- `zone.resync` : le mod renvoie le layout et les deux états d'une zone. Le site l'envoie seul pour une zone toujours sans layout 30 s après sa création (puis attend 10 min si le mod n'a pas répondu), ou à la main :
 
 <Artisan command="uplink:resync-zone" />
+
+- `zone.capture` : le mod dessine la zone (voir [Captures de zone](#captures-de-zone)). Le bouton **Capturer** de la page de la zone l'envoie (<Route name="zones.captures.store" />), ou à la main, en attendant l'image :
+
+<Artisan command="uplink:capture" />
+
+## Captures de zone
+
+Le mod dessine la zone comme le timelapse du jeu : il fige l'écran, rend le cadre de la zone (celui du layout) à 32 pixels par case, puis remet la vue en place. Il écrit le PNG dans son propre dossier, `captures/{zoneId}/`, puis envoie `client-zone.capture` avec le nom du fichier, la taille, l'heure de jeu, la signature du layout montré et le déclencheur (`manual` avec l'identifiant de la commande, ou `auto`). Aucune image ne passe par Reverb : le site lit le fichier par le dossier du mod qu'il connaît (`game.uplink_mod_path`), donc les deux doivent tourner sur la même machine.
+
+`StoreZoneCapture` le convertit en WebP qualité 90 sur le disque public, enregistre une ligne `zone_captures`, supprime la copie du mod, garde les 15 dernières de la zone et diffuse `zone.updated` (genre `capture`). Le layout porte la même signature : une capture montre le plan actuel quand les deux sont égales.
+
+- **Automatique** : après un chantier, quand la signature du layout a changé puis n'a plus bougé pendant 120 s de jeu, au plus une capture automatique par zone toutes les 10 min, une seule par passe d'échantillonnage. L'état est gardé dans la sauvegarde.
+- **Refus et échecs** : une zone inconnue, vide ou sur un autre astéroïde est refusée dans la réponse à la commande. Un échec pendant le rendu, ou un fichier absent ou illisible côté site, arrive sur `client-zone.capture` et passe la commande en `refused` avec la raison.
+- **Idempotence** : le message est toujours acquitté. Un renvoi d'une capture déjà enregistrée ne change rien.
 
 <Accordion title="Versions des messages">
 

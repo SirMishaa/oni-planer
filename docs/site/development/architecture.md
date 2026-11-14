@@ -30,6 +30,8 @@ flowchart TB
   GD -->|game:import| DB[(Base de données)]
   GD -->|game:import-assets| AS[(public/assets/game)]
   UL -->|client events WebSocket| RV[Processus Reverb]
+  UL -->|captures PNG| MF[(Dossier du mod)]
+  MF -->|copiées en WebP par les workers| ST[(storage/app/public)]
   RV -->|file Redis| WK[Workers de queue]
   WK --> DB
   DB --> OC[Pages Octane / FrankenPHP]
@@ -37,7 +39,7 @@ flowchart TB
   OC --> BR
   class OE,UL game
   class RV,WK,OC,BR site
-  class EX,GD,DB,AS store
+  class EX,GD,DB,AS,MF,ST store
 ```
 
 ## Processus
