@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\Building;
+use App\Models\CritterMorphOutput;
 use App\Models\Element;
 use App\Models\Food;
 use App\Services\GameImport\OniExport\AssetConverter;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\File;
 final class GameImportAssetsCommand extends Command
 {
     private const int CONNECTION_MASKS = 16;
+
+    private const int MIN_IMAGE_BYTES = 200;
 
     public function handle(AssetConverter $converter): int
     {
@@ -80,12 +83,23 @@ final class GameImportAssetsCommand extends Command
             $foods += (int) $this->convert($converter, $source, "{$assets}/foods/{$foodId}.webp");
         }
 
+        [$eggs, $eggsWithoutImage] = $this->importEggs($converter, $export, $assets);
+        [$critterImages, $emptyCritterImages] = $this->repairEmptyCritterImages($converter, $export, $assets);
+
         [$terrains, $solidsWithoutTexture, $solidsWithoutAsset, $missingRenderFiles] = $this->importTerrain($converter, $export, $assets);
 
-        $this->info("Converted {$buildings} building renders, {$connections} connection sprites, {$elements} missing element icons, {$foods} food icons, {$terrains} terrain textures.");
+        $this->info("Converted {$buildings} building renders, {$connections} connection sprites, {$elements} missing element icons, {$foods} food icons, {$eggs} egg images, {$critterImages} repaired critter images, {$terrains} terrain textures.");
 
         if ($foodsWithoutIcon !== []) {
             $this->warn('Missing food icons: '.implode(', ', $foodsWithoutIcon));
+        }
+
+        if ($eggsWithoutImage !== []) {
+            $this->warn('Missing egg images: '.implode(', ', $eggsWithoutImage));
+        }
+
+        if ($emptyCritterImages !== []) {
+            $this->warn('Empty critter images without a source: '.implode(', ', $emptyCritterImages));
         }
 
         if ($solidsWithoutTexture !== []) {
@@ -100,9 +114,69 @@ final class GameImportAssetsCommand extends Command
             $this->error('Missing render files in the export: '.implode(', ', $missingRenderFiles));
         }
 
-        return $solidsWithoutAsset === [] && $missingRenderFiles === []
+        return $solidsWithoutAsset === [] && $missingRenderFiles === [] && $eggsWithoutImage === [] && $emptyCritterImages === []
             ? self::SUCCESS
             : self::FAILURE;
+    }
+
+    /**
+     * Converts the egg icons: one per distinct egg prefab of the critter outputs.
+     *
+     * @return array{int, list<string>} converted images, prefabs without an image in the export
+     */
+    private function importEggs(AssetConverter $converter, string $export, string $assets): array
+    {
+        $converted = 0;
+        $missing = [];
+
+        $prefabs = CritterMorphOutput::query()->where('output_type', 'egg')->distinct()->orderBy('element_id')->pluck('element_id');
+
+        foreach ($prefabs as $prefabId) {
+            $prefabId = (string) $prefabId;
+            $source = "{$export}/ui_image/{$prefabId}.png";
+
+            if (! File::isFile($source)) {
+                $missing[] = $prefabId;
+
+                continue;
+            }
+
+            $converted += (int) $this->convert($converter, $source, "{$assets}/eggs/{$prefabId}.webp");
+        }
+
+        return [$converted, $missing];
+    }
+
+    /**
+     * Re-creates critter images that are empty placeholders (under {@see self::MIN_IMAGE_BYTES})
+     * from the export's UI image of the same critter.
+     *
+     * @return array{int, list<string>} repaired images, empty images with no source in the export
+     */
+    private function repairEmptyCritterImages(AssetConverter $converter, string $export, string $assets): array
+    {
+        $repaired = 0;
+        $unrepaired = [];
+
+        foreach (File::glob("{$assets}/critters/*.webp") ?: [] as $image) {
+            if (File::size($image) >= self::MIN_IMAGE_BYTES) {
+                continue;
+            }
+
+            $critterId = pathinfo($image, PATHINFO_FILENAME);
+            $source = "{$export}/ui_image/{$critterId}.png";
+
+            if (! File::isFile($source)) {
+                $unrepaired[] = $critterId;
+
+                continue;
+            }
+
+            $converter->pngToWebp($source, $image);
+            $repaired++;
+        }
+
+        return [$repaired, $unrepaired];
     }
 
     /**

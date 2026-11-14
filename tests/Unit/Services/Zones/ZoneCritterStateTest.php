@@ -38,6 +38,8 @@ it('parses critters, eggs and regions from the zone states', function (): void {
     $assets = sys_get_temp_dir().'/critter-assets-'.uniqid();
     File::ensureDirectoryExists("{$assets}/critters");
     File::put("{$assets}/critters/Pacu.webp", '');
+    File::ensureDirectoryExists("{$assets}/eggs");
+    File::put("{$assets}/eggs/PacuEgg.webp", '');
     config(['game.assets_path' => $assets]);
 
     $zone = zoneWithCritterStates([
@@ -81,7 +83,7 @@ it('parses critters, eggs and regions from the zone states', function (): void {
     $egg = ZoneCritterState::eggs($zone)[0];
     expect($egg->instanceId)->toBe('5678')
         ->and($egg->prefabId)->toBe('PacuEgg')
-        ->and($egg->sprite)->toEndWith('critters/Pacu.webp')
+        ->and($egg->sprite)->toEndWith('eggs/PacuEgg.webp')
         ->and($egg->incubation)->toBe(38.0)
         ->and($egg->viability)->toBe(100.0)
         ->and($egg->spawns)->toBe('PacuBaby')

@@ -10,7 +10,6 @@ use App\Data\ZoneEggData;
 use App\Models\Zone;
 use App\Services\Critters\CritterStatusText;
 use App\Services\GameText;
-use Illuminate\Support\Str;
 
 /**
  * The critters, eggs and crowding regions the mod sent for a zone: `critters` and `crowding`
@@ -123,7 +122,7 @@ final class ZoneCritterState
             instanceId: $instanceId,
             prefabId: $prefabId,
             name: app(GameText::class)->name($prefabId),
-            sprite: self::sprite('critters', Str::beforeLast($prefabId, 'Egg')),
+            sprite: self::sprite('eggs', $prefabId),
             cell: $row['cell'],
             incubation: is_numeric($row['incubation'] ?? null) ? (float) $row['incubation'] : null,
             viability: is_numeric($row['viability'] ?? null) ? (float) $row['viability'] : null,

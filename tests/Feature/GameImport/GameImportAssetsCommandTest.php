@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\Building;
+use App\Models\CritterMorphOutput;
 use App\Models\Element;
 use App\Models\Food;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -80,7 +81,7 @@ it('skips up to date files unless forced', function (): void {
 it('does not touch critter, plant and geyser sprites', function (): void {
     foreach (['critters', 'plants', 'geysers'] as $folder) {
         File::ensureDirectoryExists($this->assets.'/'.$folder);
-        File::put($this->assets.'/'.$folder.'/Keep.webp', 'untouched');
+        File::put($this->assets.'/'.$folder.'/Keep.webp', str_repeat('untouched', 30));
     }
     writePng($this->export.'/ui_image/Keep.png');
     Building::factory()->create(['building_id' => 'Keep']);
@@ -88,7 +89,7 @@ it('does not touch critter, plant and geyser sprites', function (): void {
     $this->artisan('game:import-assets', ['--force' => true])->assertSuccessful();
 
     foreach (['critters', 'plants', 'geysers'] as $folder) {
-        expect(File::get($this->assets.'/'.$folder.'/Keep.webp'))->toBe('untouched');
+        expect(File::get($this->assets.'/'.$folder.'/Keep.webp'))->toBe(str_repeat('untouched', 30));
     }
 });
 
@@ -170,4 +171,50 @@ it('converts the stair cap variants and publishes their placement', function ():
     expect(getimagesize($this->assets.'/stair_caps/Stairs/17.webp')['mime'])->toBe('image/webp')
         ->and($this->assets.'/stair_caps/Stairs/2.webp')->toBeFile()
         ->and(json_decode(File::get($this->assets.'/stair_caps/rects.json'), true))->toBe(['Stairs' => ['17' => ['x' => -0.5, 'y' => 0, 'w' => 1.5, 'h' => 1]]]);
+});
+
+it('converts one image per egg prefab from the critter outputs', function (): void {
+    CritterMorphOutput::factory()->create(['element_id' => 'PacuEgg', 'output_type' => 'egg']);
+    CritterMorphOutput::factory()->create(['element_id' => 'PacuEgg', 'output_type' => 'egg']);
+    CritterMorphOutput::factory()->create(['element_id' => 'Fish', 'output_type' => 'resource']);
+    writePng($this->export.'/ui_image/PacuEgg.png');
+    writePng($this->export.'/ui_image/Fish.png');
+
+    $this->artisan('game:import-assets')->assertSuccessful();
+
+    expect(getimagesize($this->assets.'/eggs/PacuEgg.webp')['mime'])->toBe('image/webp')
+        ->and($this->assets.'/eggs/Fish.webp')->not->toBeFile();
+});
+
+it('fails when an egg prefab has no image', function (): void {
+    CritterMorphOutput::factory()->create(['element_id' => 'PacuEgg', 'output_type' => 'egg']);
+    CritterMorphOutput::factory()->create(['element_id' => 'HatchEgg', 'output_type' => 'egg']);
+    writePng($this->export.'/ui_image/PacuEgg.png');
+
+    $this->artisan('game:import-assets')
+        ->expectsOutputToContain('Missing egg images: HatchEgg')
+        ->assertFailed();
+
+    expect($this->assets.'/eggs/PacuEgg.webp')->toBeFile();
+});
+
+it('replaces an empty critter image from the ui export', function (): void {
+    File::ensureDirectoryExists($this->assets.'/critters');
+    File::put($this->assets.'/critters/Butterfly.webp', 'tiny');
+    File::put($this->assets.'/critters/Pacu.webp', str_repeat('x', 500));
+    writePng($this->export.'/ui_image/Butterfly.png', 64, 64);
+
+    $this->artisan('game:import-assets')->assertSuccessful();
+
+    expect(getimagesize($this->assets.'/critters/Butterfly.webp')['mime'])->toBe('image/webp')
+        ->and(File::get($this->assets.'/critters/Pacu.webp'))->toBe(str_repeat('x', 500));
+});
+
+it('fails when an empty critter image has no source in the ui export', function (): void {
+    File::ensureDirectoryExists($this->assets.'/critters');
+    File::put($this->assets.'/critters/Butterfly.webp', 'tiny');
+
+    $this->artisan('game:import-assets')
+        ->expectsOutputToContain('Empty critter images without a source: Butterfly')
+        ->assertFailed();
 });
