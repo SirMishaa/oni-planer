@@ -91,7 +91,8 @@ They come from `Effects` (each with `is_bad`) and from the `KSelectable` status 
 - Per critter: `instanceId` (KPrefabID.InstanceID), prefab id, cell, precise position, `facing`, `navType`, remaining path (cells + nav types), `defaultSpeed`, `isMoving`, tame/wild, baby or adult, age (value/max), calories (value/max), fertility (value/max) and breeding chances, happiness (value + state), stomach entries and next poop, hungry, status item ids and effect ids (with `is_bad`), and the id of the crowding region it belongs to.
 - Per egg: `instanceId`, prefab id, cell, incubation %, viability, wild/tame, `spawnedCreature`, location (`floor` / `incubator` / `storage`, with the building's id when stored), and region id.
 - **Crowding regions** (per zone message, one entry per cavity or pond touching the zone): a region id (cavity handle or pond index, stable for the session), kind (`cavity` / `pond`), the cells it covers inside the zone, and the public values: `CellCount`, `OccupiedCellCount`, `HatchedEggOccupiedCellCount`, `CritterCounts`, and for each critter type present the three booleans and the Overcrowded modifier. These values are what the consistency check compares.
-- New fields mean a schema version bump, per the orchestration spec (additive fields).
+- The new sections are additive optional fields, so no schema bump. The orchestration spec versions per message type, and additive optional fields do not bump it.
+- A pond has no stable handle (ponds are rebuilt every second). Its region id is `pond:` + the smallest instance id among its fishes and eggs. A cavity's region id is `cavity:` + its handle.
 
 ### Rules: classes in `app/Services/GameRules/`
 
