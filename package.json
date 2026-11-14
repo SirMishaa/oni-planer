@@ -4,6 +4,7 @@
     "scripts": {
         "build": "vp build",
         "dev": "vp dev",
+        "preview": "vp preview",
         "lint": "NODE_OPTIONS='--experimental-strip-types' vp fmt resources/",
         "test:lint": "NODE_OPTIONS='--experimental-strip-types' vp fmt --check resources/",
         "typecheck": "vue-tsc --noEmit"
@@ -17,7 +18,7 @@
         "concurrently": "^10.0.7",
         "laravel-vite-plugin": "^3.2.1",
         "npm-check-updates": "^23.1.1",
-        "playwright": "^1.65.0",
+        "playwright": "^1.65.1",
         "tailwindcss": "^4.3.5",
         "typescript": "^7",
         "vite": "npm:@voidzero-dev/vite-plus-core@1.6.0",

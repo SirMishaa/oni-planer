@@ -30,4 +30,7 @@ return [
 
     /* Local dev directory (Windows side) the Uplink mod is deployed to. */
     'uplink_mod_path' => env('UPLINK_MOD_PATH', '/mnt/c/Users/misha/Documents/Klei/OxygenNotIncluded/mods/dev/Uplink'),
+
+    /* Determine whether it use the Vite preview server or not */
+    'preview_server' => env('ONI_PREVIEW_SERVER', false),
 ];
