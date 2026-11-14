@@ -34,6 +34,7 @@ const props = defineProps<{
     captures: ZoneShowData['captures'];
     captureRequest: ZoneShowData['captureRequest'];
     linkSeenAt: ZoneShowData['linkSeenAt'];
+    population: ZoneShowData['population'];
     echo: ZoneShowData['echo'];
 }>();
 
@@ -56,6 +57,7 @@ const { live, ageLabel, gone } = useZoneLive({
         'buildingStatesKnown',
         'captures',
         'captureRequest',
+        'population',
     ],
     updatedAt: () =>
         latestTime([
@@ -373,6 +375,7 @@ function showOnMap(instanceId: string): void {
                         :cell-count="zone.cellCount"
                         :plants-known="plantsKnown"
                         :building-states-known="buildingStatesKnown"
+                        :population="population"
                         :crest="crest"
                         :selected="selected"
                         :selected-building="selectedBuilding"

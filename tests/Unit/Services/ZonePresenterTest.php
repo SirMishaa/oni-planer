@@ -8,6 +8,8 @@ use App\Data\ZoneTileData;
 use App\Enums\BuildLocationRule;
 use App\Enums\SubstanceTexture;
 use App\Models\Building;
+use App\Models\Critter;
+use App\Models\CritterMorph;
 use App\Models\Element;
 use App\Models\PrefabName;
 use App\Models\Zone;
@@ -570,4 +572,85 @@ it('gives when the zone colony was last seen by the link, paused game included',
     App\Models\Colony::factory()->create(['guid' => 'another-colony', 'last_seen_at' => '2026-11-14 19:00:00']);
 
     expect(app(ZonePresenter::class)->present($zone)->linkSeenAt)->toStartWith('2026-11-14T18:00:00');
+});
+
+/**
+ * A pond of 104 cells with 11 Pacu of 8 cells each (88 occupied) and 24 cells of eggs at hatching, as the mod sends it.
+ *
+ * @param  array<string, mixed>  $fast
+ */
+function populatedPond(array $fast = []): Zone
+{
+    CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => 'Pacu', 'overcrowding_threshold' => 8]);
+
+    return Zone::factory()->sodicaneFarm()->create(['fast_state' => [
+        'schema' => 1,
+        'critters' => array_map(fn (int $index): array => [
+            'instanceId' => (string) (1200 + $index), 'prefabId' => 'Pacu', 'cell' => 100 + $index, 'x' => 1.0, 'y' => 1.0,
+            'aquatic' => true, 'regionId' => 'pond:1201',
+        ], range(1, 11)),
+        'crowding' => [[
+            'id' => 'pond:1201', 'kind' => 'pond', 'cellCount' => 104, 'occupied' => 88, 'eggOccupied' => 24,
+            'counts' => ['Pacu' => 11],
+            'states' => ['Pacu' => ['overcrowded' => false, 'cramped' => true, 'confined' => false, 'modifier' => 0]],
+        ]],
+        ...$fast,
+    ]]);
+}
+
+it('presents one population block per crowding region with the derived removal', function (): void {
+    $population = app(ZonePresenter::class)->present(populatedPond())->population;
+
+    expect($population)->toHaveCount(1)
+        ->and($population[0])->toMatchObject([
+            'regionId' => 'pond:1201', 'kind' => 'pond', 'cellCount' => 104, 'occupied' => 88, 'eggOccupied' => 24,
+            'overcrowded' => false, 'cramped' => true, 'confined' => false,
+        ])
+        ->and($population[0]->types)->toBe([['prefabId' => 'Pacu', 'name' => 'Pacu', 'count' => 11, 'personalSpace' => 8]])
+        ->and($population[0]->perType)->toHaveCount(1)
+        ->and($population[0]->perType[0]->toArray())->toMatchArray(['prefabId' => 'Pacu', 'toRemove' => 1, 'derived' => true]);
+});
+
+it('takes the egg space of the population from the game, not from the lagging egg list', function (): void {
+    $zone = populatedPond();
+    $zone->update(['slow_state' => [...$zone->slow_state, 'eggs' => []]]);
+
+    $population = app(ZonePresenter::class)->present($zone->fresh())->population;
+
+    expect($population[0]->eggOccupied)->toBe(24)
+        ->and($population[0]->perType[0]->toRemove)->toBe(1);
+});
+
+it('keeps the raw game states in the population block, confined included', function (): void {
+    $zone = populatedPond();
+    $fast = $zone->fast_state;
+    $fast['crowding'][0]['states']['Pacu']['confined'] = true;
+    $zone->update(['fast_state' => $fast]);
+
+    $block = app(ZonePresenter::class)->present($zone->fresh())->population[0];
+
+    expect($block->confined)->toBeTrue()
+        ->and($block->cramped)->toBeTrue();
+});
+
+it('presents unknown population when the fast state has no critters', function (): void {
+    $shown = app(ZonePresenter::class)->present(Zone::factory()->sodicaneFarm()->create());
+
+    expect($shown->population)->toBeNull();
+});
+
+it('presents an empty population when the game sent no region', function (): void {
+    $zone = Zone::factory()->sodicaneFarm()->create(['fast_state' => ['schema' => 1, 'critters' => [], 'crowding' => []]]);
+
+    expect(app(ZonePresenter::class)->present($zone)->population)->toBe([]);
+});
+
+it('leaves the removal empty when a species of the population is unknown to the game data', function (): void {
+    $zone = populatedPond();
+    CritterMorph::query()->where('morph_id', 'Pacu')->delete();
+
+    $block = app(ZonePresenter::class)->present($zone->fresh())->population[0];
+
+    expect($block->perType)->toBe([])
+        ->and($block->types[0]['personalSpace'])->toBeNull();
 });

@@ -142,6 +142,28 @@ return [
         'size' => 'Taille',
         'state_unknown' => 'état inconnu',
     ],
+    'population' => [
+        'title' => 'Population',
+        'unknown' => 'Pas encore reçu',
+        'none' => 'Aucun critter',
+        'kind' => [
+            'pond' => 'Bassin (jeu)',
+            'cavity' => 'Pièce (jeu)',
+        ],
+        'critters' => 'Critters :count',
+        'eggs' => 'œufs +:count',
+        'limit' => 'limite :count',
+        'each' => ':count cases chacun',
+        'remove' => 'retirer :count',
+        'derived' => 'dérivé',
+        'derived_hint' => 'Calculé par le planner à partir des œufs, pas par le jeu.',
+        'stopped' => 'Ponte arrêtée',
+        'state' => [
+            'confined' => 'Confiné',
+            'overcrowded' => 'Surpeuplé',
+            'cramped' => "À l'étroit",
+        ],
+    ],
     'entities' => [
         'filters' => [
             'all' => 'Tout',

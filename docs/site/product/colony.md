@@ -1,7 +1,7 @@
 ---
 title: Ma colonie
 description: Relier le jeu au planner avec le mod Uplink, puis suivre la viabilité alimentaire de ta colonie, la carte de tes zones et voir ce que le jeu envoie.
-sources: ["app/Http/Controllers/ColonyController.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Services/Viability/**", "resources/js/pages/Colony/**", "lang/fr/colony.php", "app/Http/Controllers/ZoneController.php", "app/Services/Zones/ZonePresenter.php", "resources/js/components/zones/**", "lang/fr/zones.php"]
+sources: ["app/Http/Controllers/ColonyController.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Services/Viability/**", "resources/js/pages/Colony/**", "lang/fr/colony.php", "app/Http/Controllers/ZoneController.php", "app/Services/Zones/ZonePresenter.php", "resources/js/components/zones/**", "lang/fr/zones.php", "app/Services/Zones/ZonePopulation.php"]
 order: 6
 ---
 
@@ -45,6 +45,12 @@ Ouvre une zone (<Route name="zones.index" />) pour voir sa carte, dessinée comm
 - Clique une plante ou un bâtiment pour le sélectionner : il se soulève, cerné de blanc, et ses détails s'affichent à côté.
 - Les cases que le jeu n'a pas lues restent hachurées.
 - **Comparer avec le jeu** affiche la dernière capture du jeu à côté de la carte (en dessous si la zone est plus large que haute), à la même échelle et au même zoom (voir [Captures du jeu](#captures-du-jeu)).
+
+### Population
+
+Le bloc **Population**, à côté de la carte, est toujours visible quand le jeu a envoyé les critters. Il montre une pièce ou un bassin par ligne, avec sa taille en cases et une jauge : les critters, les œufs à l'éclosion et la limite. Dessous, chaque espèce affiche son nombre, l'espace qu'elle prend et, s'il faut en retirer, `−N`.
+
+Quand une pièce est **À l'étroit** ou **Confinée**, le verdict de la zone annonce **Ponte arrêtée**. Le bloc affiche « Aucun critter » si la zone n'en a pas, et « Pas encore reçu » tant que le jeu n'a rien envoyé. Les états et le calcul du retrait sont détaillés dans [Surpeuplement](./rules/overcrowding.md).
 
 ### Entités et bord
 

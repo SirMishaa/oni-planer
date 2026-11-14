@@ -8,7 +8,10 @@ import type {
     ZoneBuildingData,
     ZoneCountsData,
     ZoneEntityData,
+    ZonePopulationData,
 } from '@/types/App/Data/data.d';
+import { breedingStopped } from './zonePopulation';
+import ZonePopulation from './ZonePopulation.vue';
 import { zoneVerdict } from './zoneVerdict';
 
 // region Props
@@ -20,6 +23,8 @@ const props = defineProps<{
     cellCount: number;
     plantsKnown: boolean;
     buildingStatesKnown: boolean;
+    /** Crowding of each cavity and pond; null until the game sent the critters. */
+    population: ZonePopulationData[] | null;
     /** Sprite of the zone's most common plant, the panel's illustration. */
     crest: string | null;
     selected: ZoneEntityData | null;
@@ -60,6 +65,8 @@ const verdictText = computed(() =>
                   : `zones.panel.verdict.${verdict.value}`,
           ),
 );
+
+const stopped = computed(() => breedingStopped(props.population));
 
 const plantStates = computed(() => {
     const plants = props.entities.filter((entity) => entity.kind === 'plant');
@@ -133,6 +140,11 @@ function select(entity: ZoneEntityData): void {
             <div class="min-w-0">
                 <p class="zone-hero__verdict">{{ verdictText }}</p>
                 <p v-if="summary" class="zone-panel__muted">{{ summary }}</p>
+                <p v-if="stopped" class="zone-hero__stopped">
+                    <ZoneIcon name="alert" :size="13" />{{
+                        t('zones.population.stopped')
+                    }}
+                </p>
                 <p v-if="!known" class="zone-panel__muted">
                     {{ t('zones.panel.summary.unknown') }}
                 </p>
@@ -203,6 +215,10 @@ function select(entity: ZoneEntityData): void {
                 </li>
             </ul>
         </section>
+        <!-- endregion -->
+
+        <!-- region Population -->
+        <ZonePopulation :population="population" />
         <!-- endregion -->
 
         <!-- region Contents -->
@@ -438,6 +454,16 @@ function select(entity: ZoneEntityData): void {
     font-size: 18px;
     font-weight: 700;
     line-height: 1.2;
+}
+
+.zone-hero__stopped {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 2px;
+    color: var(--warn);
+    font-size: 13px;
+    font-weight: 600;
 }
 
 .zone-hero__partial {

@@ -17,7 +17,7 @@ Rien à lancer à la main : Claude Code démarre le serveur avec <Artisan comman
 |---|---|
 | `colony_status` | État de la synchro (dernier message, session, âge des données de chaque zone, commandes Uplink) et résumé de la colonie : duplicants, nourriture, créatures et plantes par espèce. |
 | `list_zones` | Une ligne par zone active : taille, origine, fraîcheur, nombre de problèmes, captures. |
-| `zone_overview` | Une zone en un écran : bâtiments et états, plantes, créatures, éléments (masse, plage de température), problèmes. |
+| `zone_overview` | Une zone en un écran : bâtiments et états, plantes, créatures, population par pièce ou bassin (verdict du jeu et critters à retirer), éléments (masse, plage de température), problèmes. |
 | `zone_map` | Où sont les choses : la carte texte de la zone (voir plus bas). |
 | `zone_cells` | Le détail case par case d'un petit rectangle (100 cases au plus). |
 | `entity` | Tout ce que le jeu envoie sur une plante, un bâtiment, une créature ou un œuf, par son identifiant d'instance. |

@@ -73,7 +73,7 @@ final class ZonePresenter
     /** @var array<int, array{stair: bool, facingLeft: bool, solid: bool}> what stands on each cell of the layout's building layer, for one present() call */
     private array $occupants = [];
 
-    public function __construct(private readonly GameText $text) {}
+    public function __construct(private readonly GameText $text, private readonly ZonePopulation $population) {}
 
     public function present(Zone $zone): ZoneShowData
     {
@@ -154,6 +154,7 @@ final class ZonePresenter
             captures: $this->captures($zone),
             captureRequest: self::captureRequest($zone),
             linkSeenAt: Colony::query()->where('guid', $zone->colony_guid)->first(['last_seen_at'])?->last_seen_at?->toIso8601String(),
+            population: $this->population->forZone($zone),
         );
     }
 

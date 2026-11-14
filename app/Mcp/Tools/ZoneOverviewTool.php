@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
+use App\Data\GameRules\CritterOverOccupancyData;
 use App\Data\ZoneCritterData;
 use App\Mcp\Tools\Concerns\ResolvesZone;
 use App\Models\Colony;
@@ -17,6 +18,7 @@ use App\Services\Zones\ZoneCritters;
 use App\Services\Zones\ZoneCritterState;
 use App\Services\Zones\ZoneGeometry;
 use App\Services\Zones\ZonePlants;
+use App\Services\Zones\ZonePopulation;
 use App\Services\Zones\ZoneProblems;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
@@ -34,7 +36,7 @@ final class ZoneOverviewTool extends Tool
 {
     use ResolvesZone;
 
-    public function handle(Request $request, GameText $text): Response
+    public function handle(Request $request, GameText $text, ZonePopulation $population): Response
     {
         $resolved = $this->colonyAndZone($request);
         if ($resolved instanceof Response) {
@@ -53,6 +55,8 @@ final class ZoneOverviewTool extends Tool
             ...$this->plants($zone, $text),
             '',
             ...$this->critters($zone, $colony, $text),
+            '',
+            ...$this->population($zone, $population),
             '',
             ...$this->elements($zone, $text),
             '',
@@ -269,6 +273,42 @@ final class ZoneOverviewTool extends Tool
             if ($eggs === []) {
                 $lines[] = ' none';
             }
+        }
+
+        return $lines;
+    }
+
+    /**
+     * The game's crowding verdict of each cavity and pond, with the planner's removal count.
+     *
+     * @return list<string>
+     */
+    private function population(Zone $zone, ZonePopulation $population): array
+    {
+        $regions = $population->forZone($zone);
+        if ($regions === null) {
+            return ['Population: unavailable'];
+        }
+
+        $lines = ['Population:'];
+        foreach ($regions as $region) {
+            $states = array_keys(array_filter(['overcrowded' => $region->overcrowded, 'cramped' => $region->cramped, 'confined' => $region->confined]));
+            $names = array_column($region->types, 'name', 'prefabId');
+            $lines[] = sprintf(
+                ' %s %d/%d · +%d eggs · %s%s',
+                $region->regionId,
+                $region->occupied,
+                $region->cellCount,
+                $region->eggOccupied,
+                $states === [] ? 'ok' : implode(', ', $states),
+                implode('', array_map(
+                    fn (CritterOverOccupancyData $type): string => sprintf(' · remove %d %s%s', $type->toRemove, $names[$type->prefabId] ?? $type->prefabId, $type->derived ? ' (derived)' : ''),
+                    array_filter($region->perType, fn (CritterOverOccupancyData $type): bool => $type->toRemove > 0),
+                )),
+            );
+        }
+        if ($regions === []) {
+            $lines[] = ' none';
         }
 
         return $lines;

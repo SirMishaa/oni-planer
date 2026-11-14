@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Mcp\Servers\OniServer;
 use App\Mcp\Tools\ZoneOverviewTool;
 use App\Models\Colony;
+use App\Models\Critter;
+use App\Models\CritterMorph;
 use App\Models\Zone;
 
 it('summarises a zone in one screen', function (): void {
@@ -76,4 +78,33 @@ it('reads critters and eggs from the zone section without a derived label', func
         ->assertSee('(PacuEgg) #5678 @ w(106,201) incubation 38 % viability 100 %')
         ->assertDontSee('(derived)')
         ->assertDontSee('Critters: unavailable');
+});
+
+it('prints the population per region', function (): void {
+    CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => 'Pacu', 'overcrowding_threshold' => 8]);
+    $colony = Colony::factory()->create();
+    Zone::factory()->sodicaneFarm()->create(['colony_guid' => $colony->guid, 'name' => 'Pond', 'fast_state' => [
+        'schema' => 1,
+        'critters' => array_map(fn (int $index): array => [
+            'instanceId' => (string) (1200 + $index), 'prefabId' => 'Pacu', 'cell' => 100 + $index, 'x' => 1.0, 'y' => 1.0,
+            'aquatic' => true, 'regionId' => 'pond:1201',
+        ], range(1, 11)),
+        'crowding' => [[
+            'id' => 'pond:1201', 'kind' => 'pond', 'cellCount' => 104, 'occupied' => 88, 'eggOccupied' => 24,
+            'counts' => ['Pacu' => 11],
+            'states' => ['Pacu' => ['overcrowded' => false, 'cramped' => true, 'confined' => false, 'modifier' => 0]],
+        ]],
+    ]]);
+
+    OniServer::tool(ZoneOverviewTool::class, ['zone' => 'Pond'])
+        ->assertOk()
+        ->assertSee('Population:')
+        ->assertSee('pond:1201 88/104 · +24 eggs · cramped · remove 1 Pacu (derived)');
+});
+
+it('prints no population when the game sent no crowding regions', function (): void {
+    $colony = Colony::factory()->create();
+    Zone::factory()->sodicaneFarm()->create(['colony_guid' => $colony->guid, 'name' => 'Sodicane']);
+
+    OniServer::tool(ZoneOverviewTool::class, ['zone' => 'Sodicane'])->assertOk()->assertSee('Population: unavailable');
 });

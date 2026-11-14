@@ -1,4 +1,5 @@
 import { SubstanceTexture } from '../Enums/data.d';
+import { CritterOverOccupancyData } from './GameRules/data.d';
 export type BuildingData = {
     building_id: string;
     name: string;
@@ -364,6 +365,23 @@ export type ZonePlantData = {
     wilting: boolean;
     grown: boolean;
 };
+export type ZonePopulationData = {
+    regionId: string;
+    kind: string;
+    cellCount: number;
+    occupied: number;
+    eggOccupied: number;
+    overcrowded: boolean;
+    cramped: boolean;
+    confined: boolean;
+    perType: CritterOverOccupancyData[];
+    types: {
+        prefabId: string;
+        name: string;
+        count: number;
+        personalSpace: number | null;
+    }[];
+};
 export type ZoneShowData = {
     zone: ZoneData;
     map: ZoneMapData | null;
@@ -376,6 +394,7 @@ export type ZoneShowData = {
     captures: ZoneCaptureData[];
     captureRequest: ZoneCaptureRequestData | null;
     linkSeenAt: string | null;
+    population: ZonePopulationData[] | null;
     echo: { channel: 'uplink'; event: '.zone.updated' };
 };
 export type ZoneSpriteRectData = {

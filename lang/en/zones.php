@@ -142,6 +142,28 @@ return [
         'size' => 'Size',
         'state_unknown' => 'state unknown',
     ],
+    'population' => [
+        'title' => 'Population',
+        'unknown' => 'Not received yet',
+        'none' => 'No critter',
+        'kind' => [
+            'pond' => 'Pond (game)',
+            'cavity' => 'Room (game)',
+        ],
+        'critters' => 'Critters :count',
+        'eggs' => 'eggs +:count',
+        'limit' => 'limit :count',
+        'each' => ':count cells each',
+        'remove' => 'remove :count',
+        'derived' => 'derived',
+        'derived_hint' => 'Computed by the planner from the eggs, not by the game.',
+        'stopped' => 'Breeding stopped',
+        'state' => [
+            'confined' => 'Confined',
+            'overcrowded' => 'Overcrowded',
+            'cramped' => 'Cramped',
+        ],
+    ],
     'entities' => [
         'filters' => [
             'all' => 'All',
