@@ -32,6 +32,7 @@ This project also lays down two foundations that later work builds on:
 - Delivery rate (kg brought per cycle). v1 shows stock and autonomy. Deriving a rate from successive messages comes later, and only if measurement shows it is needed.
 - Presence-based acceleration (faster messages for the zone being viewed). Send always, measure first.
 - Server-side kill or diet verdicts. They come later, as more rule classes.
+- Hypothesis planning ("and if I add 4 Hatches") and crowding computed on a zone that is not exactly a game room. The `Overcrowding` class supports both, but exposing them is a later project, alongside zones linked to game rooms (user decision, 2026-11-14).
 
 ## Anti-goals
 
