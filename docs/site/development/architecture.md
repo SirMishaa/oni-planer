@@ -44,7 +44,7 @@ flowchart TB
 
 | Processus | Lancé par | Rôle |
 | --- | --- | --- |
-| Octane (FrankenPHP) | `composer devWithOctane` | Sert les pages Inertia. OPcache et le JIT tracing sont activés dans le `Caddyfile`. |
+| Octane (FrankenPHP) | `composer devWithOctane` | Sert les pages Inertia. OPcache et le JIT tracing sont activés dans le `Caddyfile`. Les images du jeu (`/assets/game/`) y sont servies sans cache durable : le navigateur les revalide à chaque chargement, donc un nouvel import s'affiche tout de suite. |
 | Reverb | `php artisan reverb:start` | Serveur WebSocket. Le jeu s'y connecte ; son listener met chaque message du jeu en file, sans le traiter. |
 | Workers de queue | `composer run queue-workers` | Un worker pour `uplink-reliable` (messages fiables, dans l'ordre), quatre pour `uplink-state,default` (états, broadcasts vers le navigateur). |
 | Vite | `bun run dev` | Serveur de dev frontend avec HMR. |

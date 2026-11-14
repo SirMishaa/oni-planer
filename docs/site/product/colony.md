@@ -41,6 +41,8 @@ Ouvre une zone (<Route name="zones.index" />) pour voir sa carte, dessinée comm
 
 - Le sélecteur de **calque** choisit ce que la carte montre : croissance, matériaux, température ou problèmes.
 - **Grille** affiche ou masque le quadrillage des cases.
+- La carte s'ajuste à ton écran (100 %). Les boutons **−** et **+** changent le zoom de 10 points, un clic sur le pourcentage revient à 100 %, et Ctrl (ou ⌘) avec la molette zoome sous le curseur. Glisse la carte pour la déplacer.
+- Clique une plante ou un bâtiment pour le sélectionner : il se soulève, cerné de blanc, et ses détails s'affichent à côté.
 - Les cases que le jeu n'a pas lues restent hachurées.
 
 ### Entités et bord

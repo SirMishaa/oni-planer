@@ -24,6 +24,7 @@ php artisan game:import-assets   # convertit les images exportées en WebP
 - Les readers de `app/Services/GameImport/OniExport/` lisent l'export en enregistrements ; les importers les persistent.
 - Tout l'import tourne dans une seule transaction. Les catalogues de traduction de `lang/game/` sont générés en parallèle et ne remplacent les anciens qu'après le commit.
 - Si Octane tourne, la commande recharge ses workers pour qu'ils servent les nouveaux catalogues. Si le rechargement échoue, elle affiche la commande `php artisan octane:reload` à lancer à la main.
+- `game:sync-export` copie l'export avec `cp`, puis vérifie qu'il a autant de fichiers que la source. Sous WSL, les itérateurs de dossier de PHP sautent des fichiers sur le disque Windows : sans cette vérification, la copie restait incomplète sans erreur. Si la commande signale une copie incomplète, relance-la.
 
 <Accordion title="Référence des commandes">
 <Artisan command="game:sync-export" />
