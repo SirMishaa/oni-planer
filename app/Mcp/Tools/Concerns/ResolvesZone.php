@@ -24,6 +24,35 @@ trait ResolvesZone
         return $schema->string()->description('Zone id (from list_zones) or name; a unique fragment of the name works.')->required();
     }
 
+    protected function rectSchema(JsonSchema $schema, string $description): Type
+    {
+        return $schema->object([
+            'x' => $schema->integer()->required(),
+            'y' => $schema->integer()->required(),
+            'width' => $schema->integer()->min(1)->required(),
+            'height' => $schema->integer()->min(1)->required(),
+        ])->description($description);
+    }
+
+    /**
+     * The validated `rect` argument (world coordinates, bottom-left origin), or null when absent.
+     *
+     * @return array{x: int, y: int, width: int, height: int}|null
+     */
+    protected function rect(Request $request, bool $required = false): ?array
+    {
+        $request->validate([
+            'rect' => [$required ? 'required' : 'nullable', 'array'],
+            'rect.x' => ['required_with:rect', 'integer'],
+            'rect.y' => ['required_with:rect', 'integer'],
+            'rect.width' => ['required_with:rect', 'integer', 'min:1'],
+            'rect.height' => ['required_with:rect', 'integer', 'min:1'],
+        ]);
+        $rect = $request->get('rect');
+
+        return is_array($rect) ? ['x' => (int) $rect['x'], 'y' => (int) $rect['y'], 'width' => (int) $rect['width'], 'height' => (int) $rect['height']] : null;
+    }
+
     /**
      * @return array{0: Colony, 1: Zone}|Response the colony and zone, or the error to return
      */
