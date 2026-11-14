@@ -15,6 +15,8 @@ use App\Data\ZoneShowData;
 use App\Data\ZoneTerrainData;
 use App\Data\ZoneTerrainElementData;
 use App\Data\ZoneTileData;
+use App\Enums\BuildLocationRule;
+use App\Models\Building;
 use App\Models\Element;
 use App\Models\Zone;
 use App\Services\GameText;
@@ -118,6 +120,9 @@ final class ZonePresenter
     /** @var array<string, string>|null element id by lower-cased name in any locale, for one present() call */
     private ?array $elementsByName = null;
 
+    /** @var array<string, array{height: int, onCeiling: bool}> game definition of each layout prefab, for one present() call */
+    private array $buildingDefinitions = [];
+
     public function __construct(private readonly GameText $text) {}
 
     public function present(Zone $zone): ZoneShowData
@@ -134,6 +139,7 @@ final class ZonePresenter
         $fastPlants = self::listOrNull($zone->fast_state['plants'] ?? null);
         [$fastBuildings, $borderBuildings] = self::splitPassages(self::listOrNull($zone->fast_state['buildings'] ?? null));
         $layoutBuildings = self::listOrNull($layout['buildings'] ?? null);
+        $this->buildingDefinitions = self::buildingDefinitions(array_values(array_filter($layoutBuildings ?? [], is_array(...))));
         $anchorsByInstance = [];
         foreach ($layoutBuildings ?? [] as $building) {
             $instanceId = self::stringOrNull($building['instanceId'] ?? null);
@@ -345,6 +351,30 @@ final class ZonePresenter
             array_values(array_filter($buildings, fn (array $building): bool => ! $isPassage($building))),
             array_values(array_filter($buildings, $isPassage)),
         ];
+    }
+
+    /**
+     * Height and ceiling rule of the layout prefabs the game data knows; modded prefabs are absent.
+     *
+     * @param  list<array<mixed>>  $layoutBuildings
+     * @return array<string, array{height: int, onCeiling: bool}>
+     */
+    private static function buildingDefinitions(array $layoutBuildings): array
+    {
+        $prefabIds = array_values(array_unique(array_map(fn (array $building): string => self::string($building['prefabId'] ?? null), $layoutBuildings)));
+
+        if ($prefabIds === []) {
+            return [];
+        }
+
+        return Building::query()
+            ->whereIn('building_id', $prefabIds)
+            ->get(['building_id', 'height', 'build_location_rule'])
+            ->mapWithKeys(fn (Building $building): array => [$building->building_id => [
+                'height' => (int) $building->height,
+                'onCeiling' => $building->build_location_rule === BuildLocationRule::OnCeiling->name,
+            ]])
+            ->all();
     }
 
     /** Root-relative URL of a game sprite, or null when it was not imported; checked once per prefab. */
@@ -595,17 +625,23 @@ final class ZonePresenter
     {
         $prefabId = self::string($building['prefabId'] ?? null);
         $anchor = self::int($building['anchorCell'] ?? null, 0);
+        $height = self::int($building['height'] ?? null, 1);
+        $orientation = self::stringOrNull($building['orientation'] ?? null);
+        $definition = $this->buildingDefinitions[$prefabId] ?? null;
+        $upright = in_array($orientation, [null, 'Neutral', 'FlipH'], true);
 
         return new ZoneBuildingData(
             instanceId: self::stringOrNull($building['instanceId'] ?? null),
             x: $anchor % $gridWidth,
             y: intdiv($anchor, $gridWidth),
             width: self::int($building['width'] ?? null, 1),
-            height: self::int($building['height'] ?? null, 1),
-            orientation: self::stringOrNull($building['orientation'] ?? null),
+            height: $height,
+            orientation: $orientation,
             prefabId: $prefabId,
             name: $this->text->name($prefabId),
             sprite: $this->sprite('buildings', $prefabId),
+            hangsFromCeiling: $definition['onCeiling'] ?? false,
+            spriteHeight: $upright ? max($height, $definition['height'] ?? 0) : $height,
         );
     }
 

@@ -24,5 +24,13 @@ final class ZoneBuildingData extends Data
         public string $name,
         /** Root-relative URL of the building render, null when not imported. */
         public ?string $sprite,
+        /** Whether the game builds it on a ceiling (BuildLocationRule::OnCeiling): its render hangs from the top of the footprint. */
+        public bool $hangsFromCeiling = false,
+        /**
+         * Rows the render covers, from the footprint's bottom row up: the game definition's height
+         * when it is taller than the occupied cells (the hanging pot occupies one cell, its rope
+         * reaches the ceiling one cell higher), the footprint's height otherwise.
+         */
+        public int $spriteHeight = 1,
     ) {}
 }

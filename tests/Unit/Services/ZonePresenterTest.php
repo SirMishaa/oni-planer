@@ -5,7 +5,9 @@ declare(strict_types=1);
 use App\Data\ZoneEntityData;
 use App\Data\ZoneTerrainElementData;
 use App\Data\ZoneTileData;
+use App\Enums\BuildLocationRule;
 use App\Enums\SubstanceTexture;
+use App\Models\Building;
 use App\Models\Element;
 use App\Models\PrefabName;
 use App\Models\Zone;
@@ -71,7 +73,25 @@ it('places the buildings of the layout by their footprint', function (): void {
 
     expect([$building?->x, $building?->y, $building?->width, $building?->height])->toBe([114, 201, 2, 2])
         ->and($building?->name)->toBe('Farm Station')
-        ->and($building?->orientation)->toBe('Neutral');
+        ->and($building?->orientation)->toBe('Neutral')
+        ->and($building?->hangsFromCeiling)->toBeFalse();
+});
+
+it('marks the buildings the game hangs from the ceiling', function (): void {
+    Building::factory()->create(['building_id' => 'FarmStation', 'build_location_rule' => BuildLocationRule::OnCeiling->name]);
+
+    expect(presentZone()->map?->buildings[0]->hangsFromCeiling)->toBeTrue();
+});
+
+it('draws a building as tall as its game definition when it occupies fewer cells', function (): void {
+    expect(presentZone()->map?->buildings[0]->spriteHeight)->toBe(2);
+
+    Building::factory()->create(['building_id' => 'FarmStation', 'width' => 2, 'height' => 3]);
+
+    $building = presentZone()->map?->buildings[0];
+
+    expect($building?->height)->toBe(2)
+        ->and($building?->spriteHeight)->toBe(3);
 });
 
 it('colours the terrain of the box with the element ui colours', function (): void {

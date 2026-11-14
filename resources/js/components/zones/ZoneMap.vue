@@ -507,6 +507,8 @@ type MapEntity = {
     y: number;
     width: number;
     height: number;
+    /** Built on a ceiling: the render hangs from the top of the footprint. */
+    hanging: boolean;
     growth: number | null;
     secondsUntilHarvest: number | null;
     state: ZoneEntityData['state'] | null;
@@ -541,7 +543,8 @@ const mapEntities = computed<MapEntity[]>(() => {
                 x: building.x,
                 y: building.y,
                 width: building.width,
-                height: building.height,
+                height: building.spriteHeight,
+                hanging: building.hangsFromCeiling,
                 growth: null,
                 secondsUntilHarvest: null,
                 state: entity?.state ?? null,
@@ -566,6 +569,7 @@ const mapEntities = computed<MapEntity[]>(() => {
                 1,
                 Math.min(PLANT_HEIGHT_CELLS, top - plant.y + 1),
             ),
+            hanging: false,
             growth: plant.growth,
             secondsUntilHarvest: plant.secondsUntilHarvest,
             state:
@@ -1051,6 +1055,9 @@ const temperatureLegend = computed(() => {
                             :src="entity.sprite"
                             alt=""
                             class="zone-entity__sprite"
+                            :class="{
+                                'zone-entity__sprite--hanging': entity.hanging,
+                            }"
                             decoding="async"
                         />
                         <GameSprite
@@ -1510,6 +1517,10 @@ const temperatureLegend = computed(() => {
     object-fit: contain;
     object-position: left bottom;
     pointer-events: none;
+}
+
+.zone-entity__sprite--hanging {
+    object-position: left top;
 }
 
 .zone-entity__placeholder {

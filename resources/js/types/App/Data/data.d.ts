@@ -198,6 +198,8 @@ export type ZoneBuildingData = {
     prefabId: string;
     name: string;
     sprite: string | null;
+    hangsFromCeiling: boolean;
+    spriteHeight: number;
 };
 export type ZoneCountsData = {
     plants: number;
