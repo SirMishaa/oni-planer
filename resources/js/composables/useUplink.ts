@@ -28,6 +28,7 @@ export function useUplink(
     status: MaybeRef<ColonyStatusData>,
     only: string[],
     enabled: MaybeRef<boolean> = true,
+    liveWindowMs: number = LIVE_WINDOW_MS,
 ): { live: ComputedRef<boolean>; ageLabel: ComputedRef<string> } {
     const i18n = useT();
     const format = useFormat();
@@ -72,7 +73,7 @@ export function useUplink(
     });
 
     const live = computed(
-        () => elapsedMs.value !== null && elapsedMs.value < LIVE_WINDOW_MS,
+        () => elapsedMs.value !== null && elapsedMs.value < liveWindowMs,
     );
 
     const ageLabel = computed(() => {

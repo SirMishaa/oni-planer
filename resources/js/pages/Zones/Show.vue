@@ -65,6 +65,9 @@ const { live, ageLabel, gone } = useZoneLive({
         ]),
 });
 
+/** Three missed 15 s heartbeats: one late heartbeat (seen up to 30 s apart) must not disable the capture button. */
+const LINK_WINDOW_MS = 45_000;
+
 /**
  * The game is linked: its colony state, repeated every 15 s even while paused, is fresh. Zone
  * states stop while paused (they do not change), so they cannot tell.
@@ -82,6 +85,8 @@ const { live: linked } = useUplink(
         },
     })),
     ['linkSeenAt'],
+    true,
+    LINK_WINDOW_MS,
 );
 
 // endregion
