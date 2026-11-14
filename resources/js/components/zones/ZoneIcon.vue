@@ -16,7 +16,9 @@ defineProps<{
         | 'question'
         | 'grid'
         | 'pin'
-        | 'camera';
+        | 'camera'
+        | 'paw'
+        | 'egg';
     size?: number;
 }>();
 
@@ -86,6 +88,19 @@ defineProps<{
         <template v-else-if="name === 'grid'">
             <path d="M4 4h16v16H4zM4 12h16M12 4v16" />
         </template>
+        <template v-else-if="name === 'paw'">
+            <path
+                d="M12 13c-3 0-5.5 3-5.5 5 0 1.5 1.2 2 2.5 2 1.2 0 2-.6 3-.6s1.8.6 3 .6c1.3 0 2.5-.5 2.5-2 0-2-2.5-5-5.5-5z"
+            />
+            <circle cx="6" cy="10" r="1.8" />
+            <circle cx="9.5" cy="5.5" r="1.8" />
+            <circle cx="14.5" cy="5.5" r="1.8" />
+            <circle cx="18" cy="10" r="1.8" />
+        </template>
+        <path
+            v-else-if="name === 'egg'"
+            d="M12 3c-3.5 0-6 5.5-6 10a6 6 0 0012 0c0-4.5-2.5-10-6-10z"
+        />
         <template v-else>
             <path d="M12 21s-6-5.5-6-11a6 6 0 1112 0c0 5.5-6 11-6 11z" />
             <circle cx="12" cy="10" r="2" />

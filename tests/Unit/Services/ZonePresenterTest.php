@@ -654,3 +654,34 @@ it('leaves the removal empty when a species of the population is unknown to the 
     expect($block->perType)->toBe([])
         ->and($block->types[0]['personalSpace'])->toBeNull();
 });
+
+it('presents critters and eggs with counts', function (): void {
+    CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => 'PacuTropical', 'incubation_time' => 5, 'overcrowding_threshold' => 8]);
+    CritterMorph::factory()->baby()->for(Critter::factory())->create(['morph_id' => 'PacuTropicalBaby']);
+    $zone = populatedPond();
+    $zone->update(['slow_state' => [...$zone->slow_state, 'eggs' => [
+        ['instanceId' => '5678', 'prefabId' => 'PacuTropicalEgg', 'cell' => 133900, 'incubation' => 38.0, 'viability' => 100.0,
+            'tame' => true, 'spawns' => 'PacuTropicalBaby', 'location' => 'floor', 'holderId' => null, 'regionId' => 'pond:1201'],
+        ['instanceId' => '5679', 'prefabId' => 'MysteryEgg', 'cell' => 133901, 'incubation' => 10.0, 'viability' => 90.0,
+            'tame' => false, 'spawns' => 'MysteryBaby', 'location' => 'incubator', 'holderId' => '42', 'regionId' => null],
+    ]]]);
+
+    $shown = app(ZonePresenter::class)->present($zone->fresh());
+
+    expect($shown->critters)->toHaveCount(11)
+        ->and($shown->critters[0]->prefabId)->toBe('Pacu')
+        ->and($shown->eggs)->toHaveCount(2)
+        ->and($shown->eggs[0]->incubationCycles)->toBe(5.0)
+        ->and($shown->eggs[1]->incubationCycles)->toBeNull()
+        ->and($shown->counts->critters)->toBe(11)
+        ->and($shown->counts->eggs)->toBe(2);
+});
+
+it('keeps critters and eggs unknown until the game sent them', function (): void {
+    $shown = presentZone();
+
+    expect($shown->critters)->toBeNull()
+        ->and($shown->eggs)->toBeNull()
+        ->and($shown->counts->critters)->toBe(0)
+        ->and($shown->counts->eggs)->toBe(0);
+});

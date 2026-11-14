@@ -71,7 +71,7 @@ it('parses critters, eggs and regions from the zone states', function (): void {
         ->and($critter->lifespanCycles)->toBe(25.0)
         ->and($critter->caloriesRatio)->toBe(0.72)
         ->and($critter->fertilityRatio)->toBe(0.64)
-        ->and($critter->breeding)->toBe([['egg' => 'PacuEgg', 'weight' => 0.94]])
+        ->and($critter->breeding)->toBe([['egg' => 'PacuEgg', 'name' => 'PacuEgg', 'weight' => 0.94]])
         ->and($critter->happiness)->toBe(3)
         ->and($critter->happinessState)->toBe('happy')
         ->and($critter->stomach)->toBe([['food' => 'Algae', 'calories' => 1200.0]])

@@ -13,5 +13,7 @@ final class ZoneCountsData extends Data
         public int $plants,
         public int $buildings,
         public int $problems,
+        public int $critters = 0,
+        public int $eggs = 0,
     ) {}
 }

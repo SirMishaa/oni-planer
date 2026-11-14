@@ -25,5 +25,7 @@ final class ZoneEggData extends Data
         public ?string $location,
         public ?string $holderId,
         public ?string $regionId,
+        /** Total incubation of the hatching species in cycles (`critter_morphs.incubation_time`), null when the game data has no such species. */
+        public ?float $incubationCycles = null,
     ) {}
 }

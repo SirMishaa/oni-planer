@@ -37,6 +37,10 @@ final class ZoneShowData extends Data
         public ?string $linkSeenAt = null,
         /** @var list<ZonePopulationData>|null the crowding of each cavity and pond; null until the game sent the critters */
         public ?array $population = null,
+        /** @var list<ZoneCritterData>|null the critters of the zone; null until the game sent them */
+        public ?array $critters = null,
+        /** @var list<ZoneEggData>|null the eggs of the zone, each with its total incubation; null until the game sent them */
+        public ?array $eggs = null,
         /** @var array{channel: 'uplink', event: '.zone.updated'} Echo subscription of the live updates */
         #[LiteralTypeScriptType("{ channel: 'uplink'; event: '.zone.updated' }")]
         public array $echo = ['channel' => 'uplink', 'event' => '.zone.updated'],

@@ -35,6 +35,8 @@ const props = defineProps<{
     captureRequest: ZoneShowData['captureRequest'];
     linkSeenAt: ZoneShowData['linkSeenAt'];
     population: ZoneShowData['population'];
+    critters: ZoneShowData['critters'];
+    eggs: ZoneShowData['eggs'];
     echo: ZoneShowData['echo'];
 }>();
 
@@ -58,6 +60,8 @@ const { live, ageLabel, gone } = useZoneLive({
         'captures',
         'captureRequest',
         'population',
+        'critters',
+        'eggs',
     ],
     updatedAt: () =>
         latestTime([
@@ -267,7 +271,9 @@ function showOnMap(instanceId: string): void {
                     @click="tab = 'entities'"
                 >
                     <ZoneIcon name="list" />{{ t('zones.show.tabs.entities') }}
-                    <em>{{ entities.length }}</em>
+                    <em>{{
+                        entities.length + counts.critters + counts.eggs
+                    }}</em>
                     <em
                         v-if="known && counts.problems > 0"
                         class="zone-tab__bad"
@@ -397,8 +403,12 @@ function showOnMap(instanceId: string): void {
                     :border-entities="borderEntities"
                     :plants-known="plantsKnown"
                     :building-states-known="buildingStatesKnown"
+                    :critters="critters"
+                    :eggs="eggs"
+                    :population="population"
                     :selected-id="selectedId"
                     @select="showOnMap"
+                    @pick="selectedId = $event"
                 />
             </section>
             <!-- endregion -->

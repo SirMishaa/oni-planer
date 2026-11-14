@@ -12,7 +12,7 @@ final class ZoneCritterData extends Data
     /**
      * @param  'left'|'right'  $facing
      * @param  list<array{cell: int, navType: string}>  $path
-     * @param  list<array{egg: string, weight: float}>  $breeding
+     * @param  list<array{egg: string, name: string, weight: float}>  $breeding
      * @param  list<array{food: string, calories: float}>  $stomach
      * @param  list<array{id: string, name: string, bad: bool}>  $statuses
      */

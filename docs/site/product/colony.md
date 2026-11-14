@@ -58,6 +58,22 @@ L'onglet **Entités** liste les plantes et les bâtiments de la zone, ceux qui o
 
 Les portes, échelles, poteaux de pompier et escaliers sur ce bord sont rangés à part, dans le groupe **Bord** : ils restent sur la carte, mais ne comptent ni dans les bâtiments ni dans les problèmes.
 
+### Troupeau et œufs
+
+Les filtres **Critters** et **Œufs** de l'onglet **Entités** montrent les animaux de la zone. Le troupeau a une bande par groupe : une espèce à un stade (adultes apprivoisés, bébés ou sauvages), le plus grand groupe en premier. Chaque critter y est une vignette, avec son image tournée dans le sens où il regarde et une mini-jauge.
+
+- **Alertes.** Une alerte que tout le groupe porte (À l'étroit, par exemple) s'affiche une fois sur la bande, avec son nombre. Le contour rouge et le « ! » ne marquent que les alertes propres à un critter, pour qu'elles ressortent.
+- **Jauge.** Le menu de la bande choisit la jauge (fertilité, croissance, estomac ou âge) et trie les vignettes, la plus haute en premier.
+- **Fiche.** Survole une vignette pour voir sa fiche : statuts, humeur, fertilité, estomac, âge et chances du prochain œuf. Un clic la sélectionne et garde sa fiche ouverte.
+
+Sous les vignettes, une ligne résume le groupe : l'humeur, l'estomac médian et les âges.
+
+<Accordion title="Fertilité gelée, frise des œufs">
+La fertilité est marquée **gelée** quand le critter vit dans une pièce ou un bassin **À l'étroit** ou **Confiné** : le jeu garde sa valeur mais il ne pond plus.
+
+Les œufs sont groupés par espèce et par lieu (par terre, en incubateur, en stockage). Chaque groupe a une frise qui va de maintenant à la dernière éclosion, avec un œuf posé à son temps restant. Ce temps est calculé par le planner, d'où la mention « dérivé » : incubation restante × durée d'incubation de l'espèce dans les données du jeu. Un œuf dont l'espèce est inconnue reste hors de la frise. Une puce signale les œufs dont la viabilité baisse.
+</Accordion>
+
 ### Captures du jeu
 
 L'onglet **Captures** montre la zone telle que le jeu la dessine, pour la comparer à la carte : passe d'un onglet à l'autre, l'image tombe exactement sur la carte.

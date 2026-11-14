@@ -205,7 +205,9 @@ final class ZoneCritterState
     }
 
     /**
-     * @return list<array{egg: string, weight: float}>
+     * The next-egg odds, each egg named from the game strings.
+     *
+     * @return list<array{egg: string, name: string, weight: float}>
      */
     private static function breeding(mixed $breeding): array
     {
@@ -213,7 +215,7 @@ final class ZoneCritterState
         foreach (self::rows($breeding) ?? [] as $row) {
             $egg = self::string($row['egg'] ?? null);
             if ($egg !== null && is_numeric($row['weight'] ?? null)) {
-                $odds[] = ['egg' => $egg, 'weight' => (float) $row['weight']];
+                $odds[] = ['egg' => $egg, 'name' => app(GameText::class)->name($egg), 'weight' => (float) $row['weight']];
             }
         }
 

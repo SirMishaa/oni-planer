@@ -232,6 +232,8 @@ export type ZoneCountsData = {
     plants: number;
     buildings: number;
     problems: number;
+    critters: number;
+    eggs: number;
 };
 export type ZoneCritterData = {
     instanceId: string;
@@ -258,6 +260,7 @@ export type ZoneCritterData = {
     fertilityRatio: number | null;
     breeding: {
         egg: string;
+        name: string;
         weight: number;
     }[];
     happiness: number | null;
@@ -317,6 +320,7 @@ export type ZoneEggData = {
     location: string | null;
     holderId: string | null;
     regionId: string | null;
+    incubationCycles: number | null;
 };
 export type ZoneEntityData = {
     kind: 'plant' | 'building';
@@ -395,6 +399,8 @@ export type ZoneShowData = {
     captureRequest: ZoneCaptureRequestData | null;
     linkSeenAt: string | null;
     population: ZonePopulationData[] | null;
+    critters: ZoneCritterData[] | null;
+    eggs: ZoneEggData[] | null;
     echo: { channel: 'uplink'; event: '.zone.updated' };
 };
 export type ZoneSpriteRectData = {

@@ -1,10 +1,18 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import GameSprite from '@/components/viability/GameSprite.vue';
+import ZoneEggTimeline from '@/components/zones/ZoneEggTimeline.vue';
+import { groupEggs } from '@/components/zones/zoneFlock';
+import ZoneFlock from '@/components/zones/ZoneFlock.vue';
 import ZoneIcon from '@/components/zones/ZoneIcon.vue';
 import { useT } from '@/composables/useT';
 import { useZoneText } from '@/composables/useZoneText';
-import type { ZoneEntityData } from '@/types/App/Data/data.d';
+import type {
+    ZoneCritterData,
+    ZoneEggData,
+    ZoneEntityData,
+    ZonePopulationData,
+} from '@/types/App/Data/data.d';
 
 // region Props
 
@@ -15,18 +23,25 @@ const props = defineProps<{
     borderEntities: ZoneEntityData[];
     plantsKnown: boolean;
     buildingStatesKnown: boolean;
+    /** Null until the game sent them (unknown, never "none"). */
+    critters: ZoneCritterData[] | null;
+    eggs: ZoneEggData[] | null;
+    population: ZonePopulationData[] | null;
     selectedId: string | null;
 }>();
 
 const emit = defineEmits<{
+    /** A plant or building row: show it on the map. */
     select: [instanceId: string];
+    /** A critter of the flock: select it and stay on the tab (the map has no critter layer yet). */
+    pick: [instanceId: string];
 }>();
 
 // endregion
 
 // region Filters
 
-type Filter = 'all' | 'problems' | 'plants' | 'buildings';
+type Filter = 'all' | 'problems' | 'plants' | 'buildings' | 'critters' | 'eggs';
 
 const { t } = useT();
 const text = useZoneText();
@@ -42,13 +57,24 @@ const buildings = computed(() =>
     props.entities.filter((entity) => entity.kind === 'building'),
 );
 
+const critterCount = computed(() => props.critters?.length ?? 0);
+const eggGroups = computed(() => groupEggs(props.eggs ?? []));
+
 const filters = computed<
-    { key: Filter; icon: 'list' | 'alert' | 'leaf' | 'cube'; count: number }[]
+    {
+        key: Filter;
+        icon: 'list' | 'alert' | 'leaf' | 'cube' | 'paw' | 'egg';
+        count: number;
+    }[]
 >(() => [
     {
         key: 'all',
         icon: 'list',
-        count: props.entities.length + props.borderEntities.length,
+        count:
+            props.entities.length +
+            props.borderEntities.length +
+            critterCount.value +
+            (props.eggs?.length ?? 0),
     },
     { key: 'problems', icon: 'alert', count: withProblems.value.length },
     { key: 'plants', icon: 'leaf', count: plants.value.length },
@@ -57,7 +83,16 @@ const filters = computed<
         icon: 'cube',
         count: buildings.value.length + props.borderEntities.length,
     },
+    { key: 'critters', icon: 'paw', count: critterCount.value },
+    { key: 'eggs', icon: 'egg', count: props.eggs?.length ?? 0 },
 ]);
+
+const showsCritters = computed(
+    () => filter.value === 'all' || filter.value === 'critters',
+);
+const showsEggs = computed(
+    () => filter.value === 'all' || filter.value === 'eggs',
+);
 
 /** Row groups of the filter; `all` splits problems out, then plants, then buildings, then the border. */
 const groups = computed(() => {
@@ -78,6 +113,8 @@ const groups = computed(() => {
             { key: 'buildings' as const, rows: buildings.value },
             border,
         ],
+        critters: [],
+        eggs: [],
     }[filter.value];
 
     return all.filter((group) => group.rows.length > 0);
@@ -139,10 +176,21 @@ function select(entity: ZoneEntityData): void {
                 t('zones.entities.buildings_unknown')
             }}
         </p>
+        <p
+            v-if="critters === null && showsCritters"
+            class="zone-entities__unknown"
+        >
+            <ZoneIcon name="question" />{{
+                t('zones.entities.critters_unknown')
+            }}
+        </p>
+        <p v-if="eggs === null && showsEggs" class="zone-entities__unknown">
+            <ZoneIcon name="question" />{{ t('zones.entities.eggs_unknown') }}
+        </p>
         <!-- endregion -->
 
         <!-- region Table -->
-        <div class="zone-entities__scroll">
+        <div v-if="groups.length > 0" class="zone-entities__scroll">
             <table class="zone-table">
                 <thead>
                     <tr>
@@ -276,11 +324,52 @@ function select(entity: ZoneEntityData): void {
                     </tr>
                 </tbody>
             </table>
-            <p v-if="groups.length === 0" class="zone-entities__none">
-                {{ t('zones.entities.none') }}
-            </p>
         </div>
         <!-- endregion -->
+
+        <!-- region Flock -->
+        <section
+            v-if="showsCritters && critterCount > 0"
+            class="zone-entities__section"
+        >
+            <h2 class="zone-entities__heading">
+                {{ t('zones.entities.groups.critters') }} · {{ critterCount }}
+            </h2>
+            <ZoneFlock
+                :critters="critters ?? []"
+                :population="population"
+                :selected-id="selectedId"
+                @select="emit('pick', $event)"
+            />
+        </section>
+        <!-- endregion -->
+
+        <!-- region Eggs -->
+        <section
+            v-if="showsEggs && eggGroups.length > 0"
+            class="zone-entities__section"
+        >
+            <h2 class="zone-entities__heading">
+                {{ t('zones.entities.groups.eggs') }} · {{ eggs?.length ?? 0 }}
+            </h2>
+            <ZoneEggTimeline
+                v-for="group in eggGroups"
+                :key="group.key"
+                :group="group"
+            />
+        </section>
+        <!-- endregion -->
+
+        <p
+            v-if="
+                groups.length === 0 &&
+                !(showsCritters && critterCount > 0) &&
+                !(showsEggs && eggGroups.length > 0)
+            "
+            class="zone-entities__none"
+        >
+            {{ t('zones.entities.none') }}
+        </p>
     </div>
 </template>
 
@@ -336,6 +425,27 @@ function select(entity: ZoneEntityData): void {
     margin-bottom: 8px;
     color: var(--text-2);
     font-size: 13px;
+}
+/* endregion */
+
+/* region Sections */
+.zone-entities__section {
+    margin-top: 18px;
+    padding: 12px 16px 4px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+}
+
+.zone-entities__heading {
+    margin-bottom: 10px;
+    color: var(--text-2);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.zone-entities__section :deep(.zone-eggs:first-of-type) {
+    padding-top: 4px;
+    border-top: 0;
 }
 /* endregion */
 

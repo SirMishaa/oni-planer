@@ -10,6 +10,7 @@ use App\Data\ZoneCaptureData;
 use App\Data\ZoneCaptureRequestData;
 use App\Data\ZoneCountsData;
 use App\Data\ZoneData;
+use App\Data\ZoneEggData;
 use App\Data\ZoneEntityData;
 use App\Data\ZoneMapData;
 use App\Data\ZonePlantData;
@@ -21,6 +22,7 @@ use App\Data\ZoneTileData;
 use App\Enums\BuildLocationRule;
 use App\Models\Building;
 use App\Models\Colony;
+use App\Models\CritterMorph;
 use App\Models\Element;
 use App\Models\UplinkCommand;
 use App\Models\Zone;
@@ -30,6 +32,7 @@ use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Carbon\Exceptions\InvalidFormatException;
 use Closure;
+use Illuminate\Support\Str;
 
 /**
  * Turns the stored layout, slow state and fast state of a zone into what the
@@ -108,6 +111,9 @@ final class ZonePresenter
         $borderEntities = array_map(fn (array $building): ZoneEntityData => $this->buildingEntity($building, $anchorsByInstance, $position, passage: true), $borderBuildings);
         usort($entities, fn (ZoneEntityData $a, ZoneEntityData $b): int => [$a->problems === [], $a->secondsUntilHarvest ?? INF] <=> [$b->problems === [], $b->secondsUntilHarvest ?? INF]);
         $problems = array_values(array_filter($entities, fn (ZoneEntityData $entity): bool => $entity->problems !== []));
+        $critters = ZoneCritterState::critters($zone);
+        $eggs = ZoneCritterState::eggs($zone);
+        $this->withIncubation($eggs ?? []);
 
         return new ZoneShowData(
             zone: new ZoneData(
@@ -148,6 +154,8 @@ final class ZonePresenter
                 plants: count($fastPlants ?? []),
                 buildings: count($fastBuildings ?? []),
                 problems: count($problems),
+                critters: count($critters ?? []),
+                eggs: count($eggs ?? []),
             ),
             plantsKnown: $fastPlants !== null,
             buildingStatesKnown: $fastBuildings !== null,
@@ -155,6 +163,8 @@ final class ZonePresenter
             captureRequest: self::captureRequest($zone),
             linkSeenAt: Colony::query()->where('guid', $zone->colony_guid)->first(['last_seen_at'])?->last_seen_at?->toIso8601String(),
             population: $this->population->forZone($zone),
+            critters: $critters,
+            eggs: $eggs,
         );
     }
 
@@ -379,6 +389,36 @@ final class ZonePresenter
         }
 
         return $occupants;
+    }
+
+    /**
+     * Sets the total incubation of each egg from the morph it hatches into: the baby morph when it has one,
+     * else its adult (baby morphs carry no incubation time). Null when the game data has neither.
+     *
+     * @param  list<ZoneEggData>  $eggs
+     */
+    private function withIncubation(array $eggs): void
+    {
+        if ($eggs === []) {
+            return;
+        }
+
+        $species = [];
+        foreach ($eggs as $egg) {
+            $hatches = $egg->spawns ?? $egg->prefabId;
+            $species[$egg->instanceId] = [$hatches, Str::beforeLast($hatches, 'Baby')];
+        }
+
+        $incubation = CritterMorph::query()
+            ->whereIn('morph_id', array_unique(array_merge(...array_values($species))))
+            ->where('incubation_time', '>', 0)
+            ->pluck('incubation_time', 'morph_id');
+
+        foreach ($eggs as $egg) {
+            [$baby, $adult] = $species[$egg->instanceId];
+            $cycles = $incubation[$baby] ?? $incubation[$adult] ?? null;
+            $egg->incubationCycles = $cycles === null ? null : (float) $cycles;
+        }
     }
 
     /** Root-relative URL of a game sprite, or null when it was not imported; checked once per prefab. */
