@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Exceptions\McpLookupException;
 use App\Mcp\Servers\OniServer;
 use App\Mcp\Tools\ListZonesTool;
 use App\Models\Colony;
 use App\Models\Zone;
-use App\Services\Mcp\McpLookupException;
 use App\Services\Mcp\McpZones;
 
 it('lists active zones with size, age and problems', function (): void {

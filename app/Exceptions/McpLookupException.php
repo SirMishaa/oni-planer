@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Mcp;
+namespace App\Exceptions;
 
 use RuntimeException;
 

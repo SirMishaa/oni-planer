@@ -82,7 +82,7 @@ final class EntityTool extends Tool
 
         foreach ($kind === 'plant' ? $entity : array_diff_key($entity, ['statusItems' => true, 'storage' => true]) as $key => $value) {
             if (! in_array($key, ['id', 'prefabId', 'instanceId'], true)) {
-                $lines[] = sprintf('%s: %s', $key, is_array($value) ? json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : var_export($value, true));
+                $lines[] = sprintf('%s: %s', $key, self::scalar($value));
             }
         }
 
@@ -119,6 +119,17 @@ final class EntityTool extends Tool
             'instanceId' => $schema->string()->description('Instance id of a plant or building, as zone_map and zone_overview print it after #.')->required(),
             'colony' => $this->colonySchema($schema),
         ];
+    }
+
+    /** A field value as text: JSON for arrays, true / false / null spelled out. */
+    private static function scalar(mixed $value): string
+    {
+        return match (true) {
+            is_array($value) => (string) json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            is_bool($value) => $value ? 'true' : 'false',
+            $value === null => 'null',
+            default => (string) $value,
+        };
     }
 
     /**

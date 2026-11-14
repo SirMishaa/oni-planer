@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools\Concerns;
 
+use App\Exceptions\McpLookupException;
 use App\Models\Colony;
 use App\Models\Zone;
 use App\Services\Mcp\McpColony;
-use App\Services\Mcp\McpLookupException;
 use App\Services\Mcp\McpZones;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Mcp;
 
+use App\Exceptions\McpLookupException;
 use App\Models\Colony;
 use App\Models\Zone;
 use Illuminate\Database\Eloquent\Collection;
