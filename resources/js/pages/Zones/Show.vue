@@ -315,6 +315,7 @@ function showOnMap(instanceId: string): void {
             >
                 <ZoneCaptures
                     :zone-id="zone.id"
+                    :box="map?.box ?? null"
                     :captures="captures"
                     :capture-request="captureRequest"
                     :live="live"

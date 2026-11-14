@@ -22,6 +22,7 @@ import {
     footprintTouchesBox,
     layerIndex,
     localToCell,
+    fitCellPx as fitCellSize,
     zoneOutlinePath,
     cellToLocal,
 } from './zoneMapGeometry';
@@ -64,15 +65,6 @@ const emit = defineEmits<{
 
 // region Sizing
 
-/** Largest and smallest fitted cell, in CSS pixels; below the smallest the map scrolls. */
-const CELL_MAX_PX = 96;
-const CELL_MIN_PX = 12;
-/** Share of the window height the map may take (the scroller's `max-height`). */
-const VIEW_HEIGHT_SHARE = 0.72;
-/** Space the scroller takes around the stage vertically: its padding and the stage's top margin. */
-const STAGE_CHROME_Y_PX = 12 * 2 + 18;
-/** Room left around the map for the entities that rise above the box. */
-const STAGE_PAD_PX = 12;
 /** Height of a plant on the map, in cells (most crops stand two cells high). */
 const PLANT_HEIGHT_CELLS = 2;
 
@@ -97,18 +89,9 @@ const PAN_THRESHOLD_PX = 4;
 const zoom = ref(ZOOM_DEFAULT);
 
 /** The largest cell that fits the whole box in the available width and height, before zoom. */
-const fitCellPx = computed(() => {
-    const byWidth = Math.floor(
-        (availableWidth.value - STAGE_PAD_PX * 2) / props.map.box.width,
-    );
-    const byHeight = Math.floor(
-        (viewportHeight.value * VIEW_HEIGHT_SHARE - STAGE_CHROME_Y_PX) /
-            props.map.box.height,
-    );
-    const fit = Math.min(byWidth || CELL_MAX_PX, byHeight || CELL_MAX_PX);
-
-    return Math.min(CELL_MAX_PX, Math.max(CELL_MIN_PX, fit));
-});
+const fitCellPx = computed(() =>
+    fitCellSize(availableWidth.value, viewportHeight.value, props.map.box),
+);
 
 const cellPx = computed(() => {
     const dpr = window.devicePixelRatio || 1;

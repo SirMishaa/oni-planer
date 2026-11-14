@@ -74,6 +74,39 @@ export function layerIndex(
 /** Radius of the outline's rounded corners, in cells (tunable). */
 export const OUTLINE_CORNER_CELLS = 0.3;
 
+// region Fitted size
+
+/** Largest and smallest fitted cell, in CSS pixels; below the smallest the map scrolls. */
+export const CELL_MAX_PX = 96;
+export const CELL_MIN_PX = 12;
+/** Share of the window height the map may take (the scroller's `max-height`). */
+export const VIEW_HEIGHT_SHARE = 0.72;
+/** Space the scroller takes around the stage vertically: its padding and the stage's top margin. */
+export const STAGE_CHROME_Y_PX = 12 * 2 + 18;
+/** Room left around the map for the entities that rise above the box. */
+export const STAGE_PAD_PX = 12;
+
+/**
+ * The largest cell that fits the whole box in the available width (the scroller's, padding
+ * included) and the window height, before zoom. Shared by the map and the captures tab, so a
+ * capture shows at the map's scale.
+ */
+export function fitCellPx(
+    availableWidth: number,
+    viewportHeight: number,
+    box: Pick<ZoneBoxData, 'width' | 'height'>,
+): number {
+    const byWidth = Math.floor((availableWidth - STAGE_PAD_PX * 2) / box.width);
+    const byHeight = Math.floor(
+        (viewportHeight * VIEW_HEIGHT_SHARE - STAGE_CHROME_Y_PX) / box.height,
+    );
+    const fit = Math.min(byWidth || CELL_MAX_PX, byHeight || CELL_MAX_PX);
+
+    return Math.min(CELL_MAX_PX, Math.max(CELL_MIN_PX, fit));
+}
+
+// endregion
+
 /**
  * SVG path (in cell units, row 0 at the top) of the zone's outer and inner
  * edges: the cell sides with no zone neighbour, chained into closed loops

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     cellToLocal,
+    fitCellPx,
     hexToRgb,
     footprintTouchesBox,
     layerIndex,
@@ -108,5 +109,20 @@ describe('footprintTouchesBox', () => {
     it('drops a building entirely outside the box', () => {
         expect(footprintTouchesBox(4, 10, 3, 1, box)).toBe(false);
         expect(footprintTouchesBox(10, 15, 1, 2, box)).toBe(false);
+    });
+});
+
+describe('fitCellPx', () => {
+    it('fits the box in the width or the height, whichever is tighter', () => {
+        // width: (1000 - 24) / 38 = 25.6; height: (1000 * 0.72 - 42) / 23 = 29.4
+        expect(fitCellPx(1000, 1000, { width: 38, height: 23 })).toBe(25);
+        // height wins on a tall box: (720 - 42) / 60 = 11.3, clamped to 12
+        expect(fitCellPx(1000, 1000, { width: 10, height: 60 })).toBe(12);
+    });
+
+    it('clamps to the largest and smallest cell', () => {
+        expect(fitCellPx(4000, 4000, { width: 2, height: 2 })).toBe(96);
+        // (300 - 24) / 100 = 2.76, raised to 12 (the map then scrolls)
+        expect(fitCellPx(300, 1000, { width: 100, height: 10 })).toBe(12);
     });
 });

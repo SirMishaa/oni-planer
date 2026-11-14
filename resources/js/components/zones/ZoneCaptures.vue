@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import ZoneCaptureController from '@/actions/App/Http/Controllers/ZoneCaptureController';
 import ZoneIcon from '@/components/zones/ZoneIcon.vue';
+import { fitCellPx } from '@/components/zones/zoneMapGeometry';
 import { useFormat } from '@/composables/useFormat';
 import { useT } from '@/composables/useT';
 import type {
+    ZoneBoxData,
     ZoneCaptureData,
     ZoneCaptureRequestData,
 } from '@/types/App/Data/data.d';
@@ -14,6 +16,8 @@ import type {
 
 const props = defineProps<{
     zoneId: number;
+    /** The map's box (the capture frames the same cells), null before the layout. */
+    box: ZoneBoxData | null;
     captures: ZoneCaptureData[];
     captureRequest: ZoneCaptureRequestData | null;
     /** The game is linked and sending this zone: a capture can be asked. */
@@ -52,6 +56,70 @@ function describe(capture: ZoneCaptureData): string {
         t(`zones.captures.trigger.${capture.trigger}`),
     ].join(' · ');
 }
+
+// endregion
+
+// region Size
+
+/** Measured like the map's scroller, so the capture shows at the map's fitted scale. */
+const scroll = ref<HTMLElement | null>(null);
+const availableWidth = ref(0);
+const viewportHeight = ref(window.innerHeight);
+let resizeObserver: ResizeObserver | undefined;
+
+/** Display size: the map's fitted cell times the box, falling back to the image's own size. */
+const shotSize = computed(() => {
+    const capture = selected.value;
+
+    if (capture === null) {
+        return null;
+    }
+
+    if (props.box === null || availableWidth.value === 0) {
+        return { width: capture.width, height: capture.height };
+    }
+
+    const cell = fitCellPx(
+        availableWidth.value,
+        viewportHeight.value,
+        props.box,
+    );
+
+    return {
+        width: props.box.width * cell,
+        height: props.box.height * cell,
+    };
+});
+
+function onWindowResize(): void {
+    viewportHeight.value = window.innerHeight;
+}
+
+onMounted(() => {
+    if (scroll.value) {
+        availableWidth.value = Math.round(scroll.value.clientWidth);
+        resizeObserver = new ResizeObserver(([entry]) => {
+            const width = Math.round(
+                (entry?.target as HTMLElement | undefined)?.clientWidth ??
+                    availableWidth.value,
+            );
+
+            if (width !== availableWidth.value) {
+                requestAnimationFrame(() => {
+                    availableWidth.value = width;
+                });
+            }
+        });
+        resizeObserver.observe(scroll.value);
+    }
+
+    window.addEventListener('resize', onWindowResize);
+});
+
+onBeforeUnmount(() => {
+    resizeObserver?.disconnect();
+    window.removeEventListener('resize', onWindowResize);
+});
 
 // endregion
 
@@ -125,68 +193,76 @@ function capture(): void {
         </div>
         <!-- endregion -->
 
-        <!-- region Selected capture -->
-        <figure v-if="selected" class="zone-captures__shot">
-            <img
-                :src="selected.url"
-                :width="selected.width"
-                :height="selected.height"
-                :alt="t('zones.captures.alt', { when: describe(selected) })"
-                class="zone-captures__image"
-            />
-            <figcaption class="zone-captures__caption">
-                <span>{{ describe(selected) }}</span>
-                <span
-                    class="zone-captures__badge"
-                    :class="{
-                        'zone-captures__badge--current': selected.matchesLayout,
+        <div class="zone-captures__body">
+            <!-- region Selected capture -->
+            <div ref="scroll" class="zone-captures__scroll">
+                <img
+                    v-if="selected && shotSize"
+                    :src="selected.url"
+                    :width="shotSize.width"
+                    :height="shotSize.height"
+                    :style="{
+                        width: `${shotSize.width}px`,
+                        height: `${shotSize.height}px`,
                     }"
-                    >{{
-                        selected.matchesLayout
-                            ? t('zones.captures.current_layout')
-                            : t('zones.captures.older_layout')
-                    }}</span
-                >
-            </figcaption>
-        </figure>
-        <p v-else class="zone-captures__empty">
-            <ZoneIcon name="camera" :size="28" />
-            {{ t('zones.captures.empty') }}
-        </p>
-        <!-- endregion -->
+                    :alt="t('zones.captures.alt', { when: describe(selected) })"
+                    class="zone-captures__image"
+                />
+                <p v-else class="zone-captures__empty">
+                    <ZoneIcon name="camera" :size="28" />
+                    {{ t('zones.captures.empty') }}
+                </p>
+            </div>
+            <!-- endregion -->
 
-        <!-- region Strip -->
-        <ol v-if="captures.length > 1" class="zone-captures__strip">
-            <li v-for="item in captures" :key="item.id">
-                <button
-                    type="button"
-                    class="zone-captures__thumb"
-                    :aria-pressed="item.id === selected?.id"
-                    :title="describe(item)"
-                    @click="selectedId = item.id"
-                >
-                    <img :src="item.url" alt="" loading="lazy" />
-                </button>
-            </li>
-        </ol>
-        <!-- endregion -->
+            <!-- region Side: caption and strip -->
+            <aside v-if="selected" class="zone-captures__side">
+                <p class="zone-captures__caption">
+                    <span>{{ describe(selected) }}</span>
+                    <span
+                        class="zone-captures__badge"
+                        :class="{
+                            'zone-captures__badge--current':
+                                selected.matchesLayout,
+                        }"
+                        >{{
+                            selected.matchesLayout
+                                ? t('zones.captures.current_layout')
+                                : t('zones.captures.older_layout')
+                        }}</span
+                    >
+                </p>
+                <ol v-if="captures.length > 1" class="zone-captures__strip">
+                    <li v-for="item in captures" :key="item.id">
+                        <button
+                            type="button"
+                            class="zone-captures__thumb"
+                            :aria-pressed="item.id === selected.id"
+                            :title="describe(item)"
+                            @click="selectedId = item.id"
+                        >
+                            <img :src="item.url" alt="" loading="lazy" />
+                        </button>
+                    </li>
+                </ol>
+            </aside>
+            <!-- endregion -->
+        </div>
     </div>
 </template>
 
 <style scoped>
 .zone-captures {
-    display: grid;
-    gap: 14px;
-    padding-block: 12px;
     min-width: 0;
 }
 
-/* region Toolbar */
+/* region Toolbar (the height of the map's layer bar, so both tabs line up) */
 .zone-captures__bar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 12px;
+    padding-block: 10px;
 }
 
 .zone-captures__button {
@@ -221,20 +297,52 @@ function capture(): void {
 }
 /* endregion */
 
-/* region Selected capture */
-.zone-captures__shot {
+/* region Body: the map tab's grid */
+.zone-captures__body {
     display: grid;
-    gap: 8px;
-    margin: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+    margin-top: 4px;
+}
+
+@media (min-width: 1024px) {
+    .zone-captures__body {
+        grid-template-columns: minmax(0, 1fr) 310px;
+    }
+}
+
+/* The map's scroller: same padding, same height cap, the stage's top margin. */
+.zone-captures__scroll {
+    overflow: auto;
+    max-height: 72vh;
+    padding: 12px;
 }
 
 .zone-captures__image {
-    width: 100%;
-    height: auto;
-    border: 1px solid var(--line);
+    display: block;
+    max-width: none;
+    margin-inline: auto;
+    margin-top: 18px;
+    border-radius: 2px;
+}
+
+.zone-captures__empty {
+    display: grid;
+    gap: 10px;
+    place-items: center;
+    padding: 56px 20px;
+    border: 1px dashed var(--line);
     border-radius: 8px;
-    background: var(--ink-1);
-    image-rendering: auto;
+    color: var(--text-2);
+    text-align: center;
+}
+/* endregion */
+
+/* region Side */
+.zone-captures__side {
+    display: grid;
+    gap: 12px;
 }
 
 .zone-captures__caption {
@@ -242,6 +350,7 @@ function capture(): void {
     flex-wrap: wrap;
     align-items: center;
     gap: 10px;
+    margin: 0;
     color: var(--text-2);
     font-size: 13px;
 }
@@ -258,31 +367,18 @@ function capture(): void {
     color: var(--ok);
 }
 
-.zone-captures__empty {
-    display: grid;
-    gap: 10px;
-    place-items: center;
-    padding: 56px 20px;
-    border: 1px dashed var(--line);
-    border-radius: 8px;
-    color: var(--text-2);
-    text-align: center;
-}
-/* endregion */
-
-/* region Strip */
 .zone-captures__strip {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
     margin: 0;
-    padding: 0 0 4px;
-    overflow-x: auto;
+    padding: 0;
     list-style: none;
 }
 
 .zone-captures__thumb {
     display: block;
-    width: 120px;
+    width: 100%;
     padding: 0;
     border: 2px solid transparent;
     border-radius: 6px;
@@ -297,7 +393,7 @@ function capture(): void {
 .zone-captures__thumb img {
     display: block;
     width: 100%;
-    height: 68px;
+    aspect-ratio: 1;
     object-fit: cover;
 }
 /* endregion */
