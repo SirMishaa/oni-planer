@@ -8,6 +8,8 @@ use App\Mcp\Tools\ColonyStatusTool;
 use App\Mcp\Tools\EntityTool;
 use App\Mcp\Tools\ListZonesTool;
 use App\Mcp\Tools\LookupTool;
+use App\Mcp\Tools\RequestCaptureTool;
+use App\Mcp\Tools\ZoneCapturesTool;
 use App\Mcp\Tools\ZoneCellsTool;
 use App\Mcp\Tools\ZoneMapTool;
 use App\Mcp\Tools\ZoneOverviewTool;
@@ -51,5 +53,7 @@ final class OniServer extends Server
         ZoneCellsTool::class,
         EntityTool::class,
         LookupTool::class,
+        ZoneCapturesTool::class,
+        RequestCaptureTool::class,
     ];
 }
