@@ -42,9 +42,6 @@ use Closure;
  */
 final class ZonePresenter
 {
-    /** Game seconds in a cycle; a plant's maturity is counted in cycles. */
-    private const float CYCLE_SECONDS = 600.0;
-
     /**
      * Keys of the game's temperature overlay bands, coldest first.
      *
@@ -184,30 +181,6 @@ final class ZonePresenter
             reason: $command->reason,
             issuedAt: $command->issued_at->toIso8601String(),
         );
-    }
-
-    /**
-     * Progress to the next harvest, from the remaining time, the growth rate
-     * (maturity per second, maturity counted in cycles) and the crop duration
-     * at the normal rate: 1 - remaining maturity / full maturity.
-     *
-     * @param  array<mixed>  $plant
-     */
-    private static function growth(array $plant): ?float
-    {
-        if (($plant['grown'] ?? false) === true) {
-            return 1.0;
-        }
-
-        $seconds = self::floatOrNull($plant['secondsUntilHarvest'] ?? null);
-        $rate = self::floatOrNull($plant['growthPerSecond'] ?? null);
-        $duration = self::floatOrNull($plant['cropDurationSeconds'] ?? null);
-
-        if ($seconds === null || $rate === null || $duration === null || $duration <= 0) {
-            return null;
-        }
-
-        return max(0.0, min(1.0, 1 - $seconds * $rate * self::CYCLE_SECONDS / $duration));
     }
 
     /**
@@ -444,7 +417,7 @@ final class ZonePresenter
                 default => 'growing',
             },
             problems: $problems,
-            growth: self::growth($plant),
+            growth: ZonePlants::growth($plant),
             secondsUntilHarvest: self::floatOrNull($plant['secondsUntilHarvest'] ?? null),
             autoHarvest: isset($plant['autoHarvest']) ? (bool) $plant['autoHarvest'] : null,
             neededItemSprite: $this->neededItemSprite($problems),
@@ -678,7 +651,7 @@ final class ZonePresenter
             prefabId: $prefabId,
             name: $this->text->name($prefabId),
             sprite: $this->sprite('plants', $prefabId),
-            growth: self::growth($plant),
+            growth: ZonePlants::growth($plant),
             secondsUntilHarvest: self::floatOrNull($plant['secondsUntilHarvest'] ?? null),
             wilting: (bool) ($plant['wilting'] ?? false),
             grown: (bool) ($plant['grown'] ?? false),
