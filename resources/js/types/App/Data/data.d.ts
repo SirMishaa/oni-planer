@@ -128,6 +128,15 @@ export type CritterVariantPreviewData = {
     name: string;
     image: string;
 };
+export type CrowdingMismatchData = {
+    zoneName: string;
+    regionId: string;
+    prefabId: string;
+    field: 'occupied' | 'overcrowded' | 'confined' | 'modifier';
+    game: number | boolean;
+    planner: number | boolean;
+    at: string;
+};
 export type ElementData = {
     element_id: string;
     name: string;

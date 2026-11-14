@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Food;
 use App\Models\UplinkMessage;
+use App\Models\Zone;
 use App\Services\Uplink\ColonyIngestor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -146,4 +147,19 @@ it('reads the status without loading the colony state', function (): void {
     $colonyQueries = collect(DB::getQueryLog())->pluck('query')->filter(fn (string $sql): bool => str_contains($sql, '"colonies"'));
     expect($colonyQueries)->not->toBeEmpty()
         ->and($colonyQueries->filter(fn (string $sql): bool => str_contains($sql, '*') || str_contains($sql, '"state"')))->toBeEmpty();
+});
+
+it('lists the crowding mismatches of the zones on the uplink inspector', function (): void {
+    Zone::factory()->create(['name' => 'Pond', 'crowding_mismatches' => [
+        ['regionId' => 'pond:1201', 'prefabId' => 'Pacu', 'field' => 'overcrowded', 'game' => true, 'planner' => false, 'at' => '2026-11-14T10:00:00+00:00'],
+    ]]);
+    Zone::factory()->create(['name' => 'Consistent']);
+
+    $this->get('/colony/uplink')
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('crowdingMismatches', 1)
+            ->where('crowdingMismatches.0.zoneName', 'Pond')
+            ->where('crowdingMismatches.0.field', 'overcrowded')
+            ->where('crowdingMismatches.0.game', true)
+            ->where('crowdingMismatches.0.planner', false));
 });

@@ -91,4 +91,4 @@ Les textures viennent de l'export du jeu. Après une mise à jour du jeu ou du m
 
 ## Inspecteur Uplink
 
-L'inspecteur liste chaque message reçu du jeu, du plus récent au plus ancien, avec sa colonie, son cycle, sa taille et son résultat. Choisis un message pour lire son contenu, ou voir pourquoi il a été refusé. C'est la page à ouvrir quand une page de la colonie reste vide.
+L'inspecteur liste chaque message reçu du jeu, du plus récent au plus ancien, avec sa colonie, son cycle, sa taille et son résultat. Choisis un message pour lire son contenu, ou voir pourquoi il a été refusé. C'est la page à ouvrir quand une page de la colonie reste vide. Quand la règle de surpeuplement du planner donne un autre résultat que le jeu, une liste d'écarts (zone, région, valeur, jeu contre planner) apparaît au-dessus des messages.

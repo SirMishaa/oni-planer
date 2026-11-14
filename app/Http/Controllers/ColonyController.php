@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Data\ColonyStatusData;
+use App\Data\CrowdingMismatchData;
 use App\Data\UplinkMessageData;
 use App\Models\Colony;
 use App\Models\UplinkMessage;
+use App\Models\Zone;
 use App\Services\Viability\ViabilityPresenter;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -46,8 +48,25 @@ final readonly class ColonyController
         return Inertia::render('Colony/Uplink', [
             'status' => $this->status($this->latestColony(self::STATUS_COLUMNS)),
             'messages' => $messages->map(UplinkMessageData::fromModel(...))->all(),
+            'crowdingMismatches' => $this->crowdingMismatches(),
             'selected' => $selected instanceof UplinkMessage ? ['id' => $selected->id, 'payload' => $selected->payload] : null,
         ]);
+    }
+
+    /**
+     * Where the planner's overcrowding rule and the game disagree, across the zones.
+     *
+     * @return list<CrowdingMismatchData>
+     */
+    private function crowdingMismatches(): array
+    {
+        return Zone::query()
+            ->whereNotNull('crowding_mismatches')
+            ->orderBy('name')
+            ->get(['id', 'name', 'crowding_mismatches'])
+            ->flatMap(fn (Zone $zone): array => CrowdingMismatchData::fromZone($zone->name, $zone->crowding_mismatches))
+            ->values()
+            ->all();
     }
 
     /**

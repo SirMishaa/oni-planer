@@ -32,6 +32,10 @@ Sur `uplink-data`, le `data` de l'événement vaut `{"payload": "<base64 du gzip
 - **Les événements d'état** (`slow`, `fast`) ne gardent que le dernier et ne sont jamais acquittés.
 - Un layout pour une zone que le site ne connaît pas encore n'est pas acquitté ; le mod le renvoie après la liste des zones.
 
+## Contrôle du surpeuplement
+
+À chaque état rapide enregistré, `CheckCrowdingConsistency` rejoue la règle de surpeuplement du planner sur les régions que le jeu a envoyées et compare avec ses valeurs : l'espace occupé, puis par espèce `overcrowded`, `confined` et le modificateur de bonheur. `eggOccupied` et `cramped` ne sont jamais comparés, car les œufs viennent de l'état lent et retardent sur l'état rapide. Un écart est journalisé (`crowding mismatch`) et gardé dans `zones.crowding_mismatches` (le dernier contrôle seulement, `null` quand tout concorde). Une région dont une espèce est inconnue des données du jeu est ignorée et journalisée.
+
 ## Bord de zone
 
 Une zone n'est qu'un ensemble de cases. Le mod lit aussi un **anneau de bord** autour d'elle : les cases à quelques cases d'une case de la zone, diagonales comprises (`ZoneBorder`). Sa largeur se règle avec `zoneBorderCells` dans `uplink.json` et le layout la renvoie dans `borderCells`.

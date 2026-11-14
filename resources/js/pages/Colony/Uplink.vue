@@ -17,6 +17,7 @@ import { useUplink } from '@/composables/useUplink';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type {
     ColonyStatusData,
+    CrowdingMismatchData,
     UplinkMessageData,
 } from '@/types/App/Data/data.d';
 
@@ -27,6 +28,7 @@ defineOptions({ layout: AppLayout });
 const props = defineProps<{
     status: ColonyStatusData;
     messages: UplinkMessageData[];
+    crowdingMismatches: CrowdingMismatchData[];
     selected: { id: number; payload: string } | null;
 }>();
 
@@ -41,7 +43,7 @@ const running = ref(true);
 
 const { live, ageLabel } = useUplink(
     toRef(props, 'status'),
-    ['messages', 'status'],
+    ['messages', 'status', 'crowdingMismatches'],
     running,
 );
 
@@ -49,7 +51,9 @@ function togglePause(): void {
     running.value = !running.value;
 
     if (running.value) {
-        router.reload({ only: ['messages', 'status'] });
+        router.reload({
+            only: ['messages', 'status', 'crowdingMismatches'],
+        });
     }
 }
 
@@ -134,6 +138,20 @@ const colonySummary = computed(() => {
               cycle: format.number(props.status.cycle),
           });
 });
+
+// endregion
+
+// region Crowding mismatches
+
+function mismatchValue(value: number | boolean): string {
+    return typeof value === 'boolean'
+        ? t(
+              value
+                  ? 'colony.inspector.crowding.yes'
+                  : 'colony.inspector.crowding.no',
+          )
+        : format.number(value);
+}
 
 // endregion
 
@@ -329,6 +347,70 @@ onBeforeUnmount(() => clearTimeout(copyFeedbackTimer));
             </section>
             <!-- endregion -->
 
+            <!-- region Crowding mismatches -->
+            <section
+                v-if="crowdingMismatches.length > 0"
+                class="crowding"
+                aria-labelledby="crowding-title"
+            >
+                <h2 id="crowding-title" class="crowding__title">
+                    {{ t('colony.inspector.crowding.title') }}
+                </h2>
+                <p class="crowding__intro">
+                    {{ t('colony.inspector.crowding.intro') }}
+                </p>
+                <table class="messages">
+                    <thead>
+                        <tr>
+                            <th scope="col">
+                                {{ t('colony.inspector.crowding.zone') }}
+                            </th>
+                            <th scope="col">
+                                {{ t('colony.inspector.crowding.region') }}
+                            </th>
+                            <th scope="col">
+                                {{ t('colony.inspector.crowding.field') }}
+                            </th>
+                            <th scope="col">
+                                {{ t('colony.inspector.crowding.game') }}
+                            </th>
+                            <th scope="col">
+                                {{ t('colony.inspector.crowding.planner') }}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr
+                            v-for="mismatch in crowdingMismatches"
+                            :key="`${mismatch.zoneName}-${mismatch.regionId}-${mismatch.prefabId}-${mismatch.field}`"
+                        >
+                            <td>{{ mismatch.zoneName }}</td>
+                            <td>{{ mismatch.regionId }}</td>
+                            <td>
+                                {{
+                                    mismatch.prefabId === ''
+                                        ? t(
+                                              `colony.inspector.crowding.fields.${mismatch.field}`,
+                                          )
+                                        : t(
+                                              'colony.inspector.crowding.species_field',
+                                              {
+                                                  prefab: mismatch.prefabId,
+                                                  field: t(
+                                                      `colony.inspector.crowding.fields.${mismatch.field}`,
+                                                  ),
+                                              },
+                                          )
+                                }}
+                            </td>
+                            <td>{{ mismatchValue(mismatch.game) }}</td>
+                            <td>{{ mismatchValue(mismatch.planner) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+            <!-- endregion -->
+
             <!-- region Empty state -->
             <ColonyEmptyState v-if="messages.length === 0" state="never" />
             <!-- endregion -->
@@ -340,9 +422,7 @@ onBeforeUnmount(() => clearTimeout(copyFeedbackTimer));
                 <!-- region Message list -->
                 <table class="messages min-w-0">
                     <caption class="sr-only">
-                        {{
-                            t('colony.inspector.list_label')
-                        }}
+                        {{ t('colony.inspector.list_label') }}
                     </caption>
                     <thead>
                         <tr>
@@ -881,6 +961,23 @@ onBeforeUnmount(() => clearTimeout(copyFeedbackTimer));
 .detail__raw {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+    font-size: 13px;
+}
+/* endregion */
+
+/* region Crowding mismatches */
+.crowding {
+    margin-top: 24px;
+}
+
+.crowding__title {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.crowding__intro {
+    margin-block: 4px 12px;
+    color: var(--text-3);
     font-size: 13px;
 }
 /* endregion */
