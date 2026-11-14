@@ -30,8 +30,28 @@ return [
         'tabs' => [
             'map' => 'Carte',
             'entities' => 'Entités',
+            'captures' => 'Captures',
             'history' => 'Historique',
         ],
+    ],
+    'captures' => [
+        'capture' => 'Capturer',
+        'pending' => 'Capture en cours…',
+        'not_linked' => "Le jeu n'est pas relié",
+        'refused' => 'Pas de capture : :reason',
+        'status' => [
+            'refused' => 'refusée par le jeu',
+            'expired' => "le jeu n'a pas répondu",
+        ],
+        'empty' => "Aucune capture pour l'instant. Le jeu en prend une après chaque chantier, ou à la demande.",
+        'cycle' => 'cycle :cycle',
+        'trigger' => [
+            'manual' => 'Manuelle',
+            'auto' => 'Automatique',
+        ],
+        'current_layout' => 'Plan actuel',
+        'older_layout' => 'Plan plus ancien',
+        'alt' => 'Capture de la zone dans le jeu, :when',
     ],
     'layers' => [
         'label' => 'Calque',

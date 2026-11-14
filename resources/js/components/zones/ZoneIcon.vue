@@ -15,7 +15,8 @@ defineProps<{
         | 'check'
         | 'question'
         | 'grid'
-        | 'pin';
+        | 'pin'
+        | 'camera';
     size?: number;
 }>();
 
@@ -62,6 +63,10 @@ defineProps<{
         <template v-else-if="name === 'alert'">
             <path d="M12 3l10 18H2z" />
             <path d="M12 10v4M12 17.5h.01" />
+        </template>
+        <template v-else-if="name === 'camera'">
+            <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+            <circle cx="12" cy="13" r="3.5" />
         </template>
         <template v-else-if="name === 'clock'">
             <circle cx="12" cy="12" r="9" />

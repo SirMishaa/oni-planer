@@ -30,8 +30,28 @@ return [
         'tabs' => [
             'map' => 'Map',
             'entities' => 'Entities',
+            'captures' => 'Captures',
             'history' => 'History',
         ],
+    ],
+    'captures' => [
+        'capture' => 'Capture',
+        'pending' => 'Capturing…',
+        'not_linked' => 'The game is not linked',
+        'refused' => 'No capture: :reason',
+        'status' => [
+            'refused' => 'refused by the game',
+            'expired' => 'the game did not answer',
+        ],
+        'empty' => 'No capture yet. The game takes one after each building spree, or on demand.',
+        'cycle' => 'cycle :cycle',
+        'trigger' => [
+            'manual' => 'Manual',
+            'auto' => 'Automatic',
+        ],
+        'current_layout' => 'Current layout',
+        'older_layout' => 'Older layout',
+        'alt' => 'The zone in the game, :when',
     ],
     'layers' => [
         'label' => 'Layer',

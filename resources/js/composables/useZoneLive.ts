@@ -23,7 +23,7 @@ const CLOCK_TICK_MS = 1_000;
 type ZoneUpdatedPayload = {
     zoneGuid: string;
     colonyGuid: string;
-    kind: 'list' | 'layout' | 'slow' | 'fast';
+    kind: 'list' | 'layout' | 'slow' | 'fast' | 'capture';
 };
 
 /** Options of `router.reload`, typed through `@inertiajs/vue3` (core is not a direct dependency). */

@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import ZoneController from '@/actions/App/Http/Controllers/ZoneController';
 import GameSprite from '@/components/viability/GameSprite.vue';
+import ZoneCaptures from '@/components/zones/ZoneCaptures.vue';
 import ZoneEntities from '@/components/zones/ZoneEntities.vue';
 import ZoneIcon from '@/components/zones/ZoneIcon.vue';
 import ZoneMap from '@/components/zones/ZoneMap.vue';
@@ -27,6 +28,8 @@ const props = defineProps<{
     counts: ZoneShowData['counts'];
     plantsKnown: boolean;
     buildingStatesKnown: boolean;
+    captures: ZoneShowData['captures'];
+    captureRequest: ZoneShowData['captureRequest'];
     echo: ZoneShowData['echo'];
 }>();
 
@@ -47,6 +50,8 @@ const { live, ageLabel, gone } = useZoneLive({
         'counts',
         'plantsKnown',
         'buildingStatesKnown',
+        'captures',
+        'captureRequest',
     ],
     updatedAt: () =>
         latestTime([
@@ -89,7 +94,7 @@ const known = computed(() => props.plantsKnown || props.buildingStatesKnown);
 
 // region Tabs, layers and selection
 
-type Tab = 'map' | 'entities';
+type Tab = 'map' | 'entities' | 'captures';
 
 const tab = ref<Tab>('map');
 const layer = ref<ZoneMapLayer>(
@@ -210,6 +215,20 @@ function showOnMap(instanceId: string): void {
                         >· {{ tc('zones.index.problems', counts.problems) }}</em
                     >
                 </button>
+                <button
+                    id="zone-tab-captures"
+                    type="button"
+                    role="tab"
+                    class="zone-tab"
+                    :aria-selected="tab === 'captures'"
+                    aria-controls="zone-panel-captures"
+                    @click="tab = 'captures'"
+                >
+                    <ZoneIcon name="camera" />{{
+                        t('zones.show.tabs.captures')
+                    }}
+                    <em>{{ captures.length }}</em>
+                </button>
             </div>
             <!-- endregion -->
 
@@ -271,7 +290,7 @@ function showOnMap(instanceId: string): void {
 
             <!-- region Entities tab -->
             <section
-                v-else
+                v-else-if="tab === 'entities'"
                 id="zone-panel-entities"
                 role="tabpanel"
                 aria-labelledby="zone-tab-entities"
@@ -283,6 +302,22 @@ function showOnMap(instanceId: string): void {
                     :building-states-known="buildingStatesKnown"
                     :selected-id="selectedId"
                     @select="showOnMap"
+                />
+            </section>
+            <!-- endregion -->
+
+            <!-- region Captures tab -->
+            <section
+                v-else
+                id="zone-panel-captures"
+                role="tabpanel"
+                aria-labelledby="zone-tab-captures"
+            >
+                <ZoneCaptures
+                    :zone-id="zone.id"
+                    :captures="captures"
+                    :capture-request="captureRequest"
+                    :live="live"
                 />
             </section>
             <!-- endregion -->
