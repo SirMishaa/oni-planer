@@ -53,6 +53,10 @@ return [
         'older_layout' => 'Plan plus ancien',
         'alt' => 'Capture de la zone dans le jeu, :when',
     ],
+    'compare' => [
+        'toggle' => 'Comparer avec le jeu',
+        'game' => 'Jeu',
+    ],
     'layers' => [
         'label' => 'Calque',
         'growth' => 'Croissance',

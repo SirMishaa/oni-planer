@@ -53,6 +53,10 @@ return [
         'older_layout' => 'Older layout',
         'alt' => 'The zone in the game, :when',
     ],
+    'compare' => [
+        'toggle' => 'Compare with the game',
+        'game' => 'Game',
+    ],
     'layers' => [
         'label' => 'Layer',
         'growth' => 'Growth',

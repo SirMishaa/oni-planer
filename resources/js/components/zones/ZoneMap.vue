@@ -59,6 +59,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     select: [instanceId: string];
+    /** The drawn cell size in CSS pixels, zoom included: the comparison draws the game's capture at it. */
+    'cell-size': [px: number];
 }>();
 
 // endregion
@@ -100,6 +102,8 @@ const cellPx = computed(() => {
 
     return Math.max(4, Math.min(cap, Math.round(fitCellPx.value * zoom.value)));
 });
+
+watch(cellPx, (px) => emit('cell-size', px), { immediate: true });
 
 const stageWidth = computed(() => props.map.box.width * cellPx.value);
 const stageHeight = computed(() => props.map.box.height * cellPx.value);

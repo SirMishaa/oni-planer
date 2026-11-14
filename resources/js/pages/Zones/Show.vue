@@ -4,11 +4,13 @@ import { computed, ref } from 'vue';
 import ZoneController from '@/actions/App/Http/Controllers/ZoneController';
 import GameSprite from '@/components/viability/GameSprite.vue';
 import ZoneCaptures from '@/components/zones/ZoneCaptures.vue';
+import ZoneCaptureView from '@/components/zones/ZoneCaptureView.vue';
 import ZoneEntities from '@/components/zones/ZoneEntities.vue';
 import ZoneIcon from '@/components/zones/ZoneIcon.vue';
 import ZoneMap from '@/components/zones/ZoneMap.vue';
 import type { ZoneMapLayer } from '@/components/zones/zoneMapPainter';
 import ZonePanel from '@/components/zones/ZonePanel.vue';
+import { useFormat } from '@/composables/useFormat';
 import { useT } from '@/composables/useT';
 import { latestTime, useZoneLive } from '@/composables/useZoneLive';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -135,6 +137,35 @@ const selectedBuilding = computed(() =>
         : null,
 );
 
+// region Comparison with the game
+
+const format = useFormat();
+
+/** The map and the latest capture side by side (one under the other for a box wider than tall). */
+const compare = ref(false);
+/** The map's drawn cell size, zoom included: the capture is drawn at it. */
+const mapCellPx = ref<number | null>(null);
+const latestCapture = computed(() => props.captures[0] ?? null);
+const comparing = computed(
+    () => compare.value && props.map !== null && latestCapture.value !== null,
+);
+const compareStacked = computed(
+    () => props.map !== null && props.map.box.width > props.map.box.height,
+);
+const latestCaptureLabel = computed(() =>
+    latestCapture.value === null
+        ? ''
+        : [
+              t('zones.compare.game'),
+              format.age(Date.now() - Date.parse(latestCapture.value.takenAt)),
+              latestCapture.value.matchesLayout
+                  ? t('zones.captures.current_layout')
+                  : t('zones.captures.older_layout'),
+          ].join(' · '),
+);
+
+// endregion
+
 function showOnMap(instanceId: string): void {
     selectedId.value = instanceId;
     tab.value = 'map';
@@ -255,18 +286,55 @@ function showOnMap(instanceId: string): void {
                             t(`zones.layers.${item.key}`)
                         }}
                     </button>
+                    <button
+                        v-if="latestCapture"
+                        type="button"
+                        class="zone-layer zone-layer--compare"
+                        :aria-pressed="compare"
+                        @click="compare = !compare"
+                    >
+                        <ZoneIcon name="camera" />{{
+                            t('zones.compare.toggle')
+                        }}
+                    </button>
                 </div>
 
-                <div class="zone-body">
-                    <ZoneMap
+                <div
+                    class="zone-body"
+                    :class="{ 'zone-body--compare': comparing }"
+                >
+                    <div
                         v-if="map"
-                        :map="map"
-                        :entities="knownEntities"
-                        :layer="layer"
-                        :selected-id="selectedId"
-                        :zone-name="zone.name"
-                        @select="selectedId = $event"
-                    />
+                        class="zone-compare"
+                        :class="{
+                            'zone-compare--on': comparing,
+                            'zone-compare--stacked': compareStacked,
+                        }"
+                    >
+                        <ZoneMap
+                            :map="map"
+                            :entities="knownEntities"
+                            :layer="layer"
+                            :selected-id="selectedId"
+                            :zone-name="zone.name"
+                            @select="selectedId = $event"
+                            @cell-size="mapCellPx = $event"
+                        />
+                        <figure
+                            v-if="comparing && latestCapture"
+                            class="zone-compare__game"
+                        >
+                            <ZoneCaptureView
+                                :capture="latestCapture"
+                                :box="map.box"
+                                :cell-px="mapCellPx"
+                                :alt="latestCaptureLabel"
+                            />
+                            <figcaption class="zone-compare__caption">
+                                {{ latestCaptureLabel }}
+                            </figcaption>
+                        </figure>
+                    </div>
                     <p v-else class="zone-empty">
                         <ZoneIcon name="map" :size="28" />
                         {{ t('zones.show.no_layout') }}
@@ -511,6 +579,39 @@ function showOnMap(instanceId: string): void {
     .zone-body {
         grid-template-columns: minmax(0, 1fr) 310px;
     }
+
+    /* Comparing: map and game share the width, the panel goes under them. */
+    .zone-body--compare {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .zone-compare--on:not(.zone-compare--stacked) {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+}
+
+.zone-compare {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    min-width: 0;
+}
+
+.zone-compare__game {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    margin: 0;
+}
+
+.zone-compare__caption {
+    color: var(--text-3);
+    font-size: 12px;
+    text-align: center;
+}
+
+.zone-layer--compare {
+    margin-left: auto;
 }
 
 .zone-empty {
