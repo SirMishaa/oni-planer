@@ -42,65 +42,6 @@ use Closure;
  */
 final class ZonePresenter
 {
-    /**
-     * Status item ids that make a building (or, later, a plant) a problem.
-     * Taken from the game's Assembly-CSharp (build of 2026-07, ilspycmd):
-     * - `MaterialsUnavailable`, `MaterialsUnavailableForRefill`: set by
-     *   FetchListStatusItemUpdater on a ManualDeliveryKG that cannot be
-     *   filled (the farm station short of fertilizer);
-     * - `Broken`, `NeedPower`, `NotEnoughPower`, `Entombed`, `Flooded`,
-     *   `MissingFoundation`: Database.BuildingStatusItems that stop a building;
-     * - `Wilting`, `WiltingDomestic`, `WiltingNonGrowing`, `NeedsFertilizer`,
-     *   `NeedsIrrigation`: Database.CreatureStatusItems of a plant that
-     *   stopped growing (plants carry no status items in the fast state yet;
-     *   their `wilting` flag is the rule today).
-     * To be refined with real fast states (slice A, task S7).
-     *
-     * @var list<string>
-     */
-    /**
-     * Passages of the game and of the player's mods (doors, ladders, fire
-     * poles, stairs). On the zone or its border ring they are shown apart, as
-     * the zone's border: never content, never a problem. Any other building
-     * on the ring (feeder, fishing station, modded or unknown) is content.
-     *
-     * @var list<string>
-     */
-    public const array PASSAGE_PREFABS = [
-        'Door',
-        'ManualPressureDoor',
-        'PressureDoor',
-        'BunkerDoor',
-        'InsulatedDoor',
-        'GlassDoorSimple',
-        'GlassDoorComplex',
-        'WoodenDoor',
-        'AIO_FacilityDoor',
-        'AIO_WoodenDoor',
-        'TinyDoor',
-        'Ladder',
-        'LadderFast',
-        'AIO_MetalLadder',
-        'FirePole',
-        'Stairs',
-    ];
-
-    public const array PROBLEM_STATUS_IDS = [
-        'MaterialsUnavailable',
-        'MaterialsUnavailableForRefill',
-        'Broken',
-        'NeedPower',
-        'NotEnoughPower',
-        'Entombed',
-        'Flooded',
-        'MissingFoundation',
-        'Wilting',
-        'WiltingDomestic',
-        'WiltingNonGrowing',
-        'NeedsFertilizer',
-        'NeedsIrrigation',
-    ];
-
     /** Game seconds in a cycle; a plant's maturity is counted in cycles. */
     private const float CYCLE_SECONDS = 600.0;
 
@@ -149,7 +90,7 @@ final class ZonePresenter
             : null;
 
         $fastPlants = self::listOrNull($zone->fast_state['plants'] ?? null);
-        [$fastBuildings, $borderBuildings] = self::splitPassages(self::listOrNull($zone->fast_state['buildings'] ?? null));
+        [$fastBuildings, $borderBuildings] = ZoneProblems::splitPassages(self::listOrNull($zone->fast_state['buildings'] ?? null));
         $layoutBuildings = self::listOrNull($layout['buildings'] ?? null);
         $layoutTiles = self::listOrNull($layout['tiles'] ?? null);
         $this->buildingDefinitions = self::buildingDefinitions(array_values(array_filter([...$layoutBuildings ?? [], ...$layoutTiles ?? []], is_array(...))));
@@ -220,25 +161,13 @@ final class ZonePresenter
     }
 
     /**
-     * Entities of the zone with at least one problem. The count is null
-     * while unknown (no fast state, or neither its plants nor its buildings
-     * were read) and partial when only one of the two was read.
+     * @see ZoneProblems::summary()
      *
      * @return array{count: int|null, partial: bool}
      */
     public function problemSummary(Zone $zone): array
     {
-        $plants = self::listOrNull($zone->fast_state['plants'] ?? null);
-        [$buildings] = self::splitPassages(self::listOrNull($zone->fast_state['buildings'] ?? null));
-
-        if ($plants === null && $buildings === null) {
-            return ['count' => null, 'partial' => false];
-        }
-
-        $withProblems = count(array_filter($plants ?? [], fn (array $plant): bool => $this->plantProblems($plant) !== []))
-            + count(array_filter($buildings ?? [], fn (array $building): bool => $this->buildingProblems($building) !== []));
-
-        return ['count' => $withProblems, 'partial' => $plants === null || $buildings === null];
+        return ZoneProblems::summary($zone);
     }
 
     private static function captureRequest(Zone $zone): ?ZoneCaptureRequestData
@@ -367,27 +296,6 @@ final class ZonePresenter
     }
 
     /**
-     * Splits fast-state buildings into content and border passages, in the
-     * order received; null (not read) stays null on both sides.
-     *
-     * @param  list<array<mixed>>|null  $buildings
-     * @return array{0: list<array<mixed>>|null, 1: list<array<mixed>>}
-     */
-    private static function splitPassages(?array $buildings): array
-    {
-        if ($buildings === null) {
-            return [null, []];
-        }
-
-        $isPassage = fn (array $building): bool => in_array($building['prefabId'] ?? null, self::PASSAGE_PREFABS, true);
-
-        return [
-            array_values(array_filter($buildings, fn (array $building): bool => ! $isPassage($building))),
-            array_values(array_filter($buildings, $isPassage)),
-        ];
-    }
-
-    /**
      * Height and ceiling rule of the layout prefabs the game data knows; modded prefabs are absent.
      *
      * @param  list<array<mixed>>  $layoutBuildings
@@ -490,11 +398,9 @@ final class ZonePresenter
                 'facingLeft' => ($building['orientation'] ?? null) === 'FlipH',
                 'solid' => $this->buildingDefinitions[$prefabId]['solid'] ?? false,
             ];
-            $anchor = (int) $building['anchorCell'];
-            for ($dy = 0; $dy < self::int($building['height'] ?? null, 1); $dy++) {
-                for ($dx = 0; $dx < self::int($building['width'] ?? null, 1); $dx++) {
-                    $occupants[$anchor + $dx + $dy * $gridWidth] = $occupant;
-                }
+            $footprint = ZoneGeometry::footprint((int) $building['anchorCell'], self::int($building['width'] ?? null, 1), self::int($building['height'] ?? null, 1), $gridWidth);
+            foreach ($footprint as $cell) {
+                $occupants[$cell] = $occupant;
             }
         }
 
@@ -522,7 +428,7 @@ final class ZonePresenter
         $prefabId = self::string($plant['id'] ?? null);
         $wilting = (bool) ($plant['wilting'] ?? false);
         $grown = (bool) ($plant['grown'] ?? false);
-        $problems = $this->plantProblems($plant);
+        $problems = ZoneProblems::forPlant($plant);
 
         return new ZoneEntityData(
             kind: 'plant',
@@ -556,7 +462,7 @@ final class ZonePresenter
         $prefabId = self::string($building['prefabId'] ?? null);
         $instanceId = self::stringOrNull($building['instanceId'] ?? null);
         $cell = $position($instanceId === null ? null : ($anchorsByInstance[$instanceId] ?? null));
-        $problems = $passage ? [] : $this->buildingProblems($building);
+        $problems = $passage ? [] : ZoneProblems::forBuilding($building);
 
         return new ZoneEntityData(
             kind: 'building',
@@ -570,40 +476,6 @@ final class ZonePresenter
             problems: $problems,
             neededItemSprite: $this->neededItemSprite($problems),
         );
-    }
-
-    /**
-     * @param  array<mixed>  $plant
-     * @return list<string>
-     */
-    private function plantProblems(array $plant): array
-    {
-        return ($plant['wilting'] ?? false) === true ? [__('zones.problems.wilting')] : [];
-    }
-
-    /**
-     * Status items listed in {@see self::PROBLEM_STATUS_IDS}, by their game
-     * text; a building the game reports as not operational without such a
-     * status gets a generic "not operational".
-     *
-     * @param  array<mixed>  $building
-     * @return list<string>
-     */
-    private function buildingProblems(array $building): array
-    {
-        $problems = [];
-        foreach (self::listOrNull($building['statusItems'] ?? null) ?? [] as $status) {
-            $id = self::string($status['id'] ?? null);
-            if (in_array($id, self::PROBLEM_STATUS_IDS, true)) {
-                $problems[] = self::stringOrNull($status['name'] ?? null) ?? $id;
-            }
-        }
-
-        if ($problems === [] && ($building['operational'] ?? null) === false) {
-            $problems[] = __('zones.problems.not_operational');
-        }
-
-        return $problems;
     }
 
     /**
