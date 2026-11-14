@@ -30,6 +30,7 @@ const BASELINE_BUDGETS = [
     'client-zone.fast' => 5.0,      // measured median 1.2 ms on 2026-11-13 (floor 5 ms)
     'client-colony.state' => 19.0,  // measured median 6.1 ms on 2026-11-13 (real 74 KB state)
     'client-command.ack' => 5.0,    // measured median 1.1 ms on 2026-11-13 (floor 5 ms)
+    'client-zone.capture' => 5.0,   // floor 5 ms, passes on 2026-11-14 (copies a 2 KB file to a faked disk)
 ];
 
 /** Queries of one run of each message type (a change means the handler's work changed). */
@@ -41,6 +42,7 @@ const BASELINE_QUERIES = [
     'client-zone.fast' => 2,
     'client-colony.state' => 7,
     'client-command.ack' => 2,
+    'client-zone.capture' => 3,
 ];
 
 /**
@@ -61,6 +63,7 @@ function baselineFrame(UplinkMessageType $type, int $run): string
         UplinkMessageType::SessionStart => [...$message, 'sessionId' => "perf-session-{$run}"],
         UplinkMessageType::ZoneSlowState, UplinkMessageType::ZoneFastState => [...$message, 'gameSeconds' => 40_000.0 + $run],
         UplinkMessageType::CommandAck => [...$message, 'commandId' => UplinkCommand::factory()->create(['colony_guid' => 'perf-colony'])->id],
+        UplinkMessageType::ZoneCapture => baselineCaptureFile($message),
         default => $message,
     };
 
@@ -69,6 +72,23 @@ function baselineFrame(UplinkMessageType $type, int $run): string
     }
 
     return uplinkData($type->value, $message, $type->channel());
+}
+
+/**
+ * Puts the capture's PNG in a temp mod folder and fakes the public disk, so the job copies a real file.
+ *
+ * @param  array<string, mixed>  $message
+ * @return array<string, mixed>
+ */
+function baselineCaptureFile(array $message): array
+{
+    $modPath = sys_get_temp_dir().'/uplink-perf-mod';
+    Illuminate\Support\Facades\File::ensureDirectoryExists("{$modPath}/captures/{$message['zoneId']}");
+    Illuminate\Support\Facades\File::put("{$modPath}/captures/{$message['zoneId']}/{$message['fileName']}", str_repeat('p', 2_048));
+    config(['game.uplink_mod_path' => $modPath]);
+    Illuminate\Support\Facades\Storage::fake('public');
+
+    return $message;
 }
 
 /** Median duration of $runs runs in milliseconds, first run discarded as warm-up. */
