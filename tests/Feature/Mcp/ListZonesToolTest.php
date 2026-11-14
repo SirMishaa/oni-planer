@@ -1,0 +1,50 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Mcp\Servers\OniServer;
+use App\Mcp\Tools\ListZonesTool;
+use App\Models\Colony;
+use App\Models\Zone;
+use App\Services\Mcp\McpLookupException;
+use App\Services\Mcp\McpZones;
+
+it('lists active zones with size, age and problems', function (): void {
+    $colony = Colony::factory()->create();
+    Zone::factory()->sodicaneFarm()->create(['colony_guid' => $colony->guid, 'name' => 'PlantFarm/Sadicane']);
+    Zone::factory()->create(['colony_guid' => $colony->guid, 'name' => 'Old room', 'archived_at' => now()]);
+
+    OniServer::tool(ListZonesTool::class)
+        ->assertOk()
+        ->assertSee('PlantFarm/Sadicane')
+        ->assertSee('40 cells')
+        ->assertSee('box 22x4 @ w(99,200)')
+        ->assertSee('problems 1')
+        ->assertDontSee('Old room');
+});
+
+it('resolves a zone by id, exact name and unique fragment', function (): void {
+    $colony = Colony::factory()->create();
+    $zone = Zone::factory()->create(['colony_guid' => $colony->guid, 'name' => 'Bathroom']);
+    Zone::factory()->create(['colony_guid' => $colony->guid, 'name' => 'Bathroom annex']);
+
+    expect(McpZones::resolve($colony, (string) $zone->id)->is($zone))->toBeTrue()
+        ->and(McpZones::resolve($colony, 'bathroom')->is($zone))->toBeTrue()
+        ->and(McpZones::resolve($colony, 'annex')->name)->toBe('Bathroom annex');
+});
+
+it('refuses an ambiguous zone name and lists the candidates', function (): void {
+    $colony = Colony::factory()->create();
+    Zone::factory()->create(['colony_guid' => $colony->guid, 'name' => 'AquaFarm/PacuOne']);
+    Zone::factory()->create(['colony_guid' => $colony->guid, 'name' => 'AquaFarm/PacuTwo']);
+
+    expect(fn () => McpZones::resolve($colony, 'aquafarm'))
+        ->toThrow(McpLookupException::class, 'AquaFarm/PacuOne');
+});
+
+it('does not resolve a zone of another colony', function (): void {
+    $colony = Colony::factory()->create();
+    $other = Zone::factory()->create(['colony_guid' => 'another-colony']);
+
+    expect(fn () => McpZones::resolve($colony, (string) $other->id))->toThrow(McpLookupException::class);
+});
