@@ -4,17 +4,22 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
+use App\Data\ZoneCritterData;
+use App\Data\ZoneCrowdingRegionData;
+use App\Data\ZoneEggData;
 use App\Mcp\Tools\Concerns\ResolvesColony;
 use App\Models\Colony;
 use App\Models\Zone;
 use App\Services\GameText;
 use App\Services\Mcp\McpFormat;
 use App\Services\Mcp\McpHeader;
+use App\Services\Zones\ZoneCritterState;
 use App\Services\Zones\ZoneGeometry;
 use App\Services\Zones\ZonePlants;
 use App\Services\Zones\ZoneProblems;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
+use Illuminate\Support\Collection;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
@@ -23,7 +28,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[Name('entity')]
-#[Description('Everything the game sent about one plant or building, by its instance id (from zone_map or zone_overview): position, size, state, status items, storage, growth, problems, the zones containing it. Critters have no id yet.')]
+#[Description('Everything the game sent about one plant or building, by its instance id (from zone_map or zone_overview): position, size, state, status items, storage, growth, problems, the zones containing it. Also covers a critter or an egg by its instance id: state, region and crowding, statuses, fertility, next-egg odds.')]
 #[IsReadOnly]
 final class EntityTool extends Tool
 {
@@ -44,7 +49,12 @@ final class EntityTool extends Tool
         }
 
         $zones = Zone::query()->active()->where('colony_guid', $colony->guid)->orderBy('id')
-            ->get(['id', 'name', 'layout', 'fast_state', 'layout_at', 'slow_state_at', 'fast_state_at']);
+            ->get(['id', 'name', 'layout', 'fast_state', 'slow_state', 'layout_at', 'slow_state_at', 'fast_state_at']);
+        $creature = $this->creature($zones, $instanceId);
+        if ($creature !== null) {
+            return Response::text(implode("\n", [McpHeader::line($colony, $creature['zone']), '', ...$creature['lines']]));
+        }
+
         $source = null;
         $found = null;
         $layoutEntry = null;
@@ -68,7 +78,7 @@ final class EntityTool extends Tool
         }
 
         if ($found === null && $layoutEntry === null) {
-            return Response::error(sprintf('No plant or building #%s in the zones of colony "%s" (critters have no id yet: find them in zone_overview).', $instanceId, $colony->name));
+            return Response::error(sprintf('No plant, building, critter or egg #%s in the zones of colony "%s".', $instanceId, $colony->name));
         }
 
         [$kind, $entity] = $found ?? ['building', []];
@@ -126,9 +136,77 @@ final class EntityTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'instanceId' => $schema->string()->description('Instance id of a plant or building, as zone_map and zone_overview print it after #.')->required(),
+            'instanceId' => $schema->string()->description('Instance id of a plant, building, critter or egg, as zone_map and zone_overview print it after #.')->required(),
             'colony' => $this->colonySchema($schema),
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function critterLines(ZoneCritterData $critter, ?ZoneCrowdingRegionData $region, int $gridWidth, Zone $zone): array
+    {
+        $percent = fn (?float $ratio): string => $ratio === null ? 'unavailable' : round($ratio * 100).' %';
+        $lines = [
+            sprintf('critter %s (%s) #%s', $critter->name, $critter->prefabId, $critter->instanceId),
+            self::position($critter->cell, $gridWidth).sprintf(' · %s · %s%s', $critter->tame ? 'tame' : 'wild', $critter->aquatic ? 'aquatic' : $critter->navType, $critter->baby ? ' · baby' : ''),
+            sprintf('age %s of %s cycles', $critter->ageCycles === null ? 'unavailable' : McpFormat::number($critter->ageCycles), $critter->lifespanCycles === null ? 'unavailable' : McpFormat::number($critter->lifespanCycles)),
+            sprintf('calories %s%s', $percent($critter->caloriesRatio), $critter->hungry ? ' (hungry)' : ''),
+            'fertility '.$percent($critter->fertilityRatio),
+            'happiness '.($critter->happiness === null ? 'unavailable' : sprintf('%d (%s)', $critter->happiness, $critter->happinessState ?? '?')),
+            'region '.($critter->regionId === null ? 'none (carried)' : $critter->regionId).self::crowdingText($region, $critter->prefabId),
+            'statuses: '.($critter->statuses === [] ? 'none' : implode(', ', array_map(fn (array $status): string => $status['name'].($status['bad'] ? ' (bad)' : ''), $critter->statuses))),
+            'next egg: '.($critter->breeding === [] ? 'none' : implode(', ', array_map(fn (array $odds): string => sprintf('%s %d %%', $odds['egg'], round($odds['weight'] * 100)), $critter->breeding))),
+            'stomach: '.($critter->stomach === [] ? 'empty' : implode(', ', array_map(fn (array $meal): string => sprintf('%s %d kcal', $meal['food'], round($meal['calories'])), $critter->stomach))),
+            'next poop: '.($critter->nextPoop ?? 'unavailable'),
+            'zones: '.sprintf('#%d %s', $zone->id, $zone->name),
+            'game data: lookup '.$critter->prefabId,
+        ];
+
+        return $lines;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function eggLines(ZoneEggData $egg, ?ZoneCrowdingRegionData $region, int $gridWidth, Zone $zone): array
+    {
+        $percent = fn (?float $value): string => $value === null ? 'unavailable' : round($value).' %';
+
+        return [
+            sprintf('egg %s (%s) #%s', $egg->name, $egg->prefabId, $egg->instanceId),
+            self::position($egg->cell, $gridWidth).' · '.($egg->tame ? 'tame' : 'wild').' · '.($egg->location ?? 'location unavailable'),
+            'incubation '.$percent($egg->incubation),
+            'viability '.$percent($egg->viability),
+            'hatches into '.($egg->spawns ?? 'unavailable'),
+            'holder '.($egg->holderId === null ? 'none' : '#'.$egg->holderId),
+            'region '.($egg->regionId ?? 'none').($region === null ? '' : sprintf(' (%d / %d cells occupied)', $region->occupied, $region->cellCount)),
+            'zones: '.sprintf('#%d %s', $zone->id, $zone->name),
+            'game data: lookup '.$egg->prefabId,
+        ];
+    }
+
+    private static function position(int $cell, int $gridWidth): string
+    {
+        if ($gridWidth <= 0) {
+            return 'at cell '.$cell;
+        }
+        [$x, $y] = ZoneGeometry::xy($cell, $gridWidth);
+
+        return 'at '.McpFormat::world($x, $y);
+    }
+
+    /** The region's counts and the species' crowding flags, as " (...)"; empty when the region is unknown. */
+    private static function crowdingText(?ZoneCrowdingRegionData $region, string $prefabId): string
+    {
+        if ($region === null) {
+            return '';
+        }
+
+        $state = $region->states[$prefabId] ?? null;
+        $flags = $state === null ? [] : array_keys(array_filter(['overcrowded' => $state['overcrowded'], 'cramped' => $state['cramped'], 'confined' => $state['confined']]));
+
+        return sprintf(' (%s %d / %d cells occupied, %d %s%s)', $region->kind, $region->occupied, $region->cellCount, $region->counts[$prefabId] ?? 0, $prefabId, $flags === [] ? '' : ', '.implode(' ', $flags));
     }
 
     /** A field value as text: JSON for arrays, true / false / null spelled out. */
@@ -150,6 +228,31 @@ final class EntityTool extends Tool
         foreach (is_array($entities) ? $entities : [] as $entity) {
             if (is_array($entity) && (string) ($entity['instanceId'] ?? '') === $instanceId) {
                 return $entity;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The critter or egg with this instance id in the zones, described.
+     *
+     * @param  Collection<int, Zone>  $zones
+     * @return array{zone: Zone, lines: list<string>}|null
+     */
+    private function creature(Collection $zones, string $instanceId): ?array
+    {
+        foreach ($zones as $zone) {
+            $regions = collect(ZoneCritterState::regions($zone) ?? [])->keyBy('id');
+            $critter = collect(ZoneCritterState::critters($zone) ?? [])->firstWhere('instanceId', $instanceId);
+            $egg = collect(ZoneCritterState::eggs($zone) ?? [])->firstWhere('instanceId', $instanceId);
+            $gridWidth = (int) ($zone->layout['gridWidth'] ?? 0);
+
+            if ($critter instanceof ZoneCritterData) {
+                return ['zone' => $zone, 'lines' => self::critterLines($critter, $regions->get($critter->regionId), $gridWidth, $zone)];
+            }
+            if ($egg instanceof ZoneEggData) {
+                return ['zone' => $zone, 'lines' => self::eggLines($egg, $regions->get($egg->regionId), $gridWidth, $zone)];
             }
         }
 

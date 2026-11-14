@@ -1,7 +1,7 @@
 ---
 title: Uplink
 description: Comment le mod Uplink parle au planner via Reverb, comment chaque message est traité en file et les règles d'ordre et de commande.
-sources: ["app/Listeners/RouteUplinkMessage.php", "app/Listeners/Uplink/**", "app/Enums/UplinkMessageType.php", "app/Jobs/Uplink/**", "app/Events/Uplink/**", "app/Services/Uplink/**", "app/Actions/Uplink/**", "app/Events/ZoneUpdated.php", "app/Models/UplinkCommand.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Console/Commands/UplinkResyncZoneCommand.php", "app/Console/Commands/UplinkCaptureCommand.php", "app/Http/Controllers/ZoneCaptureController.php", "app/Services/Zones/ZonePresenter.php", "app/Services/Zones/ZoneProblems.php"]
+sources: ["app/Listeners/RouteUplinkMessage.php", "app/Listeners/Uplink/**", "app/Enums/UplinkMessageType.php", "app/Jobs/Uplink/**", "app/Events/Uplink/**", "app/Services/Uplink/**", "app/Actions/Uplink/**", "app/Events/ZoneUpdated.php", "app/Models/UplinkCommand.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Console/Commands/UplinkResyncZoneCommand.php", "app/Console/Commands/UplinkCaptureCommand.php", "app/Http/Controllers/ZoneCaptureController.php", "app/Services/Zones/ZonePresenter.php", "app/Services/Zones/ZoneProblems.php", "app/Services/Zones/ZoneCritterState.php", "app/Services/Zones/ZoneCritters.php", "app/Services/Critters/CritterStatusText.php"]
 order: 4
 ---
 
@@ -60,6 +60,18 @@ Plusieurs workers lisent `uplink-state` : un état peut finir après un plus ré
 - un état sans `sessionId` (mod plus ancien) compte comme de la session courante.
 
 `previous_slow_temperature` ne garde que des températures de la même session. L'état colonie suit la même règle quand il porte `sessionId` et `gameSeconds` ; sans eux, le dernier arrivé gagne.
+
+## Créatures, œufs et surpeuplement
+
+L'état rapide de chaque zone porte `critters` (les créatures de la zone, une ligne par instance : position, déplacement, âge, calories, fertilité, bonheur, estomac, statuts) et `crowding` (les cavités et bassins que le jeu compte pour le surpeuplement). L'état lent porte `eggs`. Ce sont des champs optionnels : pas de bump de `schema`.
+
+`ZoneCritterState` les lit en objets typés (`ZoneCritterData`, `ZoneEggData`, `ZoneCrowdingRegionData`). Une section absente donne `null` (inconnu), une section vide donne une liste vide, et une ligne malformée est ignorée sans erreur. Les noms de statuts viennent des textes du jeu (`CritterStatusText`), jamais écrits à la main.
+
+<Accordion title="Régions et valeurs absentes">
+- Un identifiant de région vaut `cavity:{handle}` ou `pond:{plus petit identifiant d'instance parmi ses poissons et œufs}`. Une créature portée n'a pas de région (`regionId` nul).
+- Toute valeur que le jeu n'expose pas pour une entité est `null`, et toute liste manquante est vide.
+- Tant que l'état d'une zone n'a pas de section `critters` (ancien mod), `ZoneCritters` retombe sur les créatures de toute la colonie rattachées à la zone par leur case, marquées `derived`.
+</Accordion>
 
 ## Commandes du site vers le mod
 

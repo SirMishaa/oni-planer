@@ -36,3 +36,17 @@ it('finds no critter when the colony sent none', function (): void {
 
     expect(ZoneCritters::in($zone, Colony::factory()->create(['state' => ['schema' => 1]])))->toBe([]);
 });
+
+it('prefers the zone fast section over the colony snapshot', function (): void {
+    $zone = Zone::factory()->create(['world_id' => 0, 'fast_state' => ['schema' => 1, 'critters' => [
+        ['instanceId' => '1', 'prefabId' => 'Pacu', 'cell' => 10, 'x' => 1.0, 'y' => 2.0, 'tame' => true],
+    ]]]);
+    ZoneVersion::factory()->create(['zone_id' => $zone->id, 'version' => 1, 'cells' => [10, 11]]);
+    $colony = Colony::factory()->create(['state' => ['critters' => [['id' => 'Crab', 'worldId' => 0, 'cell' => 11]]]]);
+
+    expect(ZoneCritters::in($zone, $colony))->toBe([['id' => 'Pacu', 'cell' => 10, 'worldId' => 0, 'tame' => true]]);
+
+    $zone->update(['fast_state' => ['schema' => 1, 'critters' => []]]);
+
+    expect(ZoneCritters::in($zone->refresh(), $colony))->toBe([]);
+});

@@ -1,7 +1,7 @@
 ---
 title: Serveur MCP
 description: Le serveur MCP local oni, qui laisse un assistant IA explorer ta colonie (zones, cartes, entités, données du jeu, captures) depuis Claude Code.
-sources: ["routes/ai.php", "app/Mcp/**", "app/Services/Mcp/**", "app/Services/Zones/ZoneCritters.php", "app/Services/Zones/ZoneGeometry.php", "app/Services/Zones/ZoneProblems.php", "app/Services/Zones/ZonePlants.php", ".mcp.json"]
+sources: ["routes/ai.php", "app/Mcp/**", "app/Services/Mcp/**", "app/Services/Zones/ZoneCritters.php", "app/Services/Zones/ZoneCritterState.php", "app/Services/Zones/ZoneGeometry.php", "app/Services/Zones/ZoneProblems.php", "app/Services/Zones/ZonePlants.php", ".mcp.json"]
 order: 7
 ---
 
@@ -20,7 +20,7 @@ Rien à lancer à la main : Claude Code démarre le serveur avec <Artisan comman
 | `zone_overview` | Une zone en un écran : bâtiments et états, plantes, créatures, éléments (masse, plage de température), problèmes. |
 | `zone_map` | Où sont les choses : la carte texte de la zone (voir plus bas). |
 | `zone_cells` | Le détail case par case d'un petit rectangle (100 cases au plus). |
-| `entity` | Tout ce que le jeu envoie sur une plante ou un bâtiment, par son identifiant d'instance. |
+| `entity` | Tout ce que le jeu envoie sur une plante, un bâtiment, une créature ou un œuf, par son identifiant d'instance. |
 | `lookup` | Un objet du jeu (élément, bâtiment, créature, plante, aliment, entrée du codex) par identifiant ou par nom, en français ou en anglais. |
 | `zone_captures` | Les images de la zone rendues par le jeu (WebP), pour comparer un avant / après, et l'adresse de la page de la zone. |
 | `request_capture` | Demande une nouvelle capture au jeu, comme le bouton de la page de la zone. Seul outil qui agit. |
@@ -42,7 +42,7 @@ La légende ne liste que les caractères présents, avec une ligne par préfab e
 - Les listes donnent des coordonnées monde `w(x,y)` : x = case modulo la largeur de la grille, y = case divisée par cette largeur, y vers le haut. Les cartes numérotent en local depuis leur origine, écrite dans l'en-tête.
 - L'ancre d'un bâtiment est sa case en bas à gauche ; l'emprise monte depuis elle (`ZoneGeometry`).
 - Unités : kg, °C, secondes ; un cycle dure 600 s.
-- Le mod n'envoie les créatures que pour toute la colonie : une créature appartient à une zone quand sa case fait partie des cases de la zone, sur le même monde (`ZoneCritters`). Ces lignes sont marquées `derived`. Les créatures n'ont pas encore d'identifiant, donc `entity` ne les couvre pas.
+- Les créatures et les œufs viennent des états de la zone (`ZoneCritterState`) : `entity` décrit une créature (région, surpeuplement, statuts, fertilité, chances du prochain œuf) ou un œuf (incubation, viabilité, porteur) par son identifiant. La carte marque les œufs `o`. Avec un ancien mod, les créatures de toute la colonie sont rattachées à une zone par leur case (`ZoneCritters`) et marquées `derived`.
 - `unavailable` veut dire que le jeu n'a pas envoyé la valeur : rien n'est deviné.
 </Accordion>
 <Accordion title="Règles du code">

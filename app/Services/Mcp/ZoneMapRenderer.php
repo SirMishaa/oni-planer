@@ -8,6 +8,7 @@ use App\Models\Colony;
 use App\Models\Element;
 use App\Models\Zone;
 use App\Services\Zones\ZoneCritters;
+use App\Services\Zones\ZoneCritterState;
 use App\Services\Zones\ZoneGeometry;
 use App\Services\Zones\ZonePlants;
 
@@ -239,6 +240,7 @@ final class ZoneMapRenderer
             $legend[] = sprintf('%s plant %s#%s %s growth %s%s', $glyph, $prefabId, $plant['instanceId'] ?? '?', McpFormat::world($x, $y), $growth === null ? 'unavailable' : round($growth * 100).' %', ($plant['wilting'] ?? false) === true ? ' wilting' : '');
         }
 
+        $derived = ZoneCritterState::critters($zone) === null ? ' (derived)' : '';
         foreach (ZoneCritters::in($zone, $colony) as $critter) {
             if (! $visible((int) $critter['cell'])) {
                 continue;
@@ -247,11 +249,20 @@ final class ZoneMapRenderer
             $glyph = $this->entityGlyph($prefabId);
             $grid[(int) $critter['cell']] = $glyph;
             [$x, $y] = ZoneGeometry::xy((int) $critter['cell'], $gridWidth);
-            $legend[] = sprintf('%s critter %s @ %s %s (derived)', $glyph, $prefabId, McpFormat::world($x, $y), match ($critter['tame'] ?? null) {
+            $legend[] = sprintf('%s critter %s @ %s %s%s', $glyph, $prefabId, McpFormat::world($x, $y), match ($critter['tame'] ?? null) {
                 true => 'tame',
                 false => 'wild',
                 default => '',
-            });
+            }, $derived);
+        }
+
+        foreach (ZoneCritterState::eggs($zone) ?? [] as $egg) {
+            if (! $visible($egg->cell)) {
+                continue;
+            }
+            $grid[$egg->cell] = $this->eggGlyph();
+            [$x, $y] = ZoneGeometry::xy($egg->cell, $gridWidth);
+            $legend[] = sprintf('%s egg %s @ %s', $this->eggGlyph(), $egg->prefabId, McpFormat::world($x, $y));
         }
 
         $rows = [];
@@ -298,6 +309,7 @@ final class ZoneMapRenderer
             $this->glyph('building:'.$prefabId, MapGlyphs::BUILDINGS[$prefabId] ?? null, MapGlyphs::BUILDING_POOL, array_values(MapGlyphs::BUILDINGS));
         }
 
+        $this->eggGlyph();
         $entities = [
             ...array_map(fn (mixed $plant): ?string => is_array($plant) && is_string($plant['id'] ?? null) ? $plant['id'] : null, (array) ($zone->fast_state['plants'] ?? [])),
             ...array_map(fn (array $critter): ?string => is_string($critter['id'] ?? null) ? $critter['id'] : null, ZoneCritters::in($zone, $colony)),
@@ -307,6 +319,12 @@ final class ZoneMapRenderer
         foreach ($entities as $prefabId) {
             $this->entityGlyph($prefabId);
         }
+    }
+
+    /** Glyph of the eggs: `o`, seeded before the critters so none of them takes it. */
+    private function eggGlyph(): string
+    {
+        return $this->glyph('entity:@egg', 'o', MapGlyphs::ENTITY_POOL);
     }
 
     /** Lowercase initial of the prefab, else the next free lowercase letter. */
