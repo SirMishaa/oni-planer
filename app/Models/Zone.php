@@ -54,6 +54,12 @@ final class Zone extends Model
         return $this->hasMany(ZoneVersion::class);
     }
 
+    /** @return HasMany<ZoneCapture, $this> newest first */
+    public function captures(): HasMany
+    {
+        return $this->hasMany(ZoneCapture::class)->latest('taken_at')->latest('id');
+    }
+
     /**
      * Zones that were not archived.
      *
