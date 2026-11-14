@@ -32,9 +32,11 @@ Chaque réponse commence par une ligne d'en-tête : colonie, cycle, âge des don
 La carte affiche deux grilles alignées sur le cadre de la zone, un caractère par case, les lignes numérotées par leur y local et une règle de colonnes :
 
 - **T** (terrain) : tuiles (`#` tuile, `=` tuile grillagée), gaz (`.` oxygène, `,` oxygène pollué, `_` CO₂…), liquides (`~` eau, `%` eau polluée…), solides en majuscules (`D` terre, `S` sable…). `:` marque un gaz ou un liquide de l'anneau de bord, hors de la zone.
-- **O** (occupation) : les bâtiments sur toute leur emprise (une lettre par préfab, la même dans toutes les zones pour les plus courants), les plantes et les créatures en minuscules.
+- **O** (occupation) : les bâtiments sur toute leur emprise, les plantes et les créatures en minuscules.
 
-La légende ne liste que les caractères présents, avec une ligne par préfab et ses instances (identifiant, position, taille, écarts d'état comme `NOT operational`). Au-delà de 40 × 25 cases, l'outil demande un rectangle.
+Les tuiles, éléments et bâtiments courants ont un caractère fixe, le même partout. Les autres reçoivent un caractère propre à la zone : stable d'un rectangle à l'autre de la zone, mais pas d'une zone à l'autre.
+
+La légende ne liste que les caractères présents, avec une ligne par préfab et ses instances (identifiant, position, taille, écarts d'état comme `NOT operational`). Au-delà de 40 × 25 cases, l'outil demande un rectangle. `zone_map` et `zone_cells` découpent le rectangle demandé au cadre de la zone et le disent quand il ne le touche pas.
 </Accordion>
 <Accordion title="Coordonnées, unités et valeurs dérivées">
 - Les listes donnent des coordonnées monde `w(x,y)` : x = case modulo la largeur de la grille, y = case divisée par cette largeur, y vers le haut. Les cartes numérotent en local depuis leur origine, écrite dans l'en-tête.
@@ -44,8 +46,8 @@ La légende ne liste que les caractères présents, avec une ligne par préfab e
 - `unavailable` veut dire que le jeu n'a pas envoyé la valeur : rien n'est deviné.
 </Accordion>
 <Accordion title="Règles du code">
-- Les outils vivent dans `app/Mcp/Tools`, un par fichier, enregistrés dans `OniServer`. Les outils de lecture portent `#[IsReadOnly]`.
-- Le processus stdio vit longtemps : aucun état de colonie ou de zone n'est gardé entre deux appels, chaque appel relit la base.
+- Les outils vivent dans `app/Mcp/Tools`, un par fichier, enregistrés dans `OniServer`. Les outils de lecture portent `#[IsReadOnly]` et n'écrivent rien en base.
+- Le processus stdio vit longtemps : aucun état de colonie ou de zone n'est gardé entre deux appels, chaque appel relit la base. Les noms traduits des objets du jeu, eux, restent en cache : après un `game:import`, relance la session Claude Code.
 - Les règles de problèmes, d'emprise et de croissance sont partagées avec la page des zones (`ZoneProblems`, `ZoneGeometry`, `ZonePlants`) : ne pas les recopier dans un outil.
 - Les tests appellent chaque outil avec `OniServer::tool(...)` dans `tests/Feature/Mcp`.
 </Accordion>
