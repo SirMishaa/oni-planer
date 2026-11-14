@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mcp\Servers;
 
 use App\Mcp\Tools\ColonyStatusTool;
+use App\Mcp\Tools\EntityTool;
 use App\Mcp\Tools\ListZonesTool;
 use App\Mcp\Tools\ZoneCellsTool;
 use App\Mcp\Tools\ZoneMapTool;
@@ -47,5 +48,6 @@ final class OniServer extends Server
         ZoneOverviewTool::class,
         ZoneMapTool::class,
         ZoneCellsTool::class,
+        EntityTool::class,
     ];
 }
