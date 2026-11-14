@@ -85,7 +85,8 @@ They come from `Effects` (each with `is_bad`) and from the `KSelectable` status 
 
 ### Data from the mod
 
-- **Critters and eggs go in a new zone Fast section** (`ZoneSections.Fast`, "one section and one line"), cut per zone by cell, like plants. They ride the existing zone fast message (every 5 s today) and its ordering by session and `gameSeconds`. The colony snapshot keeps its `critters` list for the viability page until that page moves to the new data. Whether to drop it then is the builder's call.
+- **Critters go in a new zone Fast section** (`ZoneSections.Fast`, "one section and one line"), cut per zone by cell, like plants. They ride the existing zone fast message (every 5 s, confirmed by the user) and its ordering by session and `gameSeconds`.
+- **Eggs go in a new zone Slow section** (`ZoneSections.Slow`, every 30 s). The user's call: eggs barely change. The crowding regions stay in the Fast section, because the game's egg-occupied count is part of them, so the Population block stays current even though the egg list itself lags. The colony snapshot keeps its `critters` list for the viability page until that page moves to the new data. Whether to drop it then is the builder's call.
 - **The ring of border cells counts**, as for buildings. A critter in the zone's border ring belongs to the zone.
 - Per critter: `instanceId` (KPrefabID.InstanceID), prefab id, cell, precise position, `facing`, `navType`, remaining path (cells + nav types), `defaultSpeed`, `isMoving`, tame/wild, baby or adult, age (value/max), calories (value/max), fertility (value/max) and breeding chances, happiness (value + state), stomach entries and next poop, hungry, status item ids and effect ids (with `is_bad`), and the id of the crowding region it belongs to.
 - Per egg: `instanceId`, prefab id, cell, incubation %, viability, wild/tame, `spawnedCreature`, location (`floor` / `incubator` / `storage`, with the building's id when stored), and region id.
