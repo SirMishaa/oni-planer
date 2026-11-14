@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
+use App\Data\ZoneCritterData;
 use App\Mcp\Tools\Concerns\ResolvesZone;
 use App\Models\Colony;
 use App\Models\Element;
@@ -13,6 +14,7 @@ use App\Services\Mcp\McpFormat;
 use App\Services\Mcp\McpHeader;
 use App\Services\Mcp\ZoneTerrainSummary;
 use App\Services\Zones\ZoneCritters;
+use App\Services\Zones\ZoneCritterState;
 use App\Services\Zones\ZoneGeometry;
 use App\Services\Zones\ZonePlants;
 use App\Services\Zones\ZoneProblems;
@@ -196,6 +198,10 @@ final class ZoneOverviewTool extends Tool
     private function critters(Zone $zone, Colony $colony, GameText $text): array
     {
         $gridWidth = (int) ($zone->layout['gridWidth'] ?? 0);
+        $read = ZoneCritterState::critters($zone);
+        if ($read !== null) {
+            return $this->readCritters($zone, $read, $gridWidth, $text);
+        }
         if (! is_array($colony->state['critters'] ?? null) || $gridWidth <= 0) {
             return ['Critters: unavailable'];
         }
@@ -221,6 +227,48 @@ final class ZoneOverviewTool extends Tool
         }
         if ($critters === []) {
             $lines[] = ' none';
+        }
+
+        return $lines;
+    }
+
+    /**
+     * Critters and eggs read from the zone's own states (not derived).
+     *
+     * @param  list<ZoneCritterData>  $critters
+     * @return list<string>
+     */
+    private function readCritters(Zone $zone, array $critters, int $gridWidth, GameText $text): array
+    {
+        $at = fn (int $cell): string => $gridWidth > 0 ? McpFormat::world(...ZoneGeometry::xy($cell, $gridWidth)) : 'cell '.$cell;
+        $lines = ['Critters:'];
+        foreach ($critters as $critter) {
+            $lines[] = sprintf(
+                ' %s (%s) #%s @ %s %s age %s cal %s%s%s',
+                $critter->name,
+                $critter->prefabId,
+                $critter->instanceId,
+                $at($critter->cell),
+                $critter->tame ? 'tame' : 'wild',
+                $critter->ageCycles === null ? 'unavailable' : McpFormat::number($critter->ageCycles).'/'.($critter->lifespanCycles === null ? '?' : McpFormat::number($critter->lifespanCycles)),
+                $critter->caloriesRatio === null ? 'unavailable' : round($critter->caloriesRatio * 100).' %',
+                $critter->hungry ? ' hungry' : '',
+                $critter->statuses === [] ? '' : ' · '.implode(', ', array_column($critter->statuses, 'name')),
+            );
+        }
+        if ($critters === []) {
+            $lines[] = ' none';
+        }
+
+        $eggs = ZoneCritterState::eggs($zone);
+        if ($eggs !== null) {
+            $lines[] = 'Eggs:';
+            foreach ($eggs as $egg) {
+                $lines[] = sprintf(' %s (%s) #%s @ %s incubation %s viability %s', $egg->name, $egg->prefabId, $egg->instanceId, $at($egg->cell), $egg->incubation === null ? 'unavailable' : round($egg->incubation).' %', $egg->viability === null ? 'unavailable' : round($egg->viability).' %');
+            }
+            if ($eggs === []) {
+                $lines[] = ' none';
+            }
         }
 
         return $lines;

@@ -240,7 +240,12 @@ final class ZoneMapRenderer
             $legend[] = sprintf('%s plant %s#%s %s growth %s%s', $glyph, $prefabId, $plant['instanceId'] ?? '?', McpFormat::world($x, $y), $growth === null ? 'unavailable' : round($growth * 100).' %', ($plant['wilting'] ?? false) === true ? ' wilting' : '');
         }
 
-        $derived = ZoneCritterState::critters($zone) === null ? ' (derived)' : '';
+        $read = ZoneCritterState::critters($zone);
+        $derived = $read === null ? ' (derived)' : '';
+        $instanceIds = [];
+        foreach ($read ?? [] as $row) {
+            $instanceIds[$row->cell][] = $row->instanceId;
+        }
         foreach (ZoneCritters::in($zone, $colony) as $critter) {
             if (! $visible((int) $critter['cell'])) {
                 continue;
@@ -249,7 +254,7 @@ final class ZoneMapRenderer
             $glyph = $this->entityGlyph($prefabId);
             $grid[(int) $critter['cell']] = $glyph;
             [$x, $y] = ZoneGeometry::xy((int) $critter['cell'], $gridWidth);
-            $legend[] = sprintf('%s critter %s @ %s %s%s', $glyph, $prefabId, McpFormat::world($x, $y), match ($critter['tame'] ?? null) {
+            $legend[] = sprintf('%s critter %s%s @ %s %s%s', $glyph, $prefabId, isset($instanceIds[$critter['cell']]) ? '#'.array_shift($instanceIds[$critter['cell']]) : '', McpFormat::world($x, $y), match ($critter['tame'] ?? null) {
                 true => 'tame',
                 false => 'wild',
                 default => '',
@@ -262,7 +267,7 @@ final class ZoneMapRenderer
             }
             $grid[$egg->cell] = $this->eggGlyph();
             [$x, $y] = ZoneGeometry::xy($egg->cell, $gridWidth);
-            $legend[] = sprintf('%s egg %s @ %s', $this->eggGlyph(), $egg->prefabId, McpFormat::world($x, $y));
+            $legend[] = sprintf('%s egg %s#%s @ %s', $this->eggGlyph(), $egg->prefabId, $egg->instanceId, McpFormat::world($x, $y));
         }
 
         $rows = [];
