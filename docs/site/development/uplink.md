@@ -1,7 +1,7 @@
 ---
 title: Uplink
 description: Comment le mod Uplink parle au planner via Reverb, comment chaque message est traité en file et les règles d'ordre et de commande.
-sources: ["app/Listeners/RouteUplinkMessage.php", "app/Listeners/Uplink/**", "app/Enums/UplinkMessageType.php", "app/Jobs/Uplink/**", "app/Events/Uplink/**", "app/Services/Uplink/**", "app/Actions/Uplink/**", "app/Events/ZoneUpdated.php", "app/Models/UplinkCommand.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Console/Commands/UplinkResyncZoneCommand.php", "app/Console/Commands/UplinkCaptureCommand.php", "app/Http/Controllers/ZoneCaptureController.php", "app/Services/Zones/ZonePresenter.php"]
+sources: ["app/Listeners/RouteUplinkMessage.php", "app/Listeners/Uplink/**", "app/Enums/UplinkMessageType.php", "app/Jobs/Uplink/**", "app/Events/Uplink/**", "app/Services/Uplink/**", "app/Actions/Uplink/**", "app/Events/ZoneUpdated.php", "app/Models/UplinkCommand.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Console/Commands/UplinkResyncZoneCommand.php", "app/Console/Commands/UplinkCaptureCommand.php", "app/Http/Controllers/ZoneCaptureController.php", "app/Services/Zones/ZonePresenter.php", "app/Services/Zones/ZoneProblems.php"]
 order: 4
 ---
 
@@ -38,7 +38,7 @@ Une zone n'est qu'un ensemble de cases. Le mod lit aussi un **anneau de bord** a
 
 - L'état rapide (`buildings`) liste les bâtiments qui touchent la zone **ou** l'anneau, sur le même monde que la zone. Le cadre du layout s'élargit pour les dessiner.
 - Le terrain, les températures et les plantes restent ceux des cases de la zone : les murs ne faussent pas les moyennes.
-- Côté site, `ZonePresenter` sépare les passages (`PASSAGE_PREFABS` : portes, échelles, poteaux, escaliers) dans `borderEntities`. Ils ne comptent ni dans les entités, ni dans les problèmes, ni dans le résumé des zones. Tout autre bâtiment, de mod ou inconnu, compte comme contenu.
+- Côté site, `ZonePresenter` sépare les passages (`ZoneProblems::PASSAGE_PREFABS` : portes, échelles, poteaux, escaliers) dans `borderEntities`. Ils ne comptent ni dans les entités, ni dans les problèmes, ni dans le résumé des zones. Tout autre bâtiment, de mod ou inconnu, compte comme contenu.
 
 ## Règles du listener
 
