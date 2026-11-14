@@ -12,6 +12,7 @@ import type { ZoneMapLayer } from '@/components/zones/zoneMapPainter';
 import ZonePanel from '@/components/zones/ZonePanel.vue';
 import { useFormat } from '@/composables/useFormat';
 import { useT } from '@/composables/useT';
+import { useUplink } from '@/composables/useUplink';
 import { latestTime, useZoneLive } from '@/composables/useZoneLive';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { ZoneShowData } from '@/types/App/Data/data.d';
@@ -32,6 +33,7 @@ const props = defineProps<{
     buildingStatesKnown: boolean;
     captures: ZoneShowData['captures'];
     captureRequest: ZoneShowData['captureRequest'];
+    linkSeenAt: ZoneShowData['linkSeenAt'];
     echo: ZoneShowData['echo'];
 }>();
 
@@ -62,6 +64,25 @@ const { live, ageLabel, gone } = useZoneLive({
             props.zone.fastStateAt,
         ]),
 });
+
+/**
+ * The game is linked: its colony state, repeated every 15 s even while paused, is fresh. Zone
+ * states stop while paused (they do not change), so they cannot tell.
+ */
+const { live: linked } = useUplink(
+    computed(() => ({
+        state: 'ok' as const,
+        colonyName: null,
+        cycle: null,
+        lastSeenAt: props.linkSeenAt,
+        schema: null,
+        echo: {
+            channel: 'uplink' as const,
+            event: '.client-colony.state' as const,
+        },
+    })),
+    ['linkSeenAt'],
+);
 
 // endregion
 
@@ -386,7 +407,7 @@ function showOnMap(instanceId: string): void {
                     :box="map?.box ?? null"
                     :captures="captures"
                     :capture-request="captureRequest"
-                    :live="live"
+                    :live="linked"
                 />
             </section>
             <!-- endregion -->

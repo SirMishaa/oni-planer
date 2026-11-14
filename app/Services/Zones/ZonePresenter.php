@@ -20,6 +20,7 @@ use App\Data\ZoneTerrainElementData;
 use App\Data\ZoneTileData;
 use App\Enums\BuildLocationRule;
 use App\Models\Building;
+use App\Models\Colony;
 use App\Models\Element;
 use App\Models\UplinkCommand;
 use App\Models\Zone;
@@ -214,6 +215,7 @@ final class ZonePresenter
             buildingStatesKnown: $fastBuildings !== null,
             captures: $this->captures($zone),
             captureRequest: self::captureRequest($zone),
+            linkSeenAt: Colony::query()->where('guid', $zone->colony_guid)->first(['last_seen_at'])?->last_seen_at?->toIso8601String(),
         );
     }
 

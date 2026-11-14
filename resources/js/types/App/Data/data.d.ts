@@ -293,6 +293,7 @@ export type ZoneShowData = {
     buildingStatesKnown: boolean;
     captures: ZoneCaptureData[];
     captureRequest: ZoneCaptureRequestData | null;
+    linkSeenAt: string | null;
     echo: { channel: 'uplink'; event: '.zone.updated' };
 };
 export type ZoneSpriteRectData = {

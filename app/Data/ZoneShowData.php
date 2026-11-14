@@ -29,6 +29,12 @@ final class ZoneShowData extends Data
         public array $captures = [],
         /** The latest capture asked for this zone, null when none was. */
         public ?ZoneCaptureRequestData $captureRequest = null,
+        /**
+         * ISO-8601 time the link last stored this zone's colony state. The mod repeats it every
+         * 15 s even while the game is paused (zone states then stop, being unchanged), so it says
+         * whether the game is linked.
+         */
+        public ?string $linkSeenAt = null,
         /** @var array{channel: 'uplink', event: '.zone.updated'} Echo subscription of the live updates */
         #[LiteralTypeScriptType("{ channel: 'uplink'; event: '.zone.updated' }")]
         public array $echo = ['channel' => 'uplink', 'event' => '.zone.updated'],

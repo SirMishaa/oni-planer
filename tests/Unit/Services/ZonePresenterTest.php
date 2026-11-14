@@ -560,3 +560,14 @@ it('reports the latest capture request of the zone', function (): void {
     expect($request?->status)->toBe('refused')
         ->and($request?->reason)->toBe('zone on another world');
 });
+
+it('gives when the zone colony was last seen by the link, paused game included', function (): void {
+    $zone = Zone::factory()->sodicaneFarm()->create();
+
+    expect(app(ZonePresenter::class)->present($zone)->linkSeenAt)->toBeNull();
+
+    App\Models\Colony::factory()->create(['guid' => $zone->colony_guid, 'last_seen_at' => '2026-11-14 18:00:00']);
+    App\Models\Colony::factory()->create(['guid' => 'another-colony', 'last_seen_at' => '2026-11-14 19:00:00']);
+
+    expect(app(ZonePresenter::class)->present($zone)->linkSeenAt)->toStartWith('2026-11-14T18:00:00');
+});
