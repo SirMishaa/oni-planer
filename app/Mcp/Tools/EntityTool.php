@@ -103,7 +103,11 @@ final class EntityTool extends Tool
         }
 
         $problems = $kind === 'plant' ? ZoneProblems::forPlant($entity) : ZoneProblems::forBuilding($entity);
-        $lines[] = 'problems: '.($problems === [] ? 'none' : implode('; ', $problems));
+        $lines[] = 'problems: '.match (true) {
+            $found === null => 'unavailable',
+            $problems === [] => 'none',
+            default => implode('; ', $problems),
+        };
         $lines[] = 'zones: '.implode(', ', $containing);
         $lines[] = 'game data: lookup '.$prefabId;
 

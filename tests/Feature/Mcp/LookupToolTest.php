@@ -6,6 +6,7 @@ use App\Mcp\Servers\OniServer;
 use App\Mcp\Tools\LookupTool;
 use App\Models\Building;
 use App\Models\BuildingConstructionMaterial;
+use App\Models\CodexEntry;
 use App\Models\Critter;
 use App\Models\CritterMorph;
 use App\Models\CritterMorphDiet;
@@ -89,6 +90,20 @@ it('details a critter with its morphs, diets and outputs', function (): void {
         ->assertSee('morph Hatch')
         ->assertSee('eats SandStone 140 kg/cycle → Carbon ×0.5')
         ->assertSee('egg HatchEgg');
+});
+
+it('lists only the exact matches when several kinds share an id', function (): void {
+    Critter::factory()->create(['critter_id' => 'Hatch', 'variant_family' => 'Hatch', 'name' => ['en' => 'Hatch']]);
+    CodexEntry::factory()->create(['codex_id' => 'Hatch', 'title' => ['en' => 'Hatch']]);
+    CodexEntry::factory()->create(['codex_id' => 'HatchHazard', 'title' => ['en' => 'Hatch Hazard']]);
+
+    OniServer::tool(LookupTool::class, ['query' => 'Hatch'])
+        ->assertOk()
+        ->assertSee('2 exact matches')
+        ->assertSee('kind')
+        ->assertSee('critter Hatch')
+        ->assertSee('codex Hatch')
+        ->assertDontSee('HatchHazard');
 });
 
 it('returns the sprite only when asked', function (): void {

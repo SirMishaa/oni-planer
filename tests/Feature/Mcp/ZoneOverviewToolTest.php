@@ -36,7 +36,9 @@ it('prints unavailable sections for a zone never synced', function (): void {
         ->assertOk()
         ->assertSee('layout unavailable')
         ->assertSee('slow state unavailable')
-        ->assertSee('fast state unavailable');
+        ->assertSee('fast state unavailable')
+        ->assertSee('Problems: unavailable')
+        ->assertDontSee('Problems: none');
 });
 
 it('names the candidates when the zone is ambiguous', function (): void {

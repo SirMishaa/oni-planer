@@ -240,7 +240,12 @@ final class ZoneOverviewTool extends Tool
     /** @return list<string> */
     private function problems(Zone $zone): array
     {
-        $lines = ['Problems:'];
+        $summary = ZoneProblems::summary($zone);
+        if ($summary['count'] === null) {
+            return ['Problems: unavailable (no plant or building state read)'];
+        }
+
+        $lines = [$summary['partial'] ? 'Problems (partial: plants or buildings unread):' : 'Problems:'];
         foreach ((array) ($zone->fast_state['plants'] ?? []) as $plant) {
             if (is_array($plant) && ($problems = ZoneProblems::forPlant($plant)) !== []) {
                 $lines[] = sprintf(' plant %s#%s: %s', $plant['id'] ?? '?', $plant['instanceId'] ?? '?', implode('; ', $problems));

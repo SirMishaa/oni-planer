@@ -56,8 +56,12 @@ final class LookupTool extends Tool
         }
 
         if (count($matches) > 1) {
+            $exact = self::isExact((string) $request->get('query'), $matches);
+
             return Response::text(implode("\n", [
-                sprintf('%d matches%s (narrow with an exact id or kind):', count($matches), count($matches) === GameObjectSearch::MAX_RESULTS ? ', first '.GameObjectSearch::MAX_RESULTS : ''),
+                $exact
+                    ? sprintf('%d exact matches of different kinds: pass kind to pick one.', count($matches))
+                    : sprintf('%d matches%s (narrow with an exact id or kind):', count($matches), count($matches) === GameObjectSearch::MAX_RESULTS ? ', first '.GameObjectSearch::MAX_RESULTS : ''),
                 ...array_map(fn (array $match): string => sprintf(' %s %s · %s / %s', $match['kind'], $match['id'], $match['nameFr'], $match['nameEn']), $matches),
             ]));
         }
@@ -97,6 +101,25 @@ final class LookupTool extends Tool
             'kind' => $schema->string()->enum(GameObjectSearch::KINDS)->description('Restrict the search to one kind.'),
             'image' => $schema->boolean()->description('Add the sprite as a WebP image; costs tokens.'),
         ];
+    }
+
+    /**
+     * Whether every match names the query exactly (by id or name), i.e. the search kept only exact matches.
+     *
+     * @param  list<array{kind: string, id: string, nameFr: string, nameEn: string}>  $matches
+     */
+    private static function isExact(string $query, array $matches): bool
+    {
+        $needle = mb_strtolower(mb_trim(\Illuminate\Support\Str::ascii($query)));
+
+        foreach ($matches as $match) {
+            $names = array_map(fn (string $text): string => mb_strtolower(\Illuminate\Support\Str::ascii($text)), [$match['id'], $match['nameFr'], $match['nameEn']]);
+            if (! in_array($needle, $names, true)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /** @return list<string> */

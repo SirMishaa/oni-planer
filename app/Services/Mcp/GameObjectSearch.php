@@ -30,7 +30,7 @@ final class GameObjectSearch
     private ?array $nameKeys = null;
 
     /**
-     * Best matches first: exact id or name, then prefix, then fragment.
+     * Exact id or name matches only when there are any; otherwise prefix, then fragment matches.
      *
      * @return list<array{kind: string, id: string, nameFr: string, nameEn: string}>
      */
@@ -60,9 +60,9 @@ final class GameObjectSearch
         }
 
         usort($matches, fn (array $a, array $b): int => [$a[0], $a[1]['id']] <=> [$b[0], $b[1]['id']]);
-        $exact = array_filter($matches, fn (array $match): bool => $match[0] === 0);
+        $exact = array_values(array_filter($matches, fn (array $match): bool => $match[0] === 0));
 
-        return array_column(array_slice($exact !== [] && count($exact) === 1 ? $exact : $matches, 0, self::MAX_RESULTS), 1);
+        return array_column(array_slice($exact !== [] ? $exact : $matches, 0, self::MAX_RESULTS), 1);
     }
 
     /** The name of a prefab in a locale from the game catalogs, or null. */

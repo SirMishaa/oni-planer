@@ -48,3 +48,10 @@ it('does not resolve a zone of another colony', function (): void {
 
     expect(fn () => McpZones::resolve($colony, (string) $other->id))->toThrow(McpLookupException::class);
 });
+
+it('refuses an empty zone instead of matching every name', function (): void {
+    $colony = Colony::factory()->create();
+    Zone::factory()->create(['colony_guid' => $colony->guid, 'name' => 'Only zone']);
+
+    expect(fn () => McpZones::resolve($colony, '  '))->toThrow(McpLookupException::class, 'Name a zone');
+});

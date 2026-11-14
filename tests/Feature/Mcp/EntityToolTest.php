@@ -35,3 +35,12 @@ it('details a plant with its growth', function (): void {
 it('says critters have no id yet when nothing matches', function (): void {
     OniServer::tool(EntityTool::class, ['instanceId' => 'nope'])->assertHasErrors(['critters have no id yet']);
 });
+
+it('does not claim no problems for a building known only from the layout', function (): void {
+    $this->zone->update(['fast_state' => null]);
+
+    OniServer::tool(EntityTool::class, ['instanceId' => '7001'])
+        ->assertOk()
+        ->assertSee('problems: unavailable')
+        ->assertDontSee('problems: none');
+});

@@ -26,6 +26,10 @@ final class McpZones
         $zones = Zone::query()->active()->where('colony_guid', $colony->guid);
         $needle = mb_strtolower(mb_trim($zone));
 
+        if ($needle === '') {
+            throw new McpLookupException('Name a zone: its id or name (call list_zones).');
+        }
+
         if (ctype_digit($needle)) {
             return (clone $zones)->whereKey((int) $needle)->first()
                 ?? throw new McpLookupException(sprintf('No active zone #%s in colony "%s". Call list_zones.', $needle, $colony->name));
