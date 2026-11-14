@@ -6,6 +6,7 @@ namespace App\Mcp\Servers;
 
 use App\Mcp\Tools\ColonyStatusTool;
 use App\Mcp\Tools\ListZonesTool;
+use App\Mcp\Tools\ZoneCellsTool;
 use App\Mcp\Tools\ZoneMapTool;
 use App\Mcp\Tools\ZoneOverviewTool;
 use Laravel\Mcp\Server;
@@ -45,5 +46,6 @@ final class OniServer extends Server
         ListZonesTool::class,
         ZoneOverviewTool::class,
         ZoneMapTool::class,
+        ZoneCellsTool::class,
     ];
 }
