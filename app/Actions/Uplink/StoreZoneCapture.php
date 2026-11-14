@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\Storage;
  * `captures/{zoneId}/{fileName}`) to the public disk, records it and keeps the last
  * {@see ZoneCapture::KEEP} of the zone. A failed capture, or one whose file is missing, records
  * nothing; a manual one marks its command refused with the reason. Open pages hear of both
- * (`zone.updated`, kind `capture`).
+ * (`zone.updated`, kind `capture`). Idempotent: the mod resends a capture until it is acked, so
+ * a second delivery of a stored capture (its file already moved) changes nothing.
  */
 final class StoreZoneCapture
 {
@@ -37,6 +38,13 @@ final class StoreZoneCapture
 
         $failure = $message['failure'] ?? null;
         $source = config()->string('game.uplink_mod_path').'/captures/'.$message['zoneId'].'/'.($message['fileName'] ?? '');
+        $path = 'zone-captures/'.$zone->zone_guid.'/'.($message['fileName'] ?? '');
+
+        if ($failure === null && $zone->captures()->where('path', $path)->exists()) {
+            File::delete($source);
+
+            return true;
+        }
 
         if ($failure === null && ! File::isFile($source)) {
             $failure = 'capture file missing';
@@ -45,8 +53,8 @@ final class StoreZoneCapture
         if ($failure !== null) {
             $this->failCommand($message['commandId'] ?? null, $zone, $failure);
         } else {
-            $path = 'zone-captures/'.$zone->zone_guid.'/'.$message['fileName'];
             Storage::disk('public')->put($path, File::get($source));
+            File::delete($source);
 
             $zone->captures()->create([
                 'path' => $path,
@@ -79,14 +87,17 @@ final class StoreZoneCapture
             ->update(['status' => UplinkCommand::REFUSED, 'reason' => mb_substr($failure, 0, 255), 'acked_at' => now()]);
     }
 
-    /** Deletes the captures beyond the most recent {@see ZoneCapture::KEEP}, rows and files. */
+    /** Deletes the captures beyond the most recent {@see ZoneCapture::KEEP}: their rows, and their files when no kept row uses them. */
     private function prune(Zone $zone): void
     {
         $stale = $zone->captures()->skip(ZoneCapture::KEEP)->take(PHP_INT_MAX)->get();
 
         foreach ($stale as $capture) {
-            Storage::disk('public')->delete($capture->path);
             $capture->delete();
+
+            if (! ZoneCapture::query()->where('path', $capture->path)->exists()) {
+                Storage::disk('public')->delete($capture->path);
+            }
         }
     }
 }

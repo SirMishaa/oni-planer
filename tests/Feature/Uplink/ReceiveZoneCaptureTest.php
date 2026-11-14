@@ -115,3 +115,50 @@ it('refuses a file name that leaves the captures folder', function (): void {
     expect($acks)->toHaveCount(1)
         ->and(ZoneCapture::query()->count())->toBe(0);
 });
+
+it('stores a capture delivered twice only once', function (): void {
+    writeModCapture($this->modPath, 'zone-a', '20261114-153000-000.png');
+    $frame = uplinkData('client-zone.capture', captureMessage());
+
+    receiveUplinkData($frame);
+    writeModCapture($this->modPath, 'zone-a', '20261114-153000-000.png');
+    $acks = receiveUplinkData($frame);
+
+    expect($acks)->toHaveCount(1)
+        ->and(ZoneCapture::query()->count())->toBe(1);
+});
+
+it('keeps a file another capture row still uses when pruning', function (): void {
+    Storage::disk('public')->put('zone-captures/zone-a/shared.png', 'shared');
+    ZoneCapture::factory()->for($this->zone)->create(['path' => 'zone-captures/zone-a/shared.png', 'taken_at' => now()->subDays(2)]);
+    ZoneCapture::factory()->for($this->zone)->create(['path' => 'zone-captures/zone-a/shared.png', 'taken_at' => now()->subDay()]);
+    foreach (range(1, 13) as $index) {
+        ZoneCapture::factory()->for($this->zone)->create(['taken_at' => now()->subMinutes(100 - $index)]);
+    }
+    writeModCapture($this->modPath, 'zone-a', '20261114-153000-000.png');
+
+    receiveUplinkData(uplinkData('client-zone.capture', captureMessage()));
+
+    expect(ZoneCapture::query()->count())->toBe(15)
+        ->and(Storage::disk('public')->exists('zone-captures/zone-a/shared.png'))->toBeTrue();
+});
+
+it('removes the copy in the mod folder once stored', function (): void {
+    writeModCapture($this->modPath, 'zone-a', '20261114-153000-000.png');
+
+    receiveUplinkData(uplinkData('client-zone.capture', captureMessage()));
+
+    expect("{$this->modPath}/captures/zone-a/20261114-153000-000.png")->not->toBeFile();
+});
+
+it('does not fail a manual capture delivered again after its file was moved', function (): void {
+    $command = UplinkCommand::factory()->create(['colony_guid' => 'colony-1', 'type' => 'zone.capture', 'status' => UplinkCommand::DONE]);
+    writeModCapture($this->modPath, 'zone-a', '20261114-153000-000.png');
+    $frame = uplinkData('client-zone.capture', captureMessage(['trigger' => 'manual', 'commandId' => $command->id]));
+
+    receiveUplinkData($frame);
+    receiveUplinkData($frame);
+
+    expect(ZoneCapture::query()->count())->toBe(1)
+        ->and($command->fresh()->status)->toBe(UplinkCommand::DONE);
+});

@@ -42,7 +42,7 @@ const BASELINE_QUERIES = [
     'client-zone.fast' => 2,
     'client-colony.state' => 7,
     'client-command.ack' => 2,
-    'client-zone.capture' => 3,
+    'client-zone.capture' => 4,
 ];
 
 /**
@@ -63,7 +63,7 @@ function baselineFrame(UplinkMessageType $type, int $run): string
         UplinkMessageType::SessionStart => [...$message, 'sessionId' => "perf-session-{$run}"],
         UplinkMessageType::ZoneSlowState, UplinkMessageType::ZoneFastState => [...$message, 'gameSeconds' => 40_000.0 + $run],
         UplinkMessageType::CommandAck => [...$message, 'commandId' => UplinkCommand::factory()->create(['colony_guid' => 'perf-colony'])->id],
-        UplinkMessageType::ZoneCapture => baselineCaptureFile($message),
+        UplinkMessageType::ZoneCapture => baselineCaptureFile([...$message, 'fileName' => "perf-{$run}.png"]),
         default => $message,
     };
 
