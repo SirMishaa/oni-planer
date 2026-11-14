@@ -1,18 +1,26 @@
 {
-  "mcpServers": {
-    "laravel-boost": {
-      "command": "php",
-      "args": [
-        "artisan",
-        "boost:mcp"
-      ]
-    },
-    "larecipe": {
-      "command": "php",
-      "args": [
-        "artisan",
-        "larecipe:mcp"
-      ]
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "php",
+            "args": [
+                "artisan",
+                "boost:mcp"
+            ]
+        },
+        "larecipe": {
+            "command": "php",
+            "args": [
+                "artisan",
+                "larecipe:mcp"
+            ]
+        },
+        "oni": {
+            "command": "php",
+            "args": [
+                "artisan",
+                "mcp:start",
+                "oni"
+            ]
+        }
     }
-  }
 }
