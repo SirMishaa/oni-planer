@@ -40,26 +40,15 @@ final class McpHeader
         return $line;
     }
 
-    /** "4 s ago", "3 min ago", "never". */
+    /** "4s ago", "3m ago", "never"; English whatever the app locale, so output stays stable. */
     public static function ago(?CarbonInterface $at): string
     {
-        return $at === null ? 'never' : self::age($at).' ago';
+        return $at === null ? 'never' : $at->locale('en')->diffForHumans(['short' => true, 'parts' => 1]);
     }
 
-    /** "4 s", "3 min", "2 h", "5 d", "never". */
+    /** "4s", "3m", "2h", "never". */
     public static function age(?CarbonInterface $at): string
     {
-        if ($at === null) {
-            return 'never';
-        }
-
-        $seconds = (int) $at->diffInSeconds(now(), true);
-
-        return match (true) {
-            $seconds < 120 => $seconds.' s',
-            $seconds < 7_200 => intdiv($seconds, 60).' min',
-            $seconds < 172_800 => intdiv($seconds, 3_600).' h',
-            default => intdiv($seconds, 86_400).' d',
-        };
+        return $at === null ? 'never' : $at->locale('en')->diffForHumans(['short' => true, 'parts' => 1, 'syntax' => CarbonInterface::DIFF_ABSOLUTE]);
     }
 }

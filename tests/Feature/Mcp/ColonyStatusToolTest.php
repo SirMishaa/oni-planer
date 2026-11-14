@@ -22,7 +22,7 @@ it('reports sync health and a colony summary', function (): void {
     OniServer::tool(ColonyStatusTool::class)
         ->assertOk()
         ->assertSee('Colony "Nova" cycle 59')
-        ->assertSee('seen 4 s ago')
+        ->assertSee('seen 4s ago')
         ->assertSee('Sodicane')
         ->assertSee('duplicants 3')
         ->assertSee('(Crab) 2')
