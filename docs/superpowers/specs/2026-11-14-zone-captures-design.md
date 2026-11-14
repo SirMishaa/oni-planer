@@ -61,7 +61,7 @@ Two readers:
 - One row per capture: zone, file path, taken at (real), game seconds / cycle, layout signature, trigger, size in pixels.
 - **Which site layout a capture matches:** the layout message carries the same signature, stored with the zone's current layout. The page and the artisan command say whether a capture matches the site's current layout ("plan actuel") or an older one. No layout history is kept. *(My call: Claude compares a capture with the current site map; the signature says when that comparison is fair.)*
 - Keep the 15 most recent per zone, automatic and manual together; storing the 16th deletes the oldest row and its file.
-- Converting to WebP like the game assets (`game:import-assets` already uses a converter) is the builder's call; the file Claude opens must stay a lossless picture.
+- Stored as WebP quality 90, like the game assets (the same converter): about 85 % lighter than the PNG with no visible difference, and Claude reads it as well. *(Decided with the player on 2026-11-14, replacing "keep a lossless picture".)*
 
 ### On the zone page
 
@@ -79,7 +79,7 @@ Two readers:
 
 - Pixels per cell (suggestion: 32, the game's own sprite density is higher; pick what keeps a 400-cell pool under a few MB).
 - Exact settle delay and guard values within the ranges above.
-- File naming, storage path on the site, the table's name and shape, whether captures are WebP or PNG on the site.
+- File naming, storage path on the site, the table's name and shape.
 - How the artisan command waits (poll the table, or listen to the broadcast).
 - Exact layout of the tab and strip, following the existing zone page style.
 

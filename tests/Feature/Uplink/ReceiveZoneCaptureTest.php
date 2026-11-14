@@ -39,10 +39,12 @@ function captureMessage(array $override = []): array
 function writeModCapture(string $modPath, string $zoneId, string $fileName): void
 {
     File::ensureDirectoryExists("{$modPath}/captures/{$zoneId}");
-    File::put("{$modPath}/captures/{$zoneId}/{$fileName}", 'png-bytes');
+    $image = imagecreatetruecolor(16, 8);
+    imagefill($image, 0, 0, imagecolorallocate($image, 40, 120, 200));
+    imagepng($image, "{$modPath}/captures/{$zoneId}/{$fileName}");
 }
 
-it('copies the capture, records it and broadcasts it', function (): void {
+it('converts the capture to WebP, records it and broadcasts it', function (): void {
     writeModCapture($this->modPath, 'zone-a', '20261114-153000-000.png');
 
     $acks = receiveUplinkData(uplinkData('client-zone.capture', captureMessage()));
@@ -50,12 +52,12 @@ it('copies the capture, records it and broadcasts it', function (): void {
     $capture = ZoneCapture::query()->sole();
     expect($acks)->toHaveCount(1)
         ->and($capture->zone_id)->toBe($this->zone->id)
-        ->and($capture->path)->toBe('zone-captures/zone-a/20261114-153000-000.png')
+        ->and($capture->path)->toBe('zone-captures/zone-a/20261114-153000-000.webp')
         ->and($capture->trigger)->toBe('auto')
         ->and($capture->layout_signature)->toBe('sig-1')
         ->and([$capture->width, $capture->height])->toBe([704, 128])
         ->and($capture->cycle())->toBe(412)
-        ->and(Storage::disk('public')->get($capture->path))->toBe('png-bytes');
+        ->and(getimagesize(Storage::disk('public')->path($capture->path))['mime'] ?? null)->toBe('image/webp');
     Event::assertDispatched(ZoneUpdated::class, fn (ZoneUpdated $event): bool => $event->kind === 'capture' && $event->zoneGuid === 'zone-a');
 });
 
@@ -161,4 +163,16 @@ it('does not fail a manual capture delivered again after its file was moved', fu
 
     expect(ZoneCapture::query()->count())->toBe(1)
         ->and($command->fresh()->status)->toBe(UplinkCommand::DONE);
+});
+
+it('fails the command when the capture file is not a readable PNG', function (): void {
+    $command = UplinkCommand::factory()->create(['colony_guid' => 'colony-1', 'type' => 'zone.capture', 'status' => UplinkCommand::DONE]);
+    File::ensureDirectoryExists("{$this->modPath}/captures/zone-a");
+    File::put("{$this->modPath}/captures/zone-a/20261114-153000-000.png", 'not a png');
+
+    $acks = receiveUplinkData(uplinkData('client-zone.capture', captureMessage(['trigger' => 'manual', 'commandId' => $command->id])));
+
+    expect($acks)->toHaveCount(1)
+        ->and(ZoneCapture::query()->count())->toBe(0)
+        ->and($command->fresh()->reason)->toBe('capture file unreadable');
 });

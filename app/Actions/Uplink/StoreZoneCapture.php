@@ -8,12 +8,15 @@ use App\Events\ZoneUpdated;
 use App\Models\UplinkCommand;
 use App\Models\Zone;
 use App\Models\ZoneCapture;
+use App\Services\GameImport\OniExport\AssetConverter;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 
 /**
- * Stores a zone capture: copies the PNG the mod wrote in its folder (`game.uplink_mod_path`,
- * `captures/{zoneId}/{fileName}`) to the public disk, records it and keeps the last
+ * Stores a zone capture: converts the PNG the mod wrote in its folder (`game.uplink_mod_path`,
+ * `captures/{zoneId}/{fileName}`) to WebP quality 90 on the public disk (about 85 % lighter,
+ * no visible difference), records it and keeps the last
  * {@see ZoneCapture::KEEP} of the zone. A failed capture, or one whose file is missing, records
  * nothing; a manual one marks its command refused with the reason. Open pages hear of both
  * (`zone.updated`, kind `capture`). Idempotent: the mod resends a capture until it is acked, so
@@ -21,6 +24,11 @@ use Illuminate\Support\Facades\Storage;
  */
 final class StoreZoneCapture
 {
+    /** WebP quality of the stored captures, the game renders' own. */
+    private const int WEBP_QUALITY = 90;
+
+    public function __construct(private readonly AssetConverter $converter) {}
+
     /**
      * @param  array{colonyId: string, zoneId: string, gameSeconds: int|float, trigger: string, commandId?: string|null, signature?: string|null, fileName?: string, width?: int, height?: int, failure?: string}  $message
      * @return bool false when the zone is unknown (deleted in the game since)
@@ -38,7 +46,7 @@ final class StoreZoneCapture
 
         $failure = $message['failure'] ?? null;
         $source = config()->string('game.uplink_mod_path').'/captures/'.$message['zoneId'].'/'.($message['fileName'] ?? '');
-        $path = 'zone-captures/'.$zone->zone_guid.'/'.($message['fileName'] ?? '');
+        $path = 'zone-captures/'.$zone->zone_guid.'/'.pathinfo($message['fileName'] ?? '', PATHINFO_FILENAME).'.webp';
 
         if ($failure === null && $zone->captures()->where('path', $path)->exists()) {
             File::delete($source);
@@ -50,10 +58,17 @@ final class StoreZoneCapture
             $failure = 'capture file missing';
         }
 
+        if ($failure === null) {
+            try {
+                $this->converter->pngToWebp($source, Storage::disk('public')->path($path), self::WEBP_QUALITY);
+            } catch (RuntimeException) {
+                $failure = 'capture file unreadable';
+            }
+        }
+
         if ($failure !== null) {
             $this->failCommand($message['commandId'] ?? null, $zone, $failure);
         } else {
-            Storage::disk('public')->put($path, File::get($source));
             File::delete($source);
 
             $zone->captures()->create([

@@ -30,7 +30,7 @@ const BASELINE_BUDGETS = [
     'client-zone.fast' => 5.0,      // measured median 1.2 ms on 2026-11-13 (floor 5 ms)
     'client-colony.state' => 19.0,  // measured median 6.1 ms on 2026-11-13 (real 74 KB state)
     'client-command.ack' => 5.0,    // measured median 1.1 ms on 2026-11-13 (floor 5 ms)
-    'client-zone.capture' => 5.0,   // floor 5 ms, passes on 2026-11-14 (copies a 2 KB file to a faked disk)
+    'client-zone.capture' => 22.0,  // measured median 7.3 ms on 2026-11-14 (converts a 64x64 PNG to WebP; a real capture takes ~85 ms)
 ];
 
 /** Queries of one run of each message type (a change means the handler's work changed). */
@@ -84,7 +84,8 @@ function baselineCaptureFile(array $message): array
 {
     $modPath = sys_get_temp_dir().'/uplink-perf-mod';
     Illuminate\Support\Facades\File::ensureDirectoryExists("{$modPath}/captures/{$message['zoneId']}");
-    Illuminate\Support\Facades\File::put("{$modPath}/captures/{$message['zoneId']}/{$message['fileName']}", str_repeat('p', 2_048));
+    $image = imagecreatetruecolor(64, 64);
+    imagepng($image, "{$modPath}/captures/{$message['zoneId']}/{$message['fileName']}");
     config(['game.uplink_mod_path' => $modPath]);
     Illuminate\Support\Facades\Storage::fake('public');
 
