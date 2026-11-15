@@ -42,8 +42,9 @@ use Laravel\Mcp\Server\Attributes\Version;
     rects of that zone but not between zones. The legend lists only the glyphs present, with
     one line per building prefab and its instances.
 
-    "derived" marks a value the planner computed rather than read from the game (critters are
-    matched to a zone by their cell). "unavailable" means the game did not send it.
+    "derived" marks a value the planner computed rather than read from the game (the removal
+    count of a cramped region, feeding stock and autonomy, and critters matched to a zone by
+    their cell with an older mod). "unavailable" means the game did not send it.
     MARKDOWN)]
 final class OniServer extends Server
 {

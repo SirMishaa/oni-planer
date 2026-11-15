@@ -35,7 +35,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[Name('zone_overview')]
-#[Description('One zone in one screen: buildings and their states, plants and growth, critters inside (derived from their cell), elements with mass and temperature ranges, problems, and pointers to zone_map, captures and the app page.')]
+#[Description('One zone in one screen: buildings and their states, plants and growth, critters and eggs (read from the zone; derived from their cell with an older mod), crowding per room/pond, feeding per band, elements with mass and temperature ranges, problems, and pointers to zone_map, captures and the app page.')]
 #[IsReadOnly]
 final class ZoneOverviewTool extends Tool
 {
@@ -430,7 +430,7 @@ final class ZoneOverviewTool extends Tool
     {
         $summary = ZoneProblems::summary($zone);
         if ($summary['count'] === null) {
-            return ['Problems: unavailable (no plant or building state read)'];
+            return ['Problems: unavailable (no plant, building or critter state read)'];
         }
 
         $lines = [$summary['partial'] ? 'Problems (partial: plants or buildings unread):' : 'Problems:'];
