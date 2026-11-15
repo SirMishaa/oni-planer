@@ -133,11 +133,7 @@ final class CritterProblems
     {
         $problems = [];
         foreach ($population as $region) {
-            $statuses = array_values(array_filter([
-                $region->overcrowded ? CritterStatusText::name('Overcrowded') : null,
-                $region->cramped ? CritterStatusText::name('Cramped') : null,
-                $region->confined ? CritterStatusText::name('Confined') : null,
-            ]));
+            $statuses = array_column($region->states, 'name');
             if ($statuses === []) {
                 continue;
             }

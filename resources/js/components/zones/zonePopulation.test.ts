@@ -1,38 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-    breedingStopped,
-    populationGauge,
-    populationStates,
-} from './zonePopulation';
-
-describe('populationStates', () => {
-    it('shows confined alone: it suppresses the two others', () => {
-        expect(
-            populationStates({
-                confined: true,
-                overcrowded: true,
-                cramped: true,
-            }),
-        ).toEqual(['confined']);
-    });
-
-    it('lists the other states in order', () => {
-        expect(
-            populationStates({
-                confined: false,
-                overcrowded: true,
-                cramped: true,
-            }),
-        ).toEqual(['overcrowded', 'cramped']);
-        expect(
-            populationStates({
-                confined: false,
-                overcrowded: false,
-                cramped: false,
-            }),
-        ).toEqual([]);
-    });
-});
+import { breedingStopped, populationGauge } from './zonePopulation';
 
 describe('breedingStopped', () => {
     it('is false while unknown', () => {

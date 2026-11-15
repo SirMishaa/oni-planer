@@ -343,7 +343,7 @@ final class ZoneOverviewTool extends Tool
 
         $lines = ['Population:'];
         foreach ($regions as $region) {
-            $states = array_keys(array_filter(['overcrowded' => $region->overcrowded, 'cramped' => $region->cramped, 'confined' => $region->confined]));
+            $states = array_column($region->states, 'id');
             $names = array_column($region->types, 'name', 'prefabId');
             $lines[] = sprintf(
                 ' %s %d/%d · +%d eggs · %s%s',

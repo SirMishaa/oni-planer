@@ -16,6 +16,7 @@ use App\Services\Mcp\McpHeader;
 use App\Services\Zones\ZoneCritterState;
 use App\Services\Zones\ZoneGeometry;
 use App\Services\Zones\ZonePlants;
+use App\Services\Zones\ZonePopulation;
 use App\Services\Zones\ZoneProblems;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
@@ -204,7 +205,7 @@ final class EntityTool extends Tool
         }
 
         $state = $region->states[$prefabId] ?? null;
-        $flags = $state === null ? [] : array_keys(array_filter(['overcrowded' => $state['overcrowded'], 'cramped' => $state['cramped'], 'confined' => $state['confined']]));
+        $flags = $state === null ? [] : ZonePopulation::shownStates($state['overcrowded'], $state['cramped'], $state['confined']);
 
         return sprintf(' (%s %d / %d cells occupied, %d %s%s)', $region->kind, $region->occupied, $region->cellCount, $region->counts[$prefabId] ?? 0, $prefabId, $flags === [] ? '' : ', '.implode(' ', $flags));
     }

@@ -102,6 +102,26 @@ it('prints the population per region', function (): void {
         ->assertSee('pond:1201 88/104 · +24 eggs · cramped · remove 1 Pacu (derived)');
 });
 
+it('prints only the confined state of a confined region', function (): void {
+    CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => 'Pacu', 'overcrowding_threshold' => 8]);
+    $colony = Colony::factory()->create();
+    Zone::factory()->sodicaneFarm()->create(['colony_guid' => $colony->guid, 'name' => 'Pond', 'fast_state' => [
+        'schema' => 1,
+        'critters' => [],
+        'crowding' => [[
+            'id' => 'pond:1201', 'kind' => 'pond', 'cellCount' => 4, 'occupied' => 8, 'eggOccupied' => 4,
+            'counts' => ['Pacu' => 1],
+            'states' => ['Pacu' => ['overcrowded' => true, 'cramped' => true, 'confined' => true, 'modifier' => -1]],
+        ]],
+    ]]);
+
+    OniServer::tool(ZoneOverviewTool::class, ['zone' => 'Pond'])
+        ->assertOk()
+        ->assertSee('pond:1201 8/4 · +4 eggs · confined · remove')
+        ->assertDontSee('overcrowded')
+        ->assertDontSee('cramped');
+});
+
 it('prints no population when the game sent no crowding regions', function (): void {
     $colony = Colony::factory()->create();
     Zone::factory()->sodicaneFarm()->create(['colony_guid' => $colony->guid, 'name' => 'Sodicane']);

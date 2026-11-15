@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useT } from '@/composables/useT';
 import type { ZonePopulationData } from '@/types/App/Data/data.d';
-import { populationGauge, populationStates } from './zonePopulation';
+import { populationGauge } from './zonePopulation';
 
 // region Props
 
@@ -50,17 +50,14 @@ function removal(region: ZonePopulationData, prefabId: string) {
                 <span>{{ tc('zones.index.cells', region.cellCount) }}</span>
             </div>
 
-            <ul
-                v-if="populationStates(region).length > 0"
-                class="zone-pop__states"
-            >
+            <ul v-if="region.states.length > 0" class="zone-pop__states">
                 <li
-                    v-for="state in populationStates(region)"
-                    :key="state"
+                    v-for="state in region.states"
+                    :key="state.id"
                     class="zone-pop__state"
-                    :class="`zone-pop__state--${state}`"
+                    :class="`zone-pop__state--${state.id}`"
                 >
-                    {{ t(`zones.population.state.${state}`) }}
+                    {{ state.name }}
                 </li>
             </ul>
 

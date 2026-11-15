@@ -161,11 +161,6 @@ return [
         'derived' => 'dérivé',
         'derived_hint' => 'Calculé par le planner à partir des œufs, pas par le jeu.',
         'stopped' => 'Ponte arrêtée',
-        'state' => [
-            'confined' => 'Confiné',
-            'overcrowded' => 'Surpeuplé',
-            'cramped' => "À l'étroit",
-        ],
     ],
     'entities' => [
         'filters' => [

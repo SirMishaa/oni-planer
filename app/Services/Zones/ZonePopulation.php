@@ -9,6 +9,7 @@ use App\Data\GameRules\OccupantData;
 use App\Data\ZoneCrowdingRegionData;
 use App\Data\ZonePopulationData;
 use App\Models\Zone;
+use App\Services\Critters\CritterStatusText;
 use App\Services\Critters\OccupancyInputBuilder;
 use App\Services\GameRules\Critters\Overcrowding;
 use App\Services\GameText;
@@ -26,6 +27,24 @@ final class ZonePopulation
         private readonly Overcrowding $overcrowding,
         private readonly GameText $text,
     ) {}
+
+    /**
+     * The crowding states to show, in order: Confined alone when set (the game lets it suppress the two
+     * others), else Overcrowded then Cramped.
+     *
+     * @return list<'confined'|'overcrowded'|'cramped'>
+     */
+    public static function shownStates(bool $overcrowded, bool $cramped, bool $confined): array
+    {
+        if ($confined) {
+            return ['confined'];
+        }
+
+        return array_values(array_filter([
+            $overcrowded ? 'overcrowded' : null,
+            $cramped ? 'cramped' : null,
+        ]));
+    }
 
     /**
      * Null when the game sent no critters or no crowding regions (unknown), an empty list when it sent no region.
@@ -58,15 +77,23 @@ final class ZonePopulation
                 ];
             }
 
+            $overcrowded = in_array(true, array_column($states, 'overcrowded'), true);
+            $cramped = in_array(true, array_column($states, 'cramped'), true);
+            $confined = in_array(true, array_column($states, 'confined'), true);
+
             return new ZonePopulationData(
                 regionId: $region->id,
                 kind: $region->kind,
                 cellCount: $region->cellCount,
                 occupied: $region->occupied,
                 eggOccupied: $region->eggOccupied,
-                overcrowded: in_array(true, array_column($states, 'overcrowded'), true),
-                cramped: in_array(true, array_column($states, 'cramped'), true),
-                confined: in_array(true, array_column($states, 'confined'), true),
+                overcrowded: $overcrowded,
+                cramped: $cramped,
+                confined: $confined,
+                states: array_map(
+                    static fn (string $id): array => ['id' => $id, 'name' => CritterStatusText::name($id)],
+                    self::shownStates($overcrowded, $cramped, $confined),
+                ),
                 perType: $perType,
                 types: $types,
             );

@@ -100,3 +100,21 @@ it('describes an egg by instance id', function (): void {
         ->assertSee('PacuBaby')
         ->assertSee('region pond:1201');
 });
+
+it('gives only the confined flag of a confined critter', function (): void {
+    $fast = $this->zone->fast_state;
+    $fast['critters'] = [[
+        'instanceId' => '1234', 'prefabId' => 'Pacu', 'cell' => 201 * 256 + 105, 'x' => 105.0, 'y' => 201.0, 'regionId' => 'pond:1201',
+    ]];
+    $fast['crowding'] = [[
+        'id' => 'pond:1201', 'kind' => 'pond', 'cellCount' => 4, 'occupied' => 8, 'eggOccupied' => 4, 'counts' => ['Pacu' => 1],
+        'states' => ['Pacu' => ['overcrowded' => true, 'cramped' => true, 'confined' => true, 'modifier' => -1]],
+    ]];
+    $this->zone->update(['fast_state' => $fast]);
+
+    OniServer::tool(EntityTool::class, ['instanceId' => '1234'])
+        ->assertOk()
+        ->assertSee('1 Pacu, confined)')
+        ->assertDontSee('overcrowded')
+        ->assertDontSee('cramped');
+});

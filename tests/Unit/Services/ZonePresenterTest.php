@@ -653,6 +653,32 @@ it('keeps the raw game states in the population block, confined included', funct
         ->and($block->cramped)->toBeTrue();
 });
 
+it('shows confined alone in the population states, named from the game strings', function (): void {
+    $zone = populatedPond();
+    $fast = $zone->fast_state;
+    $fast['crowding'][0]['states']['Pacu'] = ['overcrowded' => true, 'cramped' => true, 'confined' => true, 'modifier' => -1];
+    $zone->update(['fast_state' => $fast]);
+    app()->setLocale('fr');
+
+    $block = app(ZonePresenter::class)->present($zone->fresh())->population[0];
+
+    expect($block->states)->toBe([['id' => 'confined', 'name' => __('STRINGS.CREATURES.MODIFIERS.OVERCROWDED.CONFINED.NAME')]])
+        ->and($block->states[0]['name'])->toBe('Confiné')
+        ->and($block->overcrowded)->toBeTrue();
+});
+
+it('shows overcrowded then cramped when the region is not confined', function (): void {
+    $zone = populatedPond();
+    $fast = $zone->fast_state;
+    $fast['crowding'][0]['states']['Pacu'] = ['overcrowded' => true, 'cramped' => true, 'confined' => false, 'modifier' => -1];
+    $zone->update(['fast_state' => $fast]);
+
+    $block = app(ZonePresenter::class)->present($zone->fresh())->population[0];
+
+    expect(array_column($block->states, 'id'))->toBe(['overcrowded', 'cramped'])
+        ->and($block->states[0]['name'])->toBe(__('STRINGS.CREATURES.MODIFIERS.OVERCROWDED.CROWDED.NAME'));
+});
+
 it('presents unknown population when the fast state has no critters', function (): void {
     $shown = app(ZonePresenter::class)->present(Zone::factory()->sodicaneFarm()->create());
 

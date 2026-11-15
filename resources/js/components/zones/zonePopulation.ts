@@ -1,25 +1,5 @@
 import type { ZonePopulationData } from '@/types/App/Data/data.d';
 
-/** What a region shows as its state: the game's, Confined first (it suppresses the two others). */
-export type PopulationState = 'confined' | 'overcrowded' | 'cramped';
-
-/**
- * States of a region in display order. Confined suppresses Overcrowded and
- * Cramped in the game, so only it is shown when set; the raw flags stay in the data.
- */
-export function populationStates(
-    region: Pick<ZonePopulationData, 'confined' | 'overcrowded' | 'cramped'>,
-): PopulationState[] {
-    if (region.confined) {
-        return ['confined'];
-    }
-
-    return [
-        region.overcrowded ? ('overcrowded' as const) : null,
-        region.cramped ? ('cramped' as const) : null,
-    ].filter((state) => state !== null);
-}
-
 /** Breeding stops in a cramped or confined region. */
 export function breedingStopped(
     population: ZonePopulationData[] | null,

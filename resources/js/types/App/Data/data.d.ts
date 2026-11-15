@@ -396,6 +396,7 @@ export type ZonePopulationData = {
     overcrowded: boolean;
     cramped: boolean;
     confined: boolean;
+    states: { id: 'confined' | 'overcrowded' | 'cramped'; name: string }[];
     perType: CritterOverOccupancyData[];
     types: {
         prefabId: string;

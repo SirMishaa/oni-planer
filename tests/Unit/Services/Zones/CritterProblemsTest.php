@@ -5,7 +5,9 @@ declare(strict_types=1);
 use App\Data\GameRules\CritterOverOccupancyData;
 use App\Data\ZoneCritterData;
 use App\Data\ZonePopulationData;
+use App\Services\Critters\CritterStatusText;
 use App\Services\Zones\CritterProblems;
+use App\Services\Zones\ZonePopulation;
 
 /**
  * @param  list<array{id: string, name: string, bad: bool}>  $statuses
@@ -34,6 +36,7 @@ function crowdedRegion(bool $overcrowded = false, bool $cramped = true, bool $co
     return new ZonePopulationData(
         regionId: 'pond:1', kind: 'pond', cellCount: 104, occupied: 88, eggOccupied: 24,
         overcrowded: $overcrowded, cramped: $cramped, confined: $confined,
+        states: array_map(fn (string $id): array => ['id' => $id, 'name' => CritterStatusText::name($id)], ZonePopulation::shownStates($overcrowded, $cramped, $confined)),
         perType: [new CritterOverOccupancyData('Pacu', 11, 8, 1, true, true)],
         types: [['prefabId' => 'Pacu', 'name' => 'Pacu', 'count' => 11, 'personalSpace' => 8]],
     );
@@ -77,7 +80,7 @@ it('raises one problem per crowded region and does not repeat its status on crit
         badStatus('Cramped', 'Cramped'), badStatus('FutureOvercrowded', 'Cramped'), badStatus('Overcrowded', 'Crowded'), badStatus('Confined', 'Confined'),
     ]), range(1, 11));
 
-    $healthy = new ZonePopulationData('cavity:9', 'cavity', 20, 4, 0, false, false, false, [], []);
+    $healthy = new ZonePopulationData('cavity:9', 'cavity', 20, 4, 0, false, false, false, [], [], []);
 
     $problems = CritterProblems::of($critters, [crowdedRegion(), $healthy]);
 
@@ -100,4 +103,13 @@ it('raises a critter problem, not a group problem, for a lone critter', function
         ->and($problems[0]->kind)->toBe('critter')
         ->and($problems[0]->instanceId)->toBe('1')
         ->and([$problems[0]->x, $problems[0]->y])->toBe([12, 30]);
+});
+
+it('names only the confined state of a confined region, from the game strings', function (): void {
+    $problems = CritterProblems::of([problemCritter('1')], [crowdedRegion(overcrowded: true, cramped: true, confined: true)]);
+
+    expect($problems)->toHaveCount(1)
+        ->and($problems[0]->problems[0])->toStartWith(__('STRINGS.CREATURES.MODIFIERS.OVERCROWDED.CONFINED.NAME'))
+        ->and($problems[0]->problems[0])->not->toContain(__('STRINGS.CREATURES.MODIFIERS.OVERCROWDED.CROWDED.NAME'))
+        ->and($problems[0]->problems[0])->not->toContain(__('STRINGS.CREATURES.MODIFIERS.OVERCROWDED.CRAMPED.NAME'));
 });

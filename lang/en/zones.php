@@ -161,11 +161,6 @@ return [
         'derived' => 'derived',
         'derived_hint' => 'Computed by the planner from the eggs, not by the game.',
         'stopped' => 'Breeding stopped',
-        'state' => [
-            'confined' => 'Confined',
-            'overcrowded' => 'Overcrowded',
-            'cramped' => 'Cramped',
-        ],
     ],
     'entities' => [
         'filters' => [
