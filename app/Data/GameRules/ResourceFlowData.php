@@ -17,14 +17,17 @@ use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
 final class ResourceFlowData extends Data
 {
     /**
+     * @param  'kg'|'count'  $unit
      * @param  'consumed'|'produced'  $direction
      * @param  'critter_group'|'plant'|'building'  $sourceKind
      * @param  list<AcceptedFoodData>  $accepts
      */
     public function __construct(
         public string $resource,
-        /** Amount per cycle in the resource's own unit: kg for an element, a count for an egg. */
+        /** Amount per cycle, in `unit`. */
         public float $perCycle,
+        #[LiteralTypeScriptType("'kg' | 'count'")]
+        public string $unit,
         #[LiteralTypeScriptType("'consumed' | 'produced'")]
         public string $direction,
         #[LiteralTypeScriptType("'critter_group' | 'plant' | 'building'")]

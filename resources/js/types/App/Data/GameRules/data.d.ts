@@ -54,6 +54,7 @@ export type OccupantData = {
 export type ResourceFlowData = {
     resource: string;
     perCycle: number;
+    unit: 'kg' | 'count';
     direction: 'consumed' | 'produced';
     sourceKind: 'critter_group' | 'plant' | 'building';
     sourceId: string;

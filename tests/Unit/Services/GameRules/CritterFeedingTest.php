@@ -17,7 +17,10 @@ beforeEach(function (): void {
                 ['resource' => 'Algae', 'kgPerCycle' => 7.5, 'produces' => 'ToxicSand', 'conversionRatio' => 0.6666667],
                 ['resource' => 'Kelp', 'kgPerCycle' => 20.0, 'produces' => 'ToxicSand', 'conversionRatio' => 0.5],
                 ['resource' => 'FishFood', 'kgPerCycle' => 1.0, 'produces' => null, 'conversionRatio' => null],
-            ] : [];
+            ] : ($morphId === 'Hatch' ? [
+                ['resource' => 'Sand', 'kgPerCycle' => 140.0, 'produces' => 'Carbon', 'conversionRatio' => 0.5],
+                ['resource' => 'Meat', 'kgPerCycle' => 0.4375, 'produces' => 'Carbon', 'conversionRatio' => 0.75],
+            ] : []);
         }
 
         public function outputs(string $morphId): array
@@ -28,7 +31,7 @@ beforeEach(function (): void {
         }
     });
 
-    $this->consumed = fn (): ResourceFlowData => collect($this->feeding->flows('Pacu:adult', 'Pacu', 38, 65))
+    $this->consumed = fn (string $morphId = 'Pacu', int $count = 38): ResourceFlowData => collect($this->feeding->flows("{$morphId}:adult", $morphId, $count, 65))
         ->firstOrFail(fn (ResourceFlowData $flow): bool => $flow->direction === 'consumed');
 });
 
@@ -110,5 +113,25 @@ it('picks the accepted food with the most stock as main resource', function (): 
 
     expect($balance->mainResource)->toBe('Kelp')
         ->and($balance->availableKg)->toEqualWithDelta(810.0, 0.0001)
-        ->and($balance->autonomyCycles)->toEqualWithDelta(810.0 / 760.0, 0.0001);
+        ->and($balance->autonomyCycles)->toEqualWithDelta(50.0 / 285.0 + 760.0 / 760.0, 0.0001);
+});
+
+it('sums autonomy per food when stock mixes foods', function (): void {
+    $balance = $this->feeding->balance(($this->consumed)('Hatch', 2), [
+        new InventoryItemData('Sand', 560.0, 'storage', '1301', 65),
+        new InventoryItemData('Meat', 7.0, 'storage', '1302', 65),
+    ]);
+
+    expect($balance->mainResource)->toBe('Sand')
+        ->and($balance->availableKg)->toEqualWithDelta(567.0, 0.0001)
+        ->and($balance->autonomyCycles)->toEqualWithDelta(560.0 / 280.0 + 7.0 / 0.875, 0.0001);
+});
+
+it('counts eggs and weighs food in the flow units', function (): void {
+    $units = array_map(
+        fn (ResourceFlowData $flow): array => [$flow->resource, $flow->unit],
+        $this->feeding->flows('Pacu:adult', 'Pacu', 38, 65),
+    );
+
+    expect($units)->toBe([['Algae', 'kg'], ['PacuEgg', 'count']]);
 });

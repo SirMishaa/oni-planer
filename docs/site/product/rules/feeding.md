@@ -25,13 +25,13 @@ Chaque espèce accepte plusieurs aliments. Pour chacun, le planner donne la quan
 
 Le stock compte tous les aliments acceptés présents dans l'inventaire ; un autre matériau, même stocké au même endroit, ne compte pas. L'aliment **principal** est celui dont le stock est le plus grand.
 
-L'autonomie est le stock disponible divisé par le besoin par cycle de l'aliment principal. Sans aucun aliment accepté en stock, le besoin par cycle est affiché comme un **déficit**.
+Chaque aliment en stock nourrit le groupe pendant son stock divisé par son besoin par cycle ; l'autonomie est la somme de ces durées. Sans aucun aliment accepté en stock, le besoin par cycle du premier aliment accepté est affiché comme un **déficit**.
 
 <Accordion title="Comment les chiffres sont calculés">
 
 - **Besoin d'un aliment** : la quantité qu'un critter en mange par cycle (ses calories par cycle divisées par les calories par kg de l'aliment), multipliée par le nombre de critters.
 - **Rejet** : la quantité mangée multipliée par le taux de conversion du régime (kg rejetés par kg mangé).
 - **Production** : chaque sortie du critter (ses œufs) par cycle, multipliée par le nombre de critters. Les œufs se comptent en unités, pas en kg.
-- **Autonomie** : quand le stock mélange plusieurs aliments, le planner les divise tous par le rythme de l'aliment principal. C'est une estimation : un mélange d'aliments très différents (sable et viande pour le Hatch) la fausse.
+- **Autonomie** : la somme, sur chaque aliment accepté, de son stock divisé par son besoin par cycle. Un stock mélangé reste exact : 560 kg de sable et 7 kg de viande pour 2 Hatchs (280 et 0,875 kg par cycle) tiennent 2 + 8 = 10 cycles. Un aliment au besoin nul ne compte pas.
 
 </Accordion>

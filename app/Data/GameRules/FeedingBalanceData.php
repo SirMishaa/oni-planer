@@ -21,7 +21,7 @@ final class FeedingBalanceData extends Data
         public ?string $mainResource,
         /** The need per cycle when nothing accepted is in stock, otherwise null. */
         public ?float $deficitKgPerCycle,
-        /** Cycles the stock lasts at the main food's rate; null when the need is zero. */
+        /** Cycles the stock lasts: Σ stock ÷ kg per cycle over the accepted foods; null when no food has a need. */
         public ?float $autonomyCycles,
         public bool $derived = true,
     ) {}

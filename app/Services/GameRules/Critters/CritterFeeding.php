@@ -48,20 +48,20 @@ final class CritterFeeding
         );
 
         if ($accepts !== []) {
-            $flows[] = new ResourceFlowData($accepts[0]->resource, $accepts[0]->kgPerCycle, 'consumed', self::SOURCE_KIND, $groupKey, $zoneId, $accepts);
+            $flows[] = new ResourceFlowData($accepts[0]->resource, $accepts[0]->kgPerCycle, 'kg', 'consumed', self::SOURCE_KIND, $groupKey, $zoneId, $accepts);
         }
 
         foreach ($this->diets->outputs($morphId) as $output) {
-            $flows[] = new ResourceFlowData($output['resource'], $output['perCycle'] * $count, 'produced', self::SOURCE_KIND, $groupKey, $zoneId);
+            $flows[] = new ResourceFlowData($output['resource'], $output['perCycle'] * $count, $output['kind'] === 'egg' ? 'count' : 'kg', 'produced', self::SOURCE_KIND, $groupKey, $zoneId);
         }
 
         return $flows;
     }
 
     /**
-     * Stock of the accepted foods against the need of a consumed flow. The need is the main food's rate (the
-     * accepted food with the most stock, ties going to the earlier diet line); without stock it is the flow's
-     * own rate, reported as the deficit.
+     * Stock of the accepted foods against the need of a consumed flow. The main food (shown) is the accepted food
+     * with the most stock, ties going to the earlier diet line. Without stock, the main or first food's need is
+     * reported as the deficit.
      *
      * @param  list<InventoryItemData>  $inventory
      */
@@ -94,7 +94,27 @@ final class CritterFeeding
             $availableKg,
             $main?->resource,
             $main === null ? $need : null,
-            $need > 0 ? $availableKg / $need : null,
+            $this->autonomy($consumed->accepts, $stock),
         );
+    }
+
+    /**
+     * The diet lines are alternatives: each kg of food i covers 1 / kgPerCycle_i of a cycle for the whole group, so
+     * the stock lasts Σ stock_i ÷ kgPerCycle_i cycles. A food eaten at 0 kg per cycle adds nothing. Null when no
+     * accepted food has a need.
+     *
+     * @param  list<AcceptedFoodData>  $accepts
+     * @param  array<string, float>  $stock
+     */
+    private function autonomy(array $accepts, array $stock): ?float
+    {
+        $cycles = null;
+        foreach ($accepts as $food) {
+            if ($food->kgPerCycle > 0) {
+                $cycles = ($cycles ?? 0.0) + $stock[$food->resource] / $food->kgPerCycle;
+            }
+        }
+
+        return $cycles;
     }
 }
