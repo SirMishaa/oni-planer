@@ -4,11 +4,13 @@ import {
     nextTick,
     onBeforeUnmount,
     onMounted,
+    onUpdated,
     ref,
     shallowRef,
     watch,
 } from 'vue';
 import GameSprite from '@/components/viability/GameSprite.vue';
+import { useCritterMotion } from '@/composables/useCritterMotion';
 import { useT } from '@/composables/useT';
 import { useZoneText } from '@/composables/useZoneText';
 import type {
@@ -19,6 +21,7 @@ import type {
     ZonePlantData,
     ZoneTerrainData,
 } from '@/types/App/Data/data.d';
+import { isReplayable } from './critterMotion';
 import { critterEntities, type MapEntity } from './zoneCritterEntities';
 import {
     createFluidRenderer,
@@ -67,6 +70,8 @@ const props = defineProps<{
     entities: ZoneEntityData[];
     /** Critters of the zone; null until the game sent them. */
     critters?: ZoneCritterData[] | null;
+    /** When the server stored the fast state the critters come from (ISO); a new value starts a new replay. */
+    crittersAt?: string | null;
     eggs?: ZoneEggData[] | null;
     /** Critters with an alert of their own: their pin and hover card show it. */
     critterProblems?: ZoneEntityData[];
@@ -650,6 +655,105 @@ function select(entity: MapEntity): void {
 
 // endregion
 
+// region Critter motion
+
+/**
+ * Critters walk their path between two fast states. Vue places each critter
+ * where the game saw it (left/top); every frame, the replay moves it by a CSS
+ * `translate` written straight on its element, so neither the template nor
+ * the layout runs per frame. The facing goes the same way (`data-facing`).
+ */
+const crittersReceivedAt = ref<number>(performance.now());
+
+/** A new fast state only: a reload that resends the same critters must not restart their walk. */
+watch(
+    () => props.crittersAt,
+    () => {
+        crittersReceivedAt.value = performance.now();
+    },
+);
+
+const critterPoses = useCritterMotion(
+    computed(() => props.critters ?? null),
+    crittersReceivedAt,
+    {
+        gridWidth: () => props.map.gridWidth,
+        box: () => props.map.box,
+        replay: () =>
+            !window.matchMedia('(prefers-reduced-motion: reduce)').matches &&
+            isReplayable(props.crittersAt ?? null, Date.now()),
+    },
+);
+
+const crittersById = computed(
+    () =>
+        new Map(
+            (props.critters ?? []).map((critter) => [
+                critter.instanceId,
+                critter,
+            ]),
+        ),
+);
+
+/** The critter buttons, collected after each render. */
+let critterElements: HTMLElement[] = [];
+
+function applyCritterPoses(): void {
+    const poses = critterPoses.value;
+    const px = cellPx.value;
+
+    for (const element of critterElements) {
+        const instanceId = element.dataset.critter ?? '';
+        const pose = poses.get(instanceId);
+        const critter = crittersById.value.get(instanceId);
+
+        if (!pose || !critter) {
+            continue;
+        }
+
+        const dx = (pose.x - critter.x) * px;
+        const dy = (critter.y - pose.y) * px;
+        element.style.transform =
+            dx === 0 && dy === 0 ? '' : `translate(${dx}px, ${dy}px)`;
+        element.dataset.facing = pose.facing;
+    }
+}
+
+function collectCritterElements(): void {
+    critterElements = stage.value
+        ? [...stage.value.querySelectorAll<HTMLElement>('[data-critter]')]
+        : [];
+    applyCritterPoses();
+}
+
+watch(critterPoses, applyCritterPoses, { flush: 'sync' });
+onMounted(collectCritterElements);
+onUpdated(collectCritterElements);
+
+/** The path the selected critter is walking, as dots in the box's local cells. */
+const selectedPath = computed<{ column: number; row: number }[]>(() => {
+    const critter = props.selectedId
+        ? crittersById.value.get(props.selectedId)
+        : undefined;
+
+    if (!critter?.moving) {
+        return [];
+    }
+
+    const box = props.map.box;
+    const gridWidth = props.map.gridWidth;
+
+    return critter.path
+        .map((node) => ({
+            x: node.cell % gridWidth,
+            y: Math.floor(node.cell / gridWidth),
+        }))
+        .filter(({ x, y }) => layerIndex(x, y, box) !== null)
+        .map(({ x, y }) => cellToLocal(x, y, box));
+});
+
+// endregion
+
 // region Hover
 
 const { t } = useT();
@@ -1056,6 +1160,26 @@ const temperatureLegend = computed(() => {
                 </svg>
                 <!-- endregion -->
 
+                <!-- region Selected critter path -->
+                <svg
+                    v-if="selectedPath.length > 0"
+                    class="zone-map__path"
+                    :viewBox="`0 0 ${map.box.width} ${map.box.height}`"
+                    :width="stageWidth"
+                    :height="stageHeight"
+                    preserveAspectRatio="none"
+                    aria-hidden="true"
+                >
+                    <circle
+                        v-for="(dot, index) in selectedPath"
+                        :key="index"
+                        :cx="dot.column + 0.5"
+                        :cy="dot.row + 0.5"
+                        r="0.13"
+                    />
+                </svg>
+                <!-- endregion -->
+
                 <!-- region Entities -->
                 <div class="zone-map__entities">
                     <button
@@ -1077,6 +1201,11 @@ const temperatureLegend = computed(() => {
                         }"
                         :style="entityStyle(entity)"
                         :data-entity="entity.key"
+                        :data-critter="
+                            entity.kind === 'critter'
+                                ? entity.instanceId
+                                : undefined
+                        "
                         :aria-label="entityLabel(entity)"
                         :aria-pressed="
                             entity.instanceId !== null &&
@@ -1093,7 +1222,8 @@ const temperatureLegend = computed(() => {
                             class="zone-entity__sprite"
                             :class="{
                                 'zone-entity__sprite--hanging': entity.hanging,
-                                'zone-entity__sprite--flipped': entity.flipped,
+                                'zone-entity__sprite--flipped':
+                                    entity.flipped && entity.kind !== 'critter',
                             }"
                             decoding="async"
                         />
@@ -1409,6 +1539,20 @@ const temperatureLegend = computed(() => {
     stroke-linecap: round;
 }
 
+/* The selected critter's path: small dots over the map, under the entities. */
+.zone-map__path {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.zone-map__path circle {
+    fill: rgb(255 255 255 / 0.8);
+    stroke: rgb(0 0 0 / 0.35);
+    stroke-width: 0.04;
+}
+
 /* A hovered block lifts like the entities: same curve, same lift. */
 .zone-map__lift {
     position: absolute;
@@ -1572,9 +1716,15 @@ const temperatureLegend = computed(() => {
     object-position: center bottom;
 }
 
-/* Mirrored with `scale`, which composes with the hover and selection `transform`. */
-.zone-entity__sprite--flipped {
+/* Mirrored with `scale`, which composes with the hover and selection `transform`. A critter's facing follows its walk (`data-facing`, set by the replay). */
+.zone-entity__sprite--flipped,
+.zone-entity[data-facing='left'] .zone-entity__sprite {
     scale: -1 1;
+}
+
+/* The replay moves critters every frame with `translate` on the button (no transition on it): a layer of their own spares the map a repaint. */
+.zone-entity[data-critter] {
+    will-change: transform;
 }
 
 .zone-entity__placeholder {

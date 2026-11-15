@@ -377,6 +377,7 @@ function showOnMap(instanceId: string): void {
                             :plants="mapPlants"
                             :entities="knownEntities"
                             :critters="critters"
+                            :critters-at="crittersAt"
                             :eggs="eggs"
                             :critter-problems="critterProblems"
                             :layer="layer"

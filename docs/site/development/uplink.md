@@ -1,7 +1,7 @@
 ---
 title: Uplink
 description: Comment le mod Uplink parle au planner via Reverb, comment chaque message est traité en file et les règles d'ordre et de commande.
-sources: ["app/Listeners/RouteUplinkMessage.php", "app/Listeners/Uplink/**", "app/Enums/UplinkMessageType.php", "app/Jobs/Uplink/**", "app/Events/Uplink/**", "app/Services/Uplink/**", "app/Actions/Uplink/**", "app/Events/ZoneUpdated.php", "app/Models/UplinkCommand.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Console/Commands/UplinkResyncZoneCommand.php", "app/Console/Commands/UplinkCaptureCommand.php", "app/Http/Controllers/ZoneCaptureController.php", "app/Services/Zones/ZonePresenter.php", "app/Services/Zones/ZoneProblems.php", "app/Services/Zones/ZoneCritterState.php", "app/Services/Zones/ZoneCritters.php", "app/Services/Critters/CritterStatusText.php", "resources/js/composables/useZoneLive.ts"]
+sources: ["app/Listeners/RouteUplinkMessage.php", "app/Listeners/Uplink/**", "app/Enums/UplinkMessageType.php", "app/Jobs/Uplink/**", "app/Events/Uplink/**", "app/Services/Uplink/**", "app/Actions/Uplink/**", "app/Events/ZoneUpdated.php", "app/Models/UplinkCommand.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Console/Commands/UplinkResyncZoneCommand.php", "app/Console/Commands/UplinkCaptureCommand.php", "app/Http/Controllers/ZoneCaptureController.php", "app/Services/Zones/ZonePresenter.php", "app/Services/Zones/ZoneProblems.php", "app/Services/Zones/ZoneCritterState.php", "app/Services/Zones/ZoneCritters.php", "app/Services/Critters/CritterStatusText.php", "resources/js/composables/useZoneLive.ts", "resources/js/composables/useCritterMotion.ts", "resources/js/components/zones/critterMotion.ts"]
 order: 4
 ---
 
@@ -61,6 +61,8 @@ La page d'une zone ne recharge que les props du flux nommé par le genre de `Zon
 - `layout` et `list` : toutes les props.
 
 Le contrôleur rend chaque prop comme une closure, si bien qu'un rechargement partiel ne calcule que les props demandées : un état rapide toutes les 5 s ne relit jamais le terrain ni le plan. `useZoneLive` cumule les props de tous les événements reçus pendant son délai de 400 ms et lance un seul rechargement.
+
+Entre deux états rapides, la carte rejoue la marche des critters (`useCritterMotion`, `critterMotion.ts`). Seul un nouveau `crittersAt` relance le rejeu, si bien qu'un rechargement qui renvoie les mêmes critters ne les fait pas repartir. Un pas qui boucle (marche, nage, vol) avance à la vitesse `speed` envoyée par le jeu. Un saut, une escalade ou un changement de mode de déplacement dure un temps fixe, car le jeu le règle sur son animation. Un écart de 2 cases ou moins avec la nouvelle position est rattrapé en douceur, et un écart plus grand fait sauter le critter. Le rejeu est coupé quand l'état a plus de 12 s, quand l'utilisateur réduit les animations ou quand l'onglet est caché.
 
 Les messages sur `uplink` sont journalisés (voir l'inspecteur). Seules les colonies vues le plus récemment sont gardées, plus toute colonie qui possède des zones.
 
