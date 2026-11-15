@@ -33,7 +33,12 @@ import {
     type TerrainPaint,
 } from './zoneTerrainPainter';
 
-export type ZoneMapLayer = 'growth' | 'materials' | 'temperature' | 'problems';
+export type ZoneMapLayer =
+    | 'growth'
+    | 'materials'
+    | 'temperature'
+    | 'problems'
+    | 'critters';
 
 /** Map inks read from the page's colour tokens. */
 export type ZoneMapInks = {

@@ -145,12 +145,13 @@ const focusGroup = ref<string | null>(null);
 
 const LAYERS: {
     key: ZoneMapLayer;
-    icon: 'leaf' | 'cube' | 'temperature' | 'alert';
+    icon: 'leaf' | 'cube' | 'temperature' | 'alert' | 'paw';
 }[] = [
     { key: 'growth', icon: 'leaf' },
     { key: 'materials', icon: 'cube' },
     { key: 'temperature', icon: 'temperature' },
     { key: 'problems', icon: 'alert' },
+    { key: 'critters', icon: 'paw' },
 ];
 
 /** Content and border passages: everything the map and the selection can show a state for. */
@@ -159,7 +160,7 @@ const knownEntities = computed(() => [
     ...props.borderEntities,
 ]);
 
-/** Critters with an alert of their own: the Problems layer pins them where they stand. */
+/** Critters with an alert of their own: the map pins them where they stand. */
 const critterProblems = computed(() =>
     props.problems.filter((problem) => problem.kind === 'critter'),
 );
@@ -170,6 +171,18 @@ const selected = computed(
         knownEntities.value.find(
             (entity) => entity.instanceId === selectedId.value,
         ) ?? null,
+);
+
+/** A selected critter or egg: the panel shows its sheet. */
+const selectedCritter = computed(
+    () =>
+        props.critters?.find(
+            (critter) => critter.instanceId === selectedId.value,
+        ) ?? null,
+);
+const selectedEgg = computed(
+    () =>
+        props.eggs?.find((egg) => egg.instanceId === selectedId.value) ?? null,
 );
 
 /** A building drawn from the layout whose state the game has not sent: shown with an unknown state. */
@@ -370,6 +383,8 @@ function showOnMap(instanceId: string): void {
                         <ZoneMap
                             :map="map"
                             :entities="knownEntities"
+                            :critters="critters"
+                            :eggs="eggs"
                             :critter-problems="critterProblems"
                             :layer="layer"
                             :selected-id="selectedId"
@@ -408,6 +423,9 @@ function showOnMap(instanceId: string): void {
                         :crest="crest"
                         :selected="selected"
                         :selected-building="selectedBuilding"
+                        :selected-critter="selectedCritter"
+                        :selected-egg="selectedEgg"
+                        :grid-width="map?.gridWidth ?? null"
                         @select="selectedId = $event"
                         @flock="showInFlock"
                     />
@@ -434,7 +452,7 @@ function showOnMap(instanceId: string): void {
                     :population="population"
                     :selected-id="selectedId"
                     @select="showOnMap"
-                    @pick="selectedId = $event"
+                    @flock="showInFlock"
                     @focused="focusGroup = null"
                 />
             </section>

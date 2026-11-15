@@ -39,10 +39,10 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-    /** A plant or building row: show it on the map. */
+    /** A plant or building row, or a critter of the flock: show it on the map. */
     select: [instanceId: string];
-    /** A critter of the flock: select it and stay on the tab (the map has no critter layer yet). */
-    pick: [instanceId: string];
+    /** A critter problem: open its flock band (and select the critter, if it is one). */
+    flock: [groupKey: string, instanceId: string | null];
     /** The requested flock band was opened. */
     focused: [];
 }>();
@@ -146,11 +146,11 @@ function stateTone(entity: ZoneEntityData): 'ok' | 'warn' | 'bad' | 'ready' {
 
 function select(entity: ZoneEntityData): void {
     if (entity.groupKey !== null) {
-        openBand(entity.groupKey);
-
-        if (entity.kind === 'critter' && entity.instanceId !== null) {
-            emit('pick', entity.instanceId);
-        }
+        emit(
+            'flock',
+            entity.groupKey,
+            entity.kind === 'critter' ? entity.instanceId : null,
+        );
 
         return;
     }
@@ -393,7 +393,7 @@ function isActionable(entity: ZoneEntityData): boolean {
                 :critters="critters ?? []"
                 :population="population"
                 :selected-id="selectedId"
-                @select="emit('pick', $event)"
+                @select="emit('select', $event)"
             />
         </section>
         <!-- endregion -->

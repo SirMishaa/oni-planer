@@ -2,15 +2,19 @@
 import { computed } from 'vue';
 import GameSprite from '@/components/viability/GameSprite.vue';
 import ZoneIcon from '@/components/zones/ZoneIcon.vue';
+import { useFormat } from '@/composables/useFormat';
 import { useT } from '@/composables/useT';
 import { useZoneText } from '@/composables/useZoneText';
 import type {
     ZoneBuildingData,
     ZoneCountsData,
+    ZoneCritterData,
+    ZoneEggData,
     ZoneEntityData,
     ZonePopulationData,
 } from '@/types/App/Data/data.d';
-import { entitySpriteKind } from './zoneFlock';
+import ZoneCritterSheet from './ZoneCritterSheet.vue';
+import { cyclesToHatch, entitySpriteKind, fertilityFrozen } from './zoneFlock';
 import { breedingStopped } from './zonePopulation';
 import ZonePopulation from './ZonePopulation.vue';
 import { zoneVerdict } from './zoneVerdict';
@@ -31,6 +35,11 @@ const props = defineProps<{
     selected: ZoneEntityData | null;
     /** A selected layout building whose state the game has not sent (shown as unknown). */
     selectedBuilding?: ZoneBuildingData | null;
+    /** A selected critter or egg of the map. */
+    selectedCritter?: ZoneCritterData | null;
+    selectedEgg?: ZoneEggData | null;
+    /** Width of the world grid, to place an egg from its cell. */
+    gridWidth?: number | null;
 }>();
 
 const emit = defineEmits<{
@@ -44,6 +53,7 @@ const emit = defineEmits<{
 // region Verdict
 
 const { t, tc } = useT();
+const format = useFormat();
 const text = useZoneText();
 
 const known = computed(
@@ -116,6 +126,35 @@ const summary = computed(() => {
 // endregion
 
 // region Selection
+
+/** The selected egg's cell, and its hatch in cycles when the game sent its incubation. */
+const egg = computed(() => {
+    const selectedEgg = props.selectedEgg;
+
+    if (!selectedEgg) {
+        return null;
+    }
+
+    const gridWidth = props.gridWidth ?? null;
+
+    return {
+        position:
+            gridWidth === null
+                ? null
+                : text.position(
+                      selectedEgg.cell % gridWidth,
+                      Math.floor(selectedEgg.cell / gridWidth),
+                  ),
+        hatchCycles:
+            selectedEgg.incubation === null ||
+            selectedEgg.incubationCycles === null
+                ? null
+                : cyclesToHatch(
+                      { incubation: selectedEgg.incubation },
+                      selectedEgg.incubationCycles,
+                  ),
+    };
+});
 
 function select(entity: ZoneEntityData): void {
     if (entity.groupKey !== null) {
@@ -278,6 +317,20 @@ function select(entity: ZoneEntityData): void {
                         t('zones.panel.unknown')
                     }}</span>
                 </dd>
+                <template v-if="population !== null">
+                    <dt>
+                        <ZoneIcon name="paw" />{{
+                            t('zones.entities.filters.critters')
+                        }}
+                    </dt>
+                    <dd>{{ counts.critters }}</dd>
+                    <dt>
+                        <ZoneIcon name="egg" />{{
+                            t('zones.entities.filters.eggs')
+                        }}
+                    </dt>
+                    <dd>{{ counts.eggs }}</dd>
+                </template>
                 <dt><ZoneIcon name="grid" />{{ t('zones.panel.size') }}</dt>
                 <dd>{{ tc('zones.index.cells', cellCount) }}</dd>
             </dl>
@@ -289,7 +342,77 @@ function select(entity: ZoneEntityData): void {
             <h2 class="zone-panel__heading">
                 {{ t('zones.panel.selection') }}
             </h2>
-            <template v-if="!selected && selectedBuilding">
+            <ZoneCritterSheet
+                v-if="selectedCritter"
+                :critter="selectedCritter"
+                :frozen="fertilityFrozen(selectedCritter, population)"
+            />
+            <template v-else-if="selectedEgg && egg">
+                <div class="zone-selected">
+                    <GameSprite
+                        :src="selectedEgg.sprite"
+                        kind="critter"
+                        :size="28"
+                    />
+                    <b class="zone-selected__name">{{ selectedEgg.name }}</b>
+                    <span v-if="egg.position" class="zone-panel__muted">{{
+                        egg.position
+                    }}</span>
+                </div>
+                <dl class="zone-kv">
+                    <dt>
+                        <ZoneIcon name="egg" />{{ t('zones.eggs.incubation') }}
+                    </dt>
+                    <dd>
+                        <template v-if="selectedEgg.incubation !== null"
+                            >{{
+                                format.number(selectedEgg.incubation)
+                            }}
+                            %</template
+                        >
+                        <span v-else class="zone-panel__unknown">{{
+                            t('zones.panel.unknown')
+                        }}</span>
+                    </dd>
+                    <dt>
+                        <ZoneIcon name="clock" />{{
+                            t('zones.eggs.hatches_in')
+                        }}
+                    </dt>
+                    <dd>
+                        <template v-if="egg.hatchCycles !== null">{{
+                            tc(
+                                'zones.time.cycles',
+                                Math.round(egg.hatchCycles * 10) / 10,
+                            )
+                        }}</template>
+                        <span v-else class="zone-panel__unknown">{{
+                            t('zones.panel.unknown')
+                        }}</span>
+                    </dd>
+                    <dt>{{ t('zones.eggs.viability') }}</dt>
+                    <dd>
+                        <template v-if="selectedEgg.viability !== null"
+                            >{{
+                                format.number(selectedEgg.viability)
+                            }}
+                            %</template
+                        >
+                        <span v-else class="zone-panel__unknown">{{
+                            t('zones.panel.unknown')
+                        }}</span>
+                    </dd>
+                    <dt>{{ t('zones.panel.place') }}</dt>
+                    <dd>
+                        {{
+                            t(
+                                `zones.eggs.location.${selectedEgg.location ?? 'unknown'}`,
+                            )
+                        }}
+                    </dd>
+                </dl>
+            </template>
+            <template v-else-if="!selected && selectedBuilding">
                 <div class="zone-selected">
                     <GameSprite
                         :src="selectedBuilding.sprite"

@@ -39,10 +39,11 @@ Si le jeu n'a pas pu lire quelque chose (duplicants, stock de nourriture ou plan
 
 Ouvre une zone (<Route name="zones.index" />) pour voir sa carte, dessinée comme dans le jeu : le terrain porte ses textures et ses bords de biome, les liquides coulent et les gaz ondulent. Passe la souris sur une case pour lire son élément, sa masse et sa température.
 
-- Le sélecteur de **calque** choisit ce que la carte montre : croissance, matériaux, température ou problèmes.
+- Le sélecteur de **calque** choisit ce que la carte montre : croissance, matériaux, température, problèmes ou critters.
 - **Grille** affiche ou masque le quadrillage des cases.
 - La carte s'ajuste à ton écran (100 %). Les boutons **−** et **+** changent le zoom de 10 points, un clic sur le pourcentage revient à 100 %, et Ctrl (ou ⌘) avec la molette zoome sous le curseur. Glisse la carte pour la déplacer.
 - Clique une plante ou un bâtiment pour le sélectionner : il se soulève, cerné de blanc, et ses détails s'affichent à côté.
+- Les critters et les œufs posés au sol sont dessinés là où le jeu les a vus, avec leur image du jeu tournée dans le sens où ils regardent. Clique un critter pour afficher sa fiche à côté, ou un œuf pour lire son incubation, son éclosion et sa viabilité. Le calque **Critters** estompe les plantes et les bâtiments pour les faire ressortir. Les œufs rangés dans un stockage ou un incubateur ne sont pas dessinés.
 - Les cases que le jeu n'a pas lues restent hachurées.
 - **Comparer avec le jeu** affiche la dernière capture du jeu à côté de la carte (en dessous si la zone est plus large que haute), à la même échelle et au même zoom (voir [Captures du jeu](#captures-du-jeu)).
 
@@ -56,7 +57,7 @@ Quand une pièce est **À l'étroit** ou **Confinée**, le verdict de la zone an
 
 L'onglet **Entités** liste les plantes et les bâtiments de la zone, ceux qui ont un problème en premier. Les bâtiments posés sur les murs, le sol ou le plafond de la zone comptent avec elle : une station de pêche ou un distributeur collé au bassin apparaît dans les entités et peut signaler un problème.
 
-Les alertes des créatures comptent aussi parmi les problèmes, sans les noyer : un statut partagé par tout un groupe (38 pacus à l'étroit) donne **un seul** problème, une alerte propre à une créature donne un problème pour elle, et chaque pièce ou bassin surpeuplé, à l'étroit ou confiné donne un problème qui indique combien de critters retirer. Un clic sur un problème de créature ouvre l'onglet Entités sur la bonne bande du troupeau, et le calque **Problèmes** de la carte épingle les créatures concernées.
+Les alertes des créatures comptent aussi parmi les problèmes, sans les noyer : un statut partagé par tout un groupe (38 pacus à l'étroit) donne **un seul** problème, une alerte propre à une créature donne un problème pour elle, et chaque pièce ou bassin surpeuplé, à l'étroit ou confiné donne un problème qui indique combien de critters retirer. Un clic sur un problème de créature ouvre l'onglet Entités sur la bonne bande du troupeau, et la carte épingle d'un « ! » les créatures concernées.
 
 Les portes, échelles, poteaux de pompier et escaliers sur ce bord sont rangés à part, dans le groupe **Bord** : ils restent sur la carte, mais ne comptent ni dans les bâtiments ni dans les problèmes.
 
@@ -66,7 +67,7 @@ Les filtres **Critters** et **Œufs** de l'onglet **Entités** montrent les anim
 
 - **Alertes.** Une alerte que tout le groupe porte (À l'étroit, par exemple) s'affiche une fois sur la bande, avec son nombre. Le contour rouge et le « ! » ne marquent que les alertes propres à un critter, pour qu'elles ressortent.
 - **Jauge.** Le menu de la bande choisit la jauge (fertilité, croissance, estomac ou âge) et trie les vignettes, la plus haute en premier.
-- **Fiche.** Survole une vignette pour voir sa fiche : statuts, humeur, fertilité, estomac, âge et chances du prochain œuf. Un clic la sélectionne et garde sa fiche ouverte.
+- **Fiche.** Survole une vignette pour voir sa fiche : statuts, humeur, fertilité, estomac, âge et chances du prochain œuf. Un clic la montre sur la carte, avec sa fiche à côté.
 
 Sous les vignettes, une ligne résume le groupe : l'humeur, l'estomac médian et les âges.
 

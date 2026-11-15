@@ -11,7 +11,13 @@ import {
 import GameSprite from '@/components/viability/GameSprite.vue';
 import { useT } from '@/composables/useT';
 import { useZoneText } from '@/composables/useZoneText';
-import type { ZoneEntityData, ZoneMapData } from '@/types/App/Data/data.d';
+import type {
+    ZoneCritterData,
+    ZoneEggData,
+    ZoneEntityData,
+    ZoneMapData,
+} from '@/types/App/Data/data.d';
+import { critterEntities, type MapEntity } from './zoneCritterEntities';
 import {
     createFluidRenderer,
     type FluidRenderer,
@@ -52,7 +58,10 @@ import { entityProblemMark } from './zoneVerdict';
 const props = defineProps<{
     map: ZoneMapData;
     entities: ZoneEntityData[];
-    /** Critters with an alert of their own, pinned where they stand on the Problems layer. */
+    /** Critters of the zone; null until the game sent them. */
+    critters?: ZoneCritterData[] | null;
+    eggs?: ZoneEggData[] | null;
+    /** Critters with an alert of their own: their pin and hover card show it. */
     critterProblems?: ZoneEntityData[];
     layer: ZoneMapLayer;
     selectedId: string | null;
@@ -486,28 +495,6 @@ const outlinePath = computed(() =>
 
 // region Entities
 
-type MapEntity = {
-    key: string;
-    instanceId: string | null;
-    kind: 'plant' | 'building';
-    name: string;
-    sprite: string | null;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    /** Built on a ceiling: the render hangs from the top of the footprint. */
-    hanging: boolean;
-    /** Drawn mirrored (orientation FlipH). */
-    flipped: boolean;
-    /** Where the render is drawn, in cells, when it is not the footprint (a stair's art overhangs it). */
-    drawBox: { x: number; y: number; width: number; height: number } | null;
-    growth: number | null;
-    secondsUntilHarvest: number | null;
-    state: ZoneEntityData['state'] | null;
-    problems: string[];
-};
-
 const entitiesById = computed(
     () =>
         new Map(
@@ -589,48 +576,39 @@ const mapEntities = computed<MapEntity[]>(() => {
         };
     });
 
-    return [...buildings, ...plants].filter((entity) =>
-        footprintTouchesBox(
-            entity.x,
-            entity.y,
-            entity.width,
-            entity.height,
-            box,
-        ),
+    const problemsByCritter = new Map(
+        (props.critterProblems ?? []).map((problem) => [
+            problem.instanceId,
+            problem.problems,
+        ]),
     );
+    const critters = critterEntities(
+        props.critters ?? [],
+        props.eggs ?? [],
+        box,
+        props.map.gridWidth,
+    ).map((entity) => ({
+        ...entity,
+        problems: problemsByCritter.get(entity.instanceId) ?? [],
+    }));
+
+    return [
+        ...[...buildings, ...plants].filter((entity) =>
+            footprintTouchesBox(
+                entity.x,
+                entity.y,
+                entity.width,
+                entity.height,
+                box,
+            ),
+        ),
+        ...critters,
+    ];
 });
 
-/** Critter problems on the box, with the cell they stand on; none outside the Problems layer. */
-const critterPins = computed(() =>
-    props.layer !== 'problems'
-        ? []
-        : (props.critterProblems ?? []).filter(
-              (problem) =>
-                  problem.x !== null &&
-                  problem.y !== null &&
-                  footprintTouchesBox(
-                      problem.x,
-                      problem.y,
-                      1,
-                      1,
-                      props.map.box,
-                  ),
-          ),
-);
-
-function critterPinStyle(problem: ZoneEntityData): Record<string, string> {
-    const { column, row } = cellToLocal(
-        problem.x ?? 0,
-        problem.y ?? 0,
-        props.map.box,
-    );
-
-    return {
-        left: `${column * cellPx.value}px`,
-        top: `${row * cellPx.value}px`,
-        width: `${cellPx.value}px`,
-        height: `${cellPx.value}px`,
-    };
+/** Critters and eggs come with the fast state: no state of their own, but their problems are known. */
+function isCreature(entity: MapEntity): boolean {
+    return entity.kind === 'critter' || entity.kind === 'egg';
 }
 
 function entityStyle(entity: MapEntity): Record<string, string> {
@@ -651,7 +629,10 @@ function entityStyle(entity: MapEntity): Record<string, string> {
 
 /** Problem mark; a building the fast state does not cover is unknown, never problem-free. */
 function problemMark(entity: MapEntity): 'problem' | 'clear' | 'unknown' {
-    return entityProblemMark(entity.problems.length, entity.state !== null);
+    return entityProblemMark(
+        entity.problems.length,
+        entity.state !== null || isCreature(entity),
+    );
 }
 
 function select(entity: MapEntity): void {
@@ -935,11 +916,13 @@ const hoverStyle = computed(() => {
 function entityLabel(entity: MapEntity): string {
     const parts = [entity.name, text.position(entity.x, entity.y)];
 
-    parts.push(
-        entity.state
-            ? t(`zones.states.${entity.state}`)
-            : t('zones.panel.state_unknown'),
-    );
+    if (!isCreature(entity)) {
+        parts.push(
+            entity.state
+                ? t(`zones.states.${entity.state}`)
+                : t('zones.panel.state_unknown'),
+        );
+    }
 
     return [...parts, ...entity.problems].join(', ');
 }
@@ -1075,12 +1058,14 @@ const temperatureLegend = computed(() => {
                         class="zone-entity"
                         :class="{
                             'zone-entity--plant': entity.kind === 'plant',
+                            'zone-entity--creature': isCreature(entity),
                             'zone-entity--selected':
                                 entity.instanceId !== null &&
                                 entity.instanceId === selectedId,
                             'zone-entity--dimmed':
-                                layer === 'problems' &&
-                                problemMark(entity) === 'clear',
+                                (layer === 'problems' &&
+                                    problemMark(entity) === 'clear') ||
+                                (layer === 'critters' && !isCreature(entity)),
                             'zone-entity--faint': layer === 'temperature',
                         }"
                         :style="entityStyle(entity)"
@@ -1108,7 +1093,7 @@ const temperatureLegend = computed(() => {
                         <GameSprite
                             v-else
                             :src="null"
-                            :kind="entity.kind"
+                            :kind="isCreature(entity) ? 'critter' : entity.kind"
                             :size="Math.max(10, Math.round(cellPx * 0.8))"
                             class="zone-entity__placeholder"
                         />
@@ -1143,19 +1128,6 @@ const temperatureLegend = computed(() => {
                             >?</span
                         >
                     </button>
-                    <span
-                        v-for="problem in critterPins"
-                        :key="`c${problem.instanceId}`"
-                        class="zone-critter-pin"
-                        :style="critterPinStyle(problem)"
-                        role="img"
-                        :aria-label="`${problem.name}: ${problem.problems.join(', ')}`"
-                        :title="`${problem.name}: ${problem.problems.join(', ')}`"
-                    >
-                        <span class="zone-entity__pin" aria-hidden="true"
-                            >!</span
-                        >
-                    </span>
                 </div>
                 <!-- endregion -->
 
@@ -1181,14 +1153,16 @@ const temperatureLegend = computed(() => {
                                 text.position(hoveredEntity.x, hoveredEntity.y)
                             }}</strong
                         >
-                        <span
-                            v-if="!hoveredEntity.state"
-                            class="zone-map__hover-unknown"
-                            >{{ t('zones.panel.state_unknown') }}</span
-                        >
-                        <span v-else>{{
-                            t(`zones.states.${hoveredEntity.state}`)
-                        }}</span>
+                        <template v-if="!isCreature(hoveredEntity)">
+                            <span
+                                v-if="!hoveredEntity.state"
+                                class="zone-map__hover-unknown"
+                                >{{ t('zones.panel.state_unknown') }}</span
+                            >
+                            <span v-else>{{
+                                t(`zones.states.${hoveredEntity.state}`)
+                            }}</span>
+                        </template>
                         <span
                             v-if="
                                 hoveredEntity.growth !== null &&
@@ -1581,6 +1555,16 @@ const temperatureLegend = computed(() => {
     object-position: left top;
 }
 
+/* A critter or an egg: centred on its spot, so a mirrored image stays in place. */
+.zone-entity--creature {
+    z-index: 4;
+    place-items: end center;
+}
+
+.zone-entity--creature .zone-entity__sprite {
+    object-position: center bottom;
+}
+
 /* Mirrored with `scale`, which composes with the hover and selection `transform`. */
 .zone-entity__sprite--flipped {
     scale: -1 1;
@@ -1611,11 +1595,6 @@ const temperatureLegend = computed(() => {
 
 .zone-entity__bar--wilting i {
     background: var(--warn);
-}
-
-.zone-critter-pin {
-    position: absolute;
-    pointer-events: none;
 }
 
 .zone-entity__pin.zone-entity__pin--unknown {
