@@ -8,45 +8,61 @@ import {
     ref,
     shallowRef,
     toValue,
+    triggerRef,
     watch,
 } from 'vue';
 import {
+    applyFastFrame,
+    applyReload,
+    applyTripFrame,
     decodeUplinkPayload,
     frameIsAhead,
-    overlayRelay,
+    overlayBook,
     readFastFrame,
-    type RelayFrame,
-    reloadMovesCritters,
+    readTripFrame,
+    type RelayBook,
+    sampleOverridesTrip,
     type StoredFastState,
+    type TripCheck,
+    tripsFrameConcerns,
 } from '@/components/zones/critterRelay';
 import type {
     ZoneCritterData,
     ZoneData,
+    ZoneMapData,
     ZoneShowData,
 } from '@/types/App/Data/data.d';
 
 /**
- * Moves the critters on the mod's raw fast frames, the moment Reverb relays
- * them, instead of waiting for the server to store the state and the page
- * to reload it. Only the motion of critters already on the page changes;
- * new critters, statuses and everything else wait for the reload.
+ * Moves the critters on what the mod sends straight to the browser, the
+ * moment Reverb relays it, instead of waiting for the server to store the
+ * state and the page to reload it:
  *
- * `crittersAt` replaces the props' `crittersAt` for the map: it changes when
- * a frame is applied, and on a reload only when the stored state is newer
- * than that frame, so a reload of a state already shown never moves a
- * critter backward. Without frames (relay silent), both are the props'.
+ * - its critter trips (`client-zone.trips`): a trip walks its whole path, a
+ *   stop rests at the final cell;
+ * - its raw fast frames (`client-zone.fast`): the sampled position and path.
+ *
+ * Only the motion of critters already on the page changes; new critters,
+ * statuses and everything else wait for the reload. The relay holds the
+ * latest motion of each critter ordered by session and game time
+ * (`critterRelay.ts`), so neither a late frame nor a reload rewinds it.
+ *
+ * `crittersAt` replaces the props' `crittersAt` for the map: it changes on
+ * every motion the relay applies and on every reload, and the map keeps the
+ * track of each critter whose motion did not change. Without relayed
+ * messages, both are the props'.
  */
 export function useUplinkFastRelay(options: {
     relay: MaybeRefOrGetter<ZoneShowData['fastRelay']>;
     zone: MaybeRefOrGetter<ZoneData>;
+    map: MaybeRefOrGetter<ZoneMapData | null>;
     critters: MaybeRefOrGetter<ZoneCritterData[] | null>;
     crittersAt: MaybeRefOrGetter<string | null>;
 }): {
     critters: ComputedRef<ZoneCritterData[] | null>;
     crittersAt: Ref<string | null>;
 } {
-    /** The latest frame applied, until the stored state passes it. */
-    const applied = shallowRef<RelayFrame | null>(null);
+    const book = shallowRef<RelayBook>(new Map());
     const crittersAt = ref<string | null>(toValue(options.crittersAt));
     let disposed = false;
 
@@ -59,38 +75,68 @@ export function useUplinkFastRelay(options: {
         };
     };
 
-    // region Frames
-    const { channel, event } = toValue(options.relay);
+    const target = (schema: number) => {
+        const zone = toValue(options.zone);
 
-    useEchoPublic<unknown>(channel, event, async (data) => {
+        return { colonyGuid: zone.colonyGuid, zoneGuid: zone.guid, schema };
+    };
+
+    const overrides: TripCheck = (sample, trip, now) => {
+        const map = toValue(options.map);
+
+        return (
+            map === null ||
+            sampleOverridesTrip(sample, trip, now, map.gridWidth, map.box)
+        );
+    };
+
+    /** A motion changed: the map rebuilds its tracks. */
+    function applied(): void {
+        triggerRef(book);
+        crittersAt.value = new Date().toISOString();
+    }
+
+    /** The relayed message, or null when the page is gone or has no critters yet. */
+    async function decode(
+        data: unknown,
+    ): Promise<Record<string, unknown> | null> {
         const message = await decodeUplinkPayload(data);
 
-        if (
-            disposed ||
-            message === null ||
-            toValue(options.critters) === null
-        ) {
+        return disposed || toValue(options.critters) === null ? null : message;
+    }
+
+    // region Messages
+    const { channel, event, schema, tripsEvent, tripsSchema } = toValue(
+        options.relay,
+    );
+
+    useEchoPublic<unknown>(channel, tripsEvent, async (data) => {
+        if (!tripsFrameConcerns(data, toValue(options.zone).guid)) {
             return;
         }
 
-        const zone = toValue(options.zone);
-        const frame = readFastFrame(message, {
-            colonyGuid: zone.colonyGuid,
-            zoneGuid: zone.guid,
-            schema: toValue(options.relay).schema,
-        });
+        const message = await decode(data);
+        const frame = message && readTripFrame(message, target(tripsSchema));
 
-        // Frames decode asynchronously: one that lands after a newer one is dropped here.
         if (
-            frame === null ||
-            !frameIsAhead(frame, stored()) ||
-            (applied.value !== null && !frameIsAhead(frame, applied.value))
+            frame &&
+            applyTripFrame(book.value, frame, stored(), performance.now())
         ) {
-            return;
+            applied();
         }
+    });
 
-        applied.value = frame;
-        crittersAt.value = new Date().toISOString();
+    useEchoPublic<unknown>(channel, event, async (data) => {
+        const message = await decode(data);
+        const frame = message && readFastFrame(message, target(schema));
+
+        if (
+            frame &&
+            frameIsAhead(frame, stored()) &&
+            applyFastFrame(book.value, frame, performance.now(), overrides)
+        ) {
+            applied();
+        }
     });
     // endregion
 
@@ -98,10 +144,16 @@ export function useUplinkFastRelay(options: {
     watch(
         () => toValue(options.crittersAt),
         (at) => {
-            if (reloadMovesCritters(stored(), applied.value)) {
-                applied.value = null;
-                crittersAt.value = at;
-            }
+            applyReload(
+                book.value,
+                toValue(options.critters) ?? [],
+                stored(),
+                performance.now(),
+                overrides,
+            );
+            triggerRef(book);
+            crittersAt.value =
+                book.value.size > 0 ? new Date().toISOString() : at;
         },
     );
     // endregion
@@ -114,9 +166,7 @@ export function useUplinkFastRelay(options: {
         critters: computed(() => {
             const critters = toValue(options.critters);
 
-            return critters === null
-                ? null
-                : overlayRelay(critters, applied.value, stored());
+            return critters === null ? null : overlayBook(critters, book.value);
         }),
         crittersAt,
     };

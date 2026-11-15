@@ -32,6 +32,20 @@ const EPSILON = 1e-6;
 
 export type Facing = 'left' | 'right';
 
+/** The fields of a critter its motion is built from. */
+export type CritterMotionFields = Pick<
+    ZoneCritterData,
+    | 'instanceId'
+    | 'cell'
+    | 'x'
+    | 'y'
+    | 'facing'
+    | 'navType'
+    | 'moving'
+    | 'speed'
+    | 'path'
+>;
+
 export type CritterPose = { x: number; y: number; facing: Facing };
 
 /** A step of the replay: its target position, and when (seconds after the start) it is reached. */
@@ -57,6 +71,8 @@ export type MotionTrack = {
     path: MotionStep[];
     speed: number;
     startedAt: number;
+    /** The motion fields the track was built from (`motionKey`): the same motion sent again keeps the track. */
+    source: string;
 };
 
 // endregion
@@ -96,7 +112,21 @@ function isLooping(
     return axis === 'any' || (axis === 'horizontal' ? dy === 0 : dx === 0);
 }
 
-export function facingOf(critter: ZoneCritterData): Facing {
+/** The fields of a critter that drive its motion, as one comparable string. */
+export function motionKey(critter: CritterMotionFields): string {
+    return JSON.stringify([
+        critter.cell,
+        critter.x,
+        critter.y,
+        critter.facing,
+        critter.navType,
+        critter.moving,
+        critter.speed,
+        critter.path,
+    ]);
+}
+
+export function facingOf(critter: CritterMotionFields): Facing {
     return critter.facing === 'left' ? 'left' : 'right';
 }
 
@@ -106,7 +136,7 @@ export function facingOf(critter: ZoneCritterData): Facing {
  * stops at the first cell outside the box: the map shows nothing farther.
  */
 export function trackFrom(
-    critter: ZoneCritterData,
+    critter: CritterMotionFields,
     receivedAt: number,
     gridWidth: number,
     box: ZoneBoxData,
@@ -119,6 +149,7 @@ export function trackFrom(
         path: [],
         speed: critter.speed,
         startedAt: receivedAt,
+        source: motionKey(critter),
     };
 
     if (!critter.moving || !(critter.speed > 0)) {
@@ -326,9 +357,11 @@ export function isReplayable(sentAt: string | null, nowMs: number): boolean {
 }
 
 /**
- * Tracks of a new fast state received at `receivedAt`. A critter already
- * replayed travels from where it is drawn to its new position (`reconcile`);
- * a critter just seen starts where the game saw it. Only the critters of the new state are kept, so a
+ * Tracks of a new fast state received at `receivedAt`. A critter whose
+ * motion did not change keeps its track, so a trip of another critter never
+ * restarts its walk. A critter already replayed travels from where it is
+ * drawn to its new position (`reconcile`); a critter just seen starts where
+ * the game saw it. Only the critters of the new state are kept, so a
  * new session (every instance id changed) starts over. Without `replay`
  * (reduced motion, stale state), every critter stands where it was sent.
  */
@@ -351,6 +384,12 @@ export function buildTracks(
         }
 
         const before = previous.get(critter.instanceId);
+
+        if (before?.source === track.source) {
+            tracks.set(critter.instanceId, before);
+            continue;
+        }
+
         tracks.set(
             critter.instanceId,
             before ? reconcile(before, track, receivedAt) : track,

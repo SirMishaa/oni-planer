@@ -3,6 +3,7 @@ import { effectScope, nextTick, ref } from 'vue';
 import { useCritterMotion } from '@/composables/useCritterMotion';
 import type { ZoneCritterData } from '@/types/App/Data/data.d';
 import {
+    buildTracks,
     CADENCE_SECONDS,
     EASE_SECONDS,
     isReplayable,
@@ -368,6 +369,35 @@ describe('critter motion', () => {
             false,
         );
         expect(isReplayable(null, sentAt)).toBe(false);
+    });
+});
+
+describe('buildTracks', () => {
+    it('keeps the track of a critter whose motion did not change', () => {
+        const walking = critter({ speed: 2 });
+        const first = buildTracks(
+            new Map(),
+            [walking],
+            RECEIVED_AT,
+            gridWidth,
+            box,
+            true,
+        );
+        // Another critter got a trip: this one comes again unchanged, its walk must not restart.
+        const second = buildTracks(
+            first,
+            [
+                { ...walking, statuses: [] },
+                critter({ instanceId: '9', x: 172.5, cell: cell(172, 221) }),
+            ],
+            at(0.5),
+            gridWidth,
+            box,
+            true,
+        );
+
+        expect(second.get('1234')).toBe(first.get('1234'));
+        expect(positionAt(second.get('1234')!, at(0.75)).x).toBeCloseTo(178);
     });
 });
 

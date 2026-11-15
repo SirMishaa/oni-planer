@@ -46,6 +46,12 @@ use Illuminate\Support\Str;
  */
 final class ZonePresenter
 {
+    /** The mod's critter trips: a client event only the browsers read, never stored (`RouteUplinkMessage` ignores it). */
+    public const string TRIPS_EVENT = 'client-zone.trips';
+
+    /** Highest schema of the trips the page reads. */
+    public const int TRIPS_SCHEMA = 1;
+
     /**
      * The page props each `ZoneUpdated` kind changes: the page reloads only these on a live event
      * (shared with it as `liveProps`). A layout or list change reloads everything.
@@ -219,6 +225,8 @@ final class ZonePresenter
                 'channel' => UplinkMessageType::ZoneFastState->channel(),
                 'event' => '.'.UplinkMessageType::ZoneFastState->value,
                 'schema' => UplinkMessageType::ZoneFastState->schema(),
+                'tripsEvent' => '.'.self::TRIPS_EVENT,
+                'tripsSchema' => self::TRIPS_SCHEMA,
             ],
         ];
     }

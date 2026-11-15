@@ -65,11 +65,12 @@ const { live, ageLabel, gone } = useZoneLive({
         ]),
 });
 
-/** The map's critters move on the raw fast frames as they arrive; the reload brings the rest. */
+/** The map's critters move on their trips and the raw fast frames as they arrive; the reload brings the rest. */
 const { critters: mapCritters, crittersAt: mapCrittersAt } = useUplinkFastRelay(
     {
         relay: () => props.fastRelay,
         zone: () => props.zone,
+        map: () => props.map,
         critters: () => props.critters,
         crittersAt: () => props.crittersAt,
     },

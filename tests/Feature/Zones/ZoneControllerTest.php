@@ -149,5 +149,5 @@ it('gives the page what it needs to apply the raw fast frames of the zone', func
             ->where('zone.colonyGuid', $zone->colony_guid)
             ->where('zone.fastSessionId', 'session-a')
             ->where('zone.fastGameSeconds', 3600.5)
-            ->where('fastRelay', ['channel' => 'uplink-data', 'event' => '.client-zone.fast', 'schema' => 1]));
+            ->where('fastRelay', ['channel' => 'uplink-data', 'event' => '.client-zone.fast', 'schema' => 1, 'tripsEvent' => '.client-zone.trips', 'tripsSchema' => 1]));
 });

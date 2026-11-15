@@ -433,6 +433,8 @@ export type ZoneShowData = {
         channel: 'uplink-data';
         event: '.client-zone.fast';
         schema: number;
+        tripsEvent: '.client-zone.trips';
+        tripsSchema: number;
     };
 };
 export type ZoneSpriteRectData = {

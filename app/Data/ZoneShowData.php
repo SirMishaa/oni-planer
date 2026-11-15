@@ -59,13 +59,13 @@ final class ZoneShowData extends Data
         #[LiteralTypeScriptType("{ channel: 'uplink'; event: '.zone.updated' }")]
         public array $echo = ['channel' => 'uplink', 'event' => '.zone.updated'],
         /**
-         * Where the mod's raw fast frames are rebroadcast (Reverb relays client events to every
-         * subscriber of the channel), and the newest schema the page reads: the critters move on
-         * them before the stored state is reloaded.
+         * Where the mod's raw fast frames and critter trips are rebroadcast (Reverb relays client
+         * events to every subscriber of the channel), and the newest schema the page reads of
+         * each: the critters move on them before the stored state is reloaded.
          *
-         * @var array{channel: 'uplink-data', event: '.client-zone.fast', schema: int}
+         * @var array{channel: 'uplink-data', event: '.client-zone.fast', schema: int, tripsEvent: '.client-zone.trips', tripsSchema: int}
          */
-        #[LiteralTypeScriptType("{ channel: 'uplink-data'; event: '.client-zone.fast'; schema: number }")]
-        public array $fastRelay = ['channel' => 'uplink-data', 'event' => '.client-zone.fast', 'schema' => 1],
+        #[LiteralTypeScriptType("{ channel: 'uplink-data'; event: '.client-zone.fast'; schema: number; tripsEvent: '.client-zone.trips'; tripsSchema: number }")]
+        public array $fastRelay = ['channel' => 'uplink-data', 'event' => '.client-zone.fast', 'schema' => 1, 'tripsEvent' => '.client-zone.trips', 'tripsSchema' => 1],
     ) {}
 }
