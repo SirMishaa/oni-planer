@@ -702,12 +702,13 @@ it('counts the critter alerts in the zone problems', function (): void {
         ->and($shown->entities)->not->toContain($shown->problems[1]);
 });
 
-/** The pond's tame Pacu eat algae (7.5 kg each per cycle, 2/3 dropped as polluted sand) or hunt nothing, and lay eggs. */
+/** The pond's tame Pacu, in a pond with room to lay, eat algae (7.5 kg each per cycle, 2/3 dropped as polluted sand) or hunt nothing, and lay eggs. */
 function feedingPond(array $fast = []): Zone
 {
     $zone = populatedPond($fast);
     $state = $zone->fast_state;
     $state['critters'] = array_map(fn (array $critter): array => [...$critter, 'tame' => true], $state['critters']);
+    $state['crowding'][0]['states']['Pacu']['cramped'] = false;
     $zone->update(['fast_state' => $state]);
     $morph = CritterMorph::query()->where('morph_id', 'Pacu')->firstOrFail();
     App\Models\CritterMorphDiet::factory()->create(['critter_morph_id' => $morph->id, 'consumed_element_id' => 'Algae', 'amount_per_cycle' => 7.5, 'produced_element_id' => 'ToxicSand', 'conversion_ratio' => 0.5, 'food_kind' => 'item']);
@@ -853,3 +854,31 @@ it('feeds a baby band of mixed tameness critter by critter', function (): void {
         ->and($feeding[0]->count)->toBe(2)
         ->and($feeding[0]->foods[0]->perCycle)->toBe(9.375);
 });
+
+it('lays ten times the base rate with a happy tame band at happiness 4', function (): void {
+    $feeding = feedingOfPond(['tame' => true, 'happiness' => ['value' => 4, 'state' => 'happy']], 4);
+
+    expect($feeding[0]->produces[1]->toArray())->toMatchArray(['resource' => 'PacuEgg', 'kind' => 'egg'])
+        ->and($feeding[0]->produces[1]->perCycle)->toEqualWithDelta(2.0, 1e-9);
+});
+
+it('lays no egg with a miserable band', function (): void {
+    expect(feedingOfPond(['tame' => true, 'happiness' => ['value' => -12, 'state' => 'miserable']], 4)[0]->produces[1]->perCycle)->toBe(0.0);
+});
+
+it('lays at the base rate with a wild band, happy or not', function (): void {
+    expect(feedingOfPond(['tame' => false, 'happiness' => ['value' => 4, 'state' => 'happy']], 4)[0]->produces[1]->perCycle)->toEqualWithDelta(0.2, 1e-9);
+});
+
+it('lays no egg in a cramped or confined region, however happy', function (string $state): void {
+    $zone = feedingPond(['buildings' => []]);
+    $fast = $zone->fast_state;
+    $fast['critters'] = array_map(fn (array $row): array => [...$row, 'happiness' => ['value' => 4, 'state' => 'happy']], $fast['critters']);
+    $fast['crowding'][0]['states']['Pacu'][$state] = true;
+    $zone->update(['fast_state' => $fast]);
+
+    $feeding = app(ZonePresenter::class)->present($zone->fresh())->feeding;
+
+    expect($feeding[0]->produces[1]->perCycle)->toBe(0.0)
+        ->and($feeding[0]->foods[0]->perCycle)->toBe(82.5);
+})->with(['cramped', 'confined']);

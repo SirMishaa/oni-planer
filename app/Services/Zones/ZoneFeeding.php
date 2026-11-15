@@ -9,6 +9,7 @@ use App\Data\GameRules\ResourceFlowData;
 use App\Data\ZoneCritterData;
 use App\Data\ZoneFeedingData;
 use App\Data\ZoneFeedingLineData;
+use App\Data\ZonePopulationData;
 use App\Models\Zone;
 use App\Services\Critters\CritterGroupKey;
 use App\Services\GameRules\Critters\CritterFeeding;
@@ -30,22 +31,39 @@ final readonly class ZoneFeeding
      * One entry per flock band whose morph has a diet or an output, by group key. The diet rows are
      * read once per morph (the repository keeps them for the request).
      *
-     * Each critter eats at its own metabolism ({@see CritterFeeding::metabolismRatio()}): a band of babies
-     * can mix tame and wild ones. A critter is wild only when the wire sent `tame: false`; one whose
-     * tameness is unknown (an older mod) is fed as tame.
+     * Each critter eats at its own metabolism ({@see CritterFeeding::metabolismRatio()}) and lays at its own
+     * fertility ({@see CritterFeeding::fertilityRatio()}): a band of babies can mix tame and wild ones. A
+     * critter is wild only when the wire sent `tame: false`; one whose tameness is unknown (an older mod) is
+     * counted as tame. Its fertility is frozen in a cramped or confined region of `$population`, the rule of
+     * `fertilityFrozen` in `resources/js/components/zones/zoneFlock.ts`.
      *
      * @param  list<ZoneCritterData>  $critters
+     * @param  list<ZonePopulationData>|null  $population  the zone's crowding regions, null when unknown
      * @return list<ZoneFeedingData>
      */
-    public function of(Zone $zone, array $critters): array
+    public function of(Zone $zone, array $critters, ?array $population = null): array
     {
-        $wild = $this->sentWild($zone);
+        $traits = $this->sentTraits($zone);
+        $frozen = [];
+        foreach ($population ?? [] as $region) {
+            if ($region->cramped || $region->confined) {
+                $frozen[$region->regionId] = true;
+            }
+        }
+
         $groups = [];
         foreach ($critters as $critter) {
             $key = CritterGroupKey::of($critter);
-            $groups[$key] ??= ['prefabId' => $critter->prefabId, 'count' => 0, 'eaters' => 0.0];
+            $wild = $traits[$critter->instanceId]['wild'] ?? false;
+            $groups[$key] ??= ['prefabId' => $critter->prefabId, 'count' => 0, 'eaters' => 0.0, 'layers' => 0.0];
             $groups[$key]['count']++;
-            $groups[$key]['eaters'] += CritterFeeding::metabolismRatio(isset($wild[$critter->instanceId]), $critter->happinessState);
+            $groups[$key]['eaters'] += CritterFeeding::metabolismRatio($wild, $critter->happinessState);
+            $groups[$key]['layers'] += CritterFeeding::fertilityRatio(
+                $wild,
+                $traits[$critter->instanceId]['happiness'] ?? null,
+                $critter->happinessState,
+                $critter->regionId !== null && isset($frozen[$critter->regionId]),
+            );
         }
         ksort($groups);
 
@@ -56,7 +74,7 @@ final readonly class ZoneFeeding
 
         $feeding = [];
         foreach ($groups as $key => $group) {
-            $flows = $this->feeding->flows((string) $key, $group['prefabId'], $group['count'], $zone->id, $group['eaters']);
+            $flows = $this->feeding->flows((string) $key, $group['prefabId'], $group['count'], $zone->id, $group['eaters'], $group['layers']);
             if ($flows === []) {
                 continue;
             }
@@ -146,19 +164,28 @@ final readonly class ZoneFeeding
         return $lines;
     }
 
-    /** @return array<string, true> instance ids of the critters the wire sent with `tame: false` */
-    private function sentWild(Zone $zone): array
+    /**
+     * Per critter, from the raw wire rows: wild only when it sent `tame: false` (`ZoneCritterData::tame` reads
+     * a missing value as false), and the happiness value unrounded (`ZoneCritterData::happiness` is an int).
+     *
+     * @return array<string, array{wild: bool, happiness: float|null}>
+     */
+    private function sentTraits(Zone $zone): array
     {
         $rows = $zone->fast_state['critters'] ?? null;
 
-        $wild = [];
+        $traits = [];
         foreach (is_array($rows) ? $rows : [] as $row) {
-            if (is_array($row) && ($row['tame'] ?? null) === false && is_scalar($row['instanceId'] ?? null)) {
-                $wild[(string) $row['instanceId']] = true;
+            if (is_array($row) && is_scalar($row['instanceId'] ?? null)) {
+                $happiness = is_array($row['happiness'] ?? null) ? ($row['happiness']['value'] ?? null) : null;
+                $traits[(string) $row['instanceId']] = [
+                    'wild' => ($row['tame'] ?? null) === false,
+                    'happiness' => is_numeric($happiness) ? (float) $happiness : null,
+                ];
             }
         }
 
-        return $wild;
+        return $traits;
     }
 
     /** @return array<string, int>|null plants of the zone by prefab, null when the plants were not read */

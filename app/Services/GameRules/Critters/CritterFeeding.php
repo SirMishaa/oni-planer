@@ -36,6 +36,15 @@ final class CritterFeeding
     /** Metabolism modifier of a glum or miserable wild critter. */
     public const int UNHAPPY_WILD_METABOLISM = -15;
 
+    /** Fertility multiplier per point of happiness above 0, for a tame critter (HappinessMonitor). */
+    public const float REPRODUCTION_HAPPINESS_MULTIPLIER = 2.25;
+
+    /** Fertility multiplier of a miserable critter, tame or wild (HappinessMonitor). */
+    public const float MISERABLE_FERTILITY_MULTIPLIER = -1.0;
+
+    /** Happiness at or below which a critter is miserable (HappinessMonitor.Def.miserableThreshold). */
+    public const float MISERABLE_HAPPINESS = -10.0;
+
     /** @var list<string> happiness states that slow the metabolism */
     private const array UNHAPPY_STATES = ['glum', 'miserable'];
 
@@ -56,6 +65,31 @@ final class CritterFeeding
     }
 
     /**
+     * What one critter lays, as a share of the imported egg rate (1 egg per base fertile cycles, no bonus).
+     *
+     * The game sums the fertility multipliers (`AttributeInstance.GetTotalValue`: base + |base| × Σ multipliers):
+     * a tame critter with happiness H above 0 adds 2.25 × H, a miserable one −1, so the share is max(0, 1 + Σ).
+     * A wild critter gets no happiness bonus. A critter in a cramped or confined region lays nothing whatever its
+     * mood: the game then stops its fertility (`FertilityMonitor.IsFertile`), which is a hard stop, not a
+     * multiplier. Unknown happiness adds nothing; a critter is miserable by its state, else by its value.
+     */
+    public static function fertilityRatio(bool $wild, ?float $happiness, ?string $happinessState, bool $frozen): float
+    {
+        if ($frozen) {
+            return 0.0;
+        }
+
+        $miserable = $happinessState !== null
+            ? $happinessState === 'miserable'
+            : $happiness !== null && $happiness <= self::MISERABLE_HAPPINESS;
+
+        $multipliers = (! $wild && $happiness !== null && $happiness > 0 ? self::REPRODUCTION_HAPPINESS_MULTIPLIER * $happiness : 0.0)
+            + ($miserable ? self::MISERABLE_FERTILITY_MULTIPLIER : 0.0);
+
+        return max(0.0, 1.0 + $multipliers);
+    }
+
+    /**
      * One consumed flow listing every accepted food, then one produced flow per output row. A morph without a
      * diet has no consumed flow.
      *
@@ -64,14 +98,16 @@ final class CritterFeeding
      * not kg, and it must not be added to kg totals.
      *
      * The diet lines are multiplied by `$eaters`, the sum of each critter's {@see self::metabolismRatio()} (the
-     * count when omitted); the outputs (eggs) by the count.
+     * count when omitted); the outputs (eggs) by `$layers`, the sum of each critter's {@see self::fertilityRatio()}
+     * (the count when omitted).
      *
      * @return list<ResourceFlowData>
      */
-    public function flows(string $groupKey, string $morphId, int $count, ?int $zoneId, ?float $eaters = null): array
+    public function flows(string $groupKey, string $morphId, int $count, ?int $zoneId, ?float $eaters = null, ?float $layers = null): array
     {
         $flows = [];
         $eaters ??= (float) $count;
+        $layers ??= (float) $count;
 
         $accepts = array_map(
             static function (array $diet) use ($eaters): AcceptedFoodData {
@@ -96,7 +132,7 @@ final class CritterFeeding
         }
 
         foreach ($this->diets->outputs($morphId) as $output) {
-            $flows[] = new ResourceFlowData($output['resource'], $output['perCycle'] * $count, $output['kind'] === 'egg' ? 'count' : 'kg', 'produced', self::SOURCE_KIND, $groupKey, $zoneId);
+            $flows[] = new ResourceFlowData($output['resource'], $output['perCycle'] * $layers, $output['kind'] === 'egg' ? 'count' : 'kg', 'produced', self::SOURCE_KIND, $groupKey, $zoneId);
         }
 
         return $flows;

@@ -221,3 +221,23 @@ it('scales the diet by the eaters and the eggs by the count', function (): void 
         ->and($flows[0]->accepts[0]->producedKgPerCycle)->toEqualWithDelta(5.0, 1e-6)
         ->and(end($flows)->perCycle)->toEqualWithDelta(4 * 0.0666667, 1e-6);
 });
+
+it('lays at the fertility of tameness, happiness and crowding', function (): void {
+    expect(CritterFeeding::fertilityRatio(false, 4.0, 'happy', false))->toBe(10.0)
+        ->and(CritterFeeding::fertilityRatio(false, 0.5, 'neutral', false))->toBe(2.125)
+        ->and(CritterFeeding::fertilityRatio(false, 0.0, 'neutral', false))->toBe(1.0)
+        ->and(CritterFeeding::fertilityRatio(false, -3.0, 'glum', false))->toBe(1.0)
+        ->and(CritterFeeding::fertilityRatio(false, null, null, false))->toBe(1.0)
+        ->and(CritterFeeding::fertilityRatio(false, -12.0, 'miserable', false))->toBe(0.0)
+        ->and(CritterFeeding::fertilityRatio(false, -12.0, null, false))->toBe(0.0)
+        ->and(CritterFeeding::fertilityRatio(true, 4.0, 'happy', false))->toBe(1.0)
+        ->and(CritterFeeding::fertilityRatio(true, -12.0, 'miserable', false))->toBe(0.0)
+        ->and(CritterFeeding::fertilityRatio(false, 4.0, 'happy', true))->toBe(0.0);
+});
+
+it('scales the eggs by the layers', function (): void {
+    $flows = $this->feeding->flows('Pacu:adult', 'Pacu', 4, 65, layers: 40.0);
+
+    expect(end($flows)->perCycle)->toEqualWithDelta(40 * 0.06666666, 1e-9)
+        ->and($flows[0]->perCycle)->toBe(30.0);
+});

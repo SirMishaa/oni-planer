@@ -208,7 +208,7 @@ final class ZonePresenter
                 array_values(array_filter($fastPlants(), fn (array $plant): bool => is_numeric($plant['cell'] ?? null))),
             ) : null,
             'crittersAt' => fn (): ?string => $critters() === null ? null : $zone->fast_state_at?->toIso8601String(),
-            'feeding' => fn (): ?array => $critters() === null ? null : $this->feeding->of($zone, $critters()),
+            'feeding' => fn (): ?array => $critters() === null ? null : $this->feeding->of($zone, $critters(), $population()),
             'liveProps' => fn (): array => self::PROPS_BY_KIND,
             'echo' => fn (): array => ['channel' => 'uplink', 'event' => '.zone.updated'],
         ];

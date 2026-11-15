@@ -64,7 +64,7 @@ final class ZoneOverviewTool extends Tool
             '',
             ...$this->population($regions),
             '',
-            ...$this->feeding($zone, $feeding),
+            ...$this->feeding($zone, $feeding, $regions),
             '',
             ...$this->elements($zone, $text),
             '',
@@ -368,9 +368,10 @@ final class ZoneOverviewTool extends Tool
     /**
      * What each flock band eats and produces, and how long the zone's stock of its accepted items lasts.
      *
+     * @param  list<ZonePopulationData>|null  $regions
      * @return list<string>
      */
-    private function feeding(Zone $zone, ZoneFeeding $feeding): array
+    private function feeding(Zone $zone, ZoneFeeding $feeding, ?array $regions): array
     {
         $critters = ZoneCritterState::critters($zone);
         if ($critters === null) {
@@ -378,7 +379,7 @@ final class ZoneOverviewTool extends Tool
         }
 
         $lines = ['Feeding:'];
-        foreach ($feeding->of($zone, $critters) as $group) {
+        foreach ($feeding->of($zone, $critters, $regions) as $group) {
             $lines[] = ' '.implode(' · ', array_filter([
                 sprintf('%s ×%d', $group->groupKey, $group->count),
                 self::eats($group),
