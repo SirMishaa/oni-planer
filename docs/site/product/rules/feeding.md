@@ -32,7 +32,7 @@ Un aliment se mange de l'une de trois façons :
 | Façon | Exemple | Se stocke |
 | --- | --- | --- |
 | Un objet ramassé | Algues pour le Pacu, sable pour le Hatch | Oui, en kg |
-| Une plante mangée sur pied | Drecko, Squirrel | Non |
+| Une plante mangée sur pied ou dans sa réserve | Drecko, Squirrel | Non |
 | Une proie chassée | Pacu pour le Pacu préhistorique | Non |
 
 ## Autonomie

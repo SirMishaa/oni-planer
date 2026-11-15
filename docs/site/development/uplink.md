@@ -34,7 +34,7 @@ Sur `uplink-data`, le `data` de l'événement vaut `{"payload": "<base64 du gzip
 
 ## Contrôle du surpeuplement
 
-À chaque état rapide enregistré, `CheckCrowdingConsistency` rejoue la règle de surpeuplement du planner sur les régions que le jeu a envoyées et compare avec ses valeurs : l'espace occupé, puis par espèce `overcrowded`, `confined` et le modificateur de bonheur. `eggOccupied` et `cramped` ne sont jamais comparés, car les œufs viennent de l'état lent et retardent sur l'état rapide. Un écart est journalisé (`crowding mismatch`) et gardé dans `zones.crowding_mismatches` (le dernier contrôle seulement, `null` quand tout concorde). Une région dont une espèce est inconnue des données du jeu est ignorée et journalisée.
+À chaque état rapide enregistré, `CheckCrowdingConsistency` rejoue la règle de surpeuplement du planner sur les régions que le jeu a envoyées, à partir des effectifs de toute la région (`counts`) et non des seuls critters de la zone, et compare avec ses valeurs : l'espace occupé, puis par espèce `overcrowded`, `confined` et le modificateur de bonheur. `eggOccupied` et `cramped` ne sont jamais comparés, car les œufs viennent de l'état lent et retardent sur l'état rapide. Un écart est journalisé (`crowding mismatch`) et gardé dans `zones.crowding_mismatches` (le dernier contrôle seulement, `null` quand tout concorde). Une région dont une espèce est inconnue des données du jeu est ignorée et journalisée une fois par ensemble d'espèces inconnues.
 
 ## Bord de zone
 

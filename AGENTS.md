@@ -224,13 +224,14 @@ Search and read the docs with the `larecipe` MCP server. Never write configurati
 
 ### Docs index: ONI Planner
 
-13 pages. One line per page: path, title, description. Read a page with the `read_page` tool of the `larecipe` MCP server, or open its file in `docs/site/`. Refresh this index with `php artisan larecipe:agents-md`.
+16 pages. One line per page: path, title, description. Read a page with the `read_page` tool of the `larecipe` MCP server, or open its file in `docs/site/`. Refresh this index with `php artisan larecipe:agents-md`.
 
 - `index`: Introduction. Ce qu'est ONI Planner, d'où viennent ses données et comment cette doc est organisée.
 - `development/architecture`: Architecture. Comment les données du jeu et celles de la colonie en direct arrivent au planner, et quel processus fait quoi.
 - `development/data-model`: Modèle de données. Les tables de référence importées du jeu et les tables de colonie remplies par Uplink.
 - `development/game-data-import`: Import des données du jeu. Transformer l'export OniExtract en tables de référence, catalogues de traduction et images WebP.
 - `development/local-setup`: Installation locale. Installer l'application, importer les données du jeu et lancer la stack de dev avec Octane et Reverb.
+- `development/mcp`: Serveur MCP. Le serveur MCP local oni, qui laisse un assistant IA explorer ta colonie (zones, cartes, entités, données du jeu…
 - `development/testing-and-performance`: Tests et performance. Lancer les suites de tests et mesurer le traitement des messages Uplink avec le benchmark k6 et Excimer.
 - `development/uplink`: Uplink. Comment le mod Uplink parle au planner via Reverb, comment chaque message est traité en file et les règles d'ordre et…
 - `product/buildings`: Bâtiments. Trouver un bâtiment par catégorie ou par nom et lire sa construction, son emprise, sa chaleur et sa production.
@@ -239,6 +240,8 @@ Search and read the docs with the `larecipe` MCP server. Never write configurati
 - `product/critters-and-ranch`: Créatures et ranch. Lire chaque famille de créatures et ses variantes, puis équilibrer la nourriture, les productions et les œufs d'un…
 - `product/elements`: Éléments. Parcourir tous les éléments du jeu et lire leur état, leur catégorie, leurs propriétés thermiques et leurs changements…
 - `product/getting-started`: Bien démarrer. Se repérer dans les sections du planner et le relier à ta partie.
+- `product/rules/feeding`: Alimentation. Comment le planner calcule ce qu'un groupe de critters mange et pond par cycle, et combien de cycles le stock de…
+- `product/rules/overcrowding`: Surpeuplement. Ce que veulent dire Surpeuplé, À l'étroit et Confiné pour une pièce ou un bassin, quand les œufs comptent et comment le…
 
 For docs work, use the LaRecipe skills: `larecipe-write-docs` to write new pages (and run onboarding), `larecipe-update-docs` to update the pages a change made stale, `larecipe-audit-docs` to review the whole set, and `larecipe-upgrade-v2` to finish a LaRecipe 2.x upgrade.
 

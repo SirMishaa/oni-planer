@@ -65,8 +65,8 @@ Les portes, échelles, poteaux de pompier et escaliers sur ce bord sont rangés 
 
 Les filtres **Critters** et **Œufs** de l'onglet **Entités** montrent les animaux de la zone. Le troupeau a une bande par groupe : une espèce à un stade (adultes apprivoisés, bébés ou sauvages), le plus grand groupe en premier. Chaque critter y est une vignette, avec son image tournée dans le sens où il regarde et une mini-jauge.
 
-- **Alertes.** Une alerte que tout le groupe porte (À l'étroit, par exemple) s'affiche une fois sur la bande, avec son nombre. Le contour rouge et le « ! » ne marquent que les alertes propres à un critter, pour qu'elles ressortent.
-- **Jauge.** Le menu de la bande choisit la jauge (fertilité, croissance, estomac ou âge) et trie les vignettes, la plus haute en premier.
+- **Alertes.** Une alerte que tout le groupe porte (À l'étroit, par exemple) s'affiche une fois sur la bande, avec son nombre. Le contour rouge et le « ! » ne marquent que les alertes propres à un critter, pour qu'elles ressortent. Un critter seul dans son groupe garde ses alertes à lui.
+- **Jauge.** Le menu de la bande choisit la jauge (fertilité, croissance, estomac ou âge) et trie les vignettes, la plus haute en premier. Une valeur que le jeu n'a pas envoyée donne une jauge hachurée, pas une jauge vide.
 - **Fiche.** Survole une vignette pour voir sa fiche : statuts, humeur, fertilité, estomac, âge et chances du prochain œuf. Un clic la montre sur la carte, avec sa fiche à côté.
 
 Sous les vignettes, une ligne résume le groupe : l'humeur, l'estomac médian et les âges.

@@ -1,7 +1,7 @@
 ---
 title: Créatures et ranch
 description: Lire chaque famille de créatures et ses variantes, puis équilibrer la nourriture, les productions et les œufs d'un ranch par cycle.
-sources: ["app/Http/Controllers/CritterController.php", "app/Http/Controllers/RanchController.php", "app/Services/Critters/**", "resources/js/pages/Critters/**", "resources/js/pages/Ranch/**", "resources/js/composables/useRanch.ts"]
+sources: ["app/Http/Controllers/CritterController.php", "app/Http/Controllers/RanchController.php", "app/Services/Critters/CritterPresenter.php", "resources/js/pages/Critters/**", "resources/js/pages/Ranch/**", "resources/js/composables/useRanch.ts"]
 order: 4
 ---
 

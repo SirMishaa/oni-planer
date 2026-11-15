@@ -41,15 +41,20 @@ La carte des zones dessine les éléments avec les données de rendu du jeu. Si 
 
 `game:import` lit la clé `render` de chaque élément dans `planner_extras.json` et la range dans les colonnes de la table des éléments : `render_color`, `substance_texture`, `uses_caustics`, `glows`, `is_metallic`, `is_opaque_liquid`, `liquid_scroll_speed`, `max_mass` et `terrain_texture`. Une famille de texture de substance inconnue est stockée à `null`. La commande liste en avertissement les gaz, liquides et solides importés sans clé `render` : la carte les dessine avec un motif neutre.
 
+Pour chaque ligne de régime d'un critter, `game:import` range le type de nourriture du jeu (`foodType`) dans `critter_morph_diets.food_kind` : objet, plante ou proie. Le bilan d'alimentation s'en sert pour ne compter en stock que les objets.
+
 `game:import-assets` publie en plus, depuis l'export :
 
 - `render/terrain/*.png` vers `terrain/*.webp`, une texture par solide ;
 - `render/mask_atlas.png` vers `terrain/mask_atlas.webp`, l'atlas des masques de bord ;
 - `database/planner_render.json` vers `render.json` ;
-- `stair_caps/{bâtiment}/{masque}.png` vers `stair_caps/{bâtiment}/{masque}.webp`, et `stair_caps.json` vers `stair_caps/rects.json` : les variantes des escaliers du mod Stairs, qui raccordent chaque marche à ses voisines comme dans le jeu.
+- `stair_caps/{bâtiment}/{masque}.png` vers `stair_caps/{bâtiment}/{masque}.webp`, et `stair_caps.json` vers `stair_caps/rects.json` : les variantes des escaliers du mod Stairs, qui raccordent chaque marche à ses voisines comme dans le jeu ;
+- `ui_image/{œuf}.png` vers `eggs/{œuf}.webp`, une image par œuf pondu par un critter. La liste des œufs vient des productions des critters : lance `game:import` avant.
+
+Elle recrée aussi depuis `ui_image/{critter}.png` les images de critters vides (moins de 200 octets), même plus récentes que leur source. Une image d'œuf vide est recréée de la même façon.
 
 L'import lit aussi, pour chaque bâtiment, s'il rend sa case pleine (`simCellOccupier` : dalles, portes…), rangé dans `sim_cell_occupier`. La carte s'en sert pour raccorder les escaliers.
 
-La commande échoue (code de sortie non nul) si un solide n'a pas de texture de terrain, si l'image de sa texture n'a pas été publiée, ou si `render/mask_atlas.png` ou `database/planner_render.json` manque dans l'export.
+`game:import-assets` échoue (code de sortie non nul) si un solide n'a pas de texture de terrain, si l'image de sa texture n'a pas été publiée, si `render/mask_atlas.png` ou `database/planner_render.json` manque dans l'export, si un œuf n'a pas d'image dans `ui_image` (ou si son image reste vide), ou si une image de critter vide n'a pas de source dans `ui_image`.
 
 </Accordion>

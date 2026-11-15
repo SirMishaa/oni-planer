@@ -10,7 +10,7 @@ order: 1
 Le planner a deux sortes de pages :
 
 - **Les pages de référence** sur le jeu : [éléments](./elements.md), [bâtiments](./buildings.md), [créatures et planificateur de ranch](./critters-and-ranch.md) et [codex](./codex.md). Elles marchent sans que le jeu tourne.
-- **Les pages Ma colonie** sur la partie en cours : [viabilité et inspecteur Uplink](./colony.md). Elles se remplissent une fois le mod Uplink installé dans le jeu. Dans la barre de gauche, les zones de ta colonie sont listées sous **Zones** pour passer de l'une à l'autre.
+- **Les pages Ma colonie** sur la partie en cours : [viabilité, carte des zones avec leurs critters, et inspecteur Uplink](./colony.md). Elles se remplissent une fois le mod Uplink installé dans le jeu. Dans la barre de gauche, les zones de ta colonie sont listées sous **Zones** pour passer de l'une à l'autre.
 
 Les noms s'affichent dans la langue du jeu quand une traduction existe, et les objets ajoutés par un mod pris en charge portent un badge avec le nom du mod.
 
