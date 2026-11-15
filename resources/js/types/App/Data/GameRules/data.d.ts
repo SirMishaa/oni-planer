@@ -1,3 +1,9 @@
+export type AcceptedFoodData = {
+    resource: string;
+    kgPerCycle: number;
+    produces: string | null;
+    producedKgPerCycle: number | null;
+};
 export type CritterOverOccupancyData = {
     prefabId: string;
     count: number;
@@ -5,6 +11,22 @@ export type CritterOverOccupancyData = {
     toRemove: number;
     canFix: boolean;
     derived: boolean;
+};
+export type FeedingBalanceData = {
+    groupKey: string;
+    accepts: AcceptedFoodData[];
+    availableKg: number;
+    mainResource: string | null;
+    deficitKgPerCycle: number | null;
+    autonomyCycles: number | null;
+    derived: boolean;
+};
+export type InventoryItemData = {
+    resource: string;
+    kg: number;
+    placeKind: string;
+    placeId: string;
+    zoneId: number | null;
 };
 export type OccupancyInputData = {
     cellCount: number;
@@ -28,4 +50,13 @@ export type OccupantData = {
     personalSpace: number;
     aquatic: boolean;
     confinementImmune: boolean;
+};
+export type ResourceFlowData = {
+    resource: string;
+    perCycle: number;
+    direction: 'consumed' | 'produced';
+    sourceKind: 'critter_group' | 'plant' | 'building';
+    sourceId: string;
+    zoneId: number | null;
+    accepts: AcceptedFoodData[];
 };

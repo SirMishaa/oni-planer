@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Services\Critters\CritterDietRepository;
+use App\Services\Critters\EloquentCritterDietRepository;
 use App\Services\Critters\OccupancyInputBuilder;
 use App\Services\GameText;
 use Illuminate\Foundation\DevCommands;
@@ -15,6 +17,7 @@ final class AppServiceProvider extends ServiceProvider
     {
         $this->app->scoped(GameText::class);
         $this->app->scoped(OccupancyInputBuilder::class);
+        $this->app->scoped(CritterDietRepository::class, EloquentCritterDietRepository::class);
     }
 
     public function boot(): void
