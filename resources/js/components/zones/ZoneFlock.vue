@@ -318,7 +318,12 @@ function chipTone(feeding: ZoneFeedingData): string {
                         class="zone-mon__image"
                         loading="lazy"
                     />
-                    <span class="zone-mon__gauge" aria-hidden="true"
+                    <span
+                        v-if="metricValue(critter, metricOf(group)) === null"
+                        class="zone-mon__gauge zone-mon__gauge--unknown"
+                        aria-hidden="true"
+                    />
+                    <span v-else class="zone-mon__gauge" aria-hidden="true"
                         ><i
                             :class="gaugeTone(critter, metricOf(group))"
                             :style="{
@@ -562,6 +567,15 @@ function chipTone(feeding: ZoneFeedingData): string {
     display: block;
     height: 100%;
     background: var(--ok);
+}
+
+/* An unknown value is hatched, never drawn as an empty (0) gauge. */
+.zone-mon__gauge--unknown {
+    background: repeating-linear-gradient(
+        135deg,
+        var(--ink-3) 0 3px,
+        transparent 3px 6px
+    );
 }
 
 .zone-mon__gauge .zone-mon__gauge--warn {

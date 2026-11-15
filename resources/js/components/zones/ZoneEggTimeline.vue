@@ -71,10 +71,14 @@ function offset(cycles: number): string {
                     }"
                     :style="{ left: offset(item.cycles) }"
                     :title="
-                        t('zones.eggs.egg_label', {
-                            cycles: format.number(item.cycles, 1),
-                            viability: format.number(item.egg.viability ?? 0),
-                        })
+                        item.egg.viability === null
+                            ? t('zones.eggs.egg_label_unknown', {
+                                  cycles: format.number(item.cycles, 1),
+                              })
+                            : t('zones.eggs.egg_label', {
+                                  cycles: format.number(item.cycles, 1),
+                                  viability: format.number(item.egg.viability),
+                              })
                     "
                 >
                     <img v-if="item.egg.sprite" :src="item.egg.sprite" alt="" />

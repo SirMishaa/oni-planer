@@ -273,6 +273,7 @@ return [
         'viability' => 'Viability',
         'hatches_in' => 'Hatches in',
         'egg_label' => 'Hatches in :cycles cycles, viability :viability %',
+        'egg_label_unknown' => 'Hatches in :cycles cycles, viability unknown',
         'unplaced' => ':count with no known duration',
         'derived_hint' => "Computed by the planner: remaining incubation × the species' incubation time.",
     ],

@@ -273,6 +273,7 @@ return [
         'viability' => 'Viabilité',
         'hatches_in' => 'Éclosion dans',
         'egg_label' => 'Éclosion dans :cycles cycles, viabilité :viability %',
+        'egg_label_unknown' => 'Éclosion dans :cycles cycles, viabilité inconnue',
         'unplaced' => ':count sans durée connue',
         'derived_hint' => "Calculé par le planner : incubation restante × durée d'incubation de l'espèce.",
     ],
