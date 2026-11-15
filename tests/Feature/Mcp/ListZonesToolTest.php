@@ -6,6 +6,8 @@ use App\Exceptions\McpLookupException;
 use App\Mcp\Servers\OniServer;
 use App\Mcp\Tools\ListZonesTool;
 use App\Models\Colony;
+use App\Models\Critter;
+use App\Models\CritterMorph;
 use App\Models\Zone;
 use App\Services\Mcp\McpZones;
 
@@ -54,4 +56,26 @@ it('refuses an empty zone instead of matching every name', function (): void {
     Zone::factory()->create(['colony_guid' => $colony->guid, 'name' => 'Only zone']);
 
     expect(fn () => McpZones::resolve($colony, '  '))->toThrow(McpLookupException::class, 'Name a zone');
+});
+
+it('counts critter problems in the zone list summary', function (): void {
+    CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => 'Pacu', 'overcrowding_threshold' => 8]);
+    $colony = Colony::factory()->create();
+    Zone::factory()->create(['colony_guid' => $colony->guid, 'name' => 'Pacu pond', 'fast_state' => [
+        'schema' => 1,
+        'critters' => array_map(fn (int $index): array => [
+            'instanceId' => (string) (1200 + $index), 'prefabId' => 'Pacu', 'cell' => 100 + $index, 'x' => 1.0, 'y' => 1.0,
+            'aquatic' => true, 'regionId' => 'pond:1201',
+        ], range(1, 11)),
+        'crowding' => [[
+            'id' => 'pond:1201', 'kind' => 'pond', 'cellCount' => 104, 'occupied' => 88, 'eggOccupied' => 24,
+            'counts' => ['Pacu' => 11],
+            'states' => ['Pacu' => ['overcrowded' => false, 'cramped' => true, 'confined' => false, 'modifier' => 0]],
+        ]],
+    ]]);
+
+    OniServer::tool(ListZonesTool::class)
+        ->assertOk()
+        ->assertSee('Pacu pond')
+        ->assertSee('problems 1');
 });

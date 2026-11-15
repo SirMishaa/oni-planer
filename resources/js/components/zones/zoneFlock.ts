@@ -1,6 +1,7 @@
 import type {
     ZoneCritterData,
     ZoneEggData,
+    ZoneEntityData,
     ZonePopulationData,
 } from '@/types/App/Data/data.d';
 
@@ -83,6 +84,22 @@ function countBadStatuses(
     return [...counts.entries()]
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+// endregion
+
+// region Problems
+
+/** The element id of a flock band: a critter problem links to it. */
+export function bandId(groupKey: string): string {
+    return `zone-band-${groupKey}`;
+}
+
+/** The placeholder glyph of an entity row: critter problems draw like critters. */
+export function entitySpriteKind(
+    kind: ZoneEntityData['kind'],
+): 'plant' | 'building' | 'critter' {
+    return kind === 'plant' || kind === 'building' ? kind : 'critter';
 }
 
 // endregion

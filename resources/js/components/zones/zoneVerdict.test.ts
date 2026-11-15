@@ -16,6 +16,10 @@ describe('zoneVerdict', () => {
         expect(zoneVerdict(1, true, true)).toBe('issues');
     });
 
+    it('reports problems even when neither plants nor buildings were read (critter alerts)', () => {
+        expect(zoneVerdict(1, false, false)).toBe('issues');
+    });
+
     it('is ok only when everything was read and nothing is wrong', () => {
         expect(zoneVerdict(0, true, true)).toBe('ok');
     });

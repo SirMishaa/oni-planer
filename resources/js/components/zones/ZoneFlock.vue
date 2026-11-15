@@ -10,6 +10,7 @@ import type {
 import ZoneCritterSheet from './ZoneCritterSheet.vue';
 import {
     FLOCK_METRICS,
+    bandId,
     ageRange,
     defaultMetric,
     fertilityFrozen,
@@ -118,6 +119,7 @@ function stomachMedian(group: FlockGroup): number | null {
     <div class="zone-flock">
         <section
             v-for="group in groups"
+            :id="bandId(group.key)"
             :key="group.key"
             class="zone-band"
             :aria-label="`${group.critters.length} ${group.name}, ${t(`zones.flock.stage.${group.stage}`)}`"

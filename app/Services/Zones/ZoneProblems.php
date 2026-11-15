@@ -73,9 +73,10 @@ final class ZoneProblems
     ];
 
     /**
-     * Entities of the zone with at least one problem. The count is null
-     * while unknown (no fast state, or neither its plants nor its buildings
-     * were read) and partial when only one of the two was read.
+     * Entities of the zone with at least one problem, plus its critter
+     * alerts (see {@see CritterProblems}). The count is null while unknown
+     * (no fast state, or none of its plants, buildings and critters were
+     * read) and partial when plants or buildings were not both read.
      *
      * @return array{count: int|null, partial: bool}
      */
@@ -84,14 +85,18 @@ final class ZoneProblems
         $plants = self::listOrNull($zone->fast_state['plants'] ?? null);
         [$buildings] = self::splitPassages(self::listOrNull($zone->fast_state['buildings'] ?? null));
 
-        if ($plants === null && $buildings === null) {
+        $critters = ZoneCritterState::critters($zone);
+
+        if ($plants === null && $buildings === null && $critters === null) {
             return ['count' => null, 'partial' => false];
         }
+
+        $critterProblems = $critters === null ? 0 : count(CritterProblems::of($critters, app(ZonePopulation::class)->forZone($zone) ?? []));
 
         $withProblems = count(array_filter($plants ?? [], fn (array $plant): bool => self::forPlant($plant) !== []))
             + count(array_filter($buildings ?? [], fn (array $building): bool => self::forBuilding($building) !== []));
 
-        return ['count' => $withProblems, 'partial' => $plants === null || $buildings === null];
+        return ['count' => $withProblems + $critterProblems, 'partial' => $plants === null || $buildings === null];
     }
 
     /**

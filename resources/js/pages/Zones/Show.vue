@@ -122,7 +122,12 @@ const crest = computed(() => {
     );
 });
 
-const known = computed(() => props.plantsKnown || props.buildingStatesKnown);
+const known = computed(
+    () =>
+        props.plantsKnown ||
+        props.buildingStatesKnown ||
+        props.counts.problems > 0,
+);
 
 // endregion
 
@@ -135,6 +140,8 @@ const layer = ref<ZoneMapLayer>(
     (props.map?.plants?.length ?? 0) > 0 ? 'growth' : 'materials',
 );
 const selectedId = ref<string | null>(null);
+/** The flock band a critter problem asked the Entities tab to open. */
+const focusGroup = ref<string | null>(null);
 
 const LAYERS: {
     key: ZoneMapLayer;
@@ -151,6 +158,11 @@ const knownEntities = computed(() => [
     ...props.entities,
     ...props.borderEntities,
 ]);
+
+/** Critters with an alert of their own: the Problems layer pins them where they stand. */
+const critterProblems = computed(() =>
+    props.problems.filter((problem) => problem.kind === 'critter'),
+);
 
 /** The selection survives reloads while the entity is still there. */
 const selected = computed(
@@ -197,6 +209,16 @@ const latestCaptureLabel = computed(() =>
 );
 
 // endregion
+
+/** A critter problem: the Entities tab, on the flock band of the problem. */
+function showInFlock(groupKey: string, instanceId: string | null): void {
+    if (instanceId !== null) {
+        selectedId.value = instanceId;
+    }
+
+    focusGroup.value = groupKey;
+    tab.value = 'entities';
+}
 
 function showOnMap(instanceId: string): void {
     selectedId.value = instanceId;
@@ -348,6 +370,7 @@ function showOnMap(instanceId: string): void {
                         <ZoneMap
                             :map="map"
                             :entities="knownEntities"
+                            :critter-problems="critterProblems"
                             :layer="layer"
                             :selected-id="selectedId"
                             :zone-name="zone.name"
@@ -386,6 +409,7 @@ function showOnMap(instanceId: string): void {
                         :selected="selected"
                         :selected-building="selectedBuilding"
                         @select="selectedId = $event"
+                        @flock="showInFlock"
                     />
                 </div>
             </section>
@@ -400,6 +424,8 @@ function showOnMap(instanceId: string): void {
             >
                 <ZoneEntities
                     :entities="entities"
+                    :problems="problems"
+                    :focus-group="focusGroup"
                     :border-entities="borderEntities"
                     :plants-known="plantsKnown"
                     :building-states-known="buildingStatesKnown"
@@ -409,6 +435,7 @@ function showOnMap(instanceId: string): void {
                     :selected-id="selectedId"
                     @select="showOnMap"
                     @pick="selectedId = $event"
+                    @focused="focusGroup = null"
                 />
             </section>
             <!-- endregion -->

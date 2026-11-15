@@ -128,6 +128,7 @@ return [
         'todo_partial' => 'Liste partielle : le jeu n\'a pas tout lu.',
         'todo_unknown' => 'Inconnu tant que le jeu n\'a pas envoyé l\'état de la zone.',
         'show' => 'voir',
+        'show_flock' => 'troupeau',
         'contents' => 'Contenu',
         'unknown' => 'inconnu',
         'selection' => 'Sélection',
@@ -196,6 +197,7 @@ return [
         'critters_unknown' => "Critters : le jeu n'a pas encore envoyé leur état.",
         'eggs_unknown' => "Œufs : le jeu n'a pas encore envoyé leur état.",
         'show_on_map' => 'Voir :name sur la carte',
+        'show_in_flock' => 'Voir :name dans le troupeau',
     ],
     'flock' => [
         'stage' => [
@@ -273,6 +275,10 @@ return [
         'not_operational' => "À l'arrêt",
     ],
     'problems' => [
+        'region' => [
+            'pond' => 'Bassin',
+            'cavity' => 'Pièce',
+        ],
         'wilting' => 'Flétrit',
         'not_operational' => 'Hors service',
     ],

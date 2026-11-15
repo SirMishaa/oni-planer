@@ -110,8 +110,12 @@ final class ZonePresenter
         ];
         $borderEntities = array_map(fn (array $building): ZoneEntityData => $this->buildingEntity($building, $anchorsByInstance, $position, passage: true), $borderBuildings);
         usort($entities, fn (ZoneEntityData $a, ZoneEntityData $b): int => [$a->problems === [], $a->secondsUntilHarvest ?? INF] <=> [$b->problems === [], $b->secondsUntilHarvest ?? INF]);
-        $problems = array_values(array_filter($entities, fn (ZoneEntityData $entity): bool => $entity->problems !== []));
         $critters = ZoneCritterState::critters($zone);
+        $population = $this->population->forZone($zone);
+        $problems = [
+            ...array_filter($entities, fn (ZoneEntityData $entity): bool => $entity->problems !== []),
+            ...CritterProblems::of($critters ?? [], $population ?? []),
+        ];
         $eggs = ZoneCritterState::eggs($zone);
         $this->withIncubation($eggs ?? []);
 
@@ -162,7 +166,7 @@ final class ZonePresenter
             captures: $this->captures($zone),
             captureRequest: self::captureRequest($zone),
             linkSeenAt: Colony::query()->where('guid', $zone->colony_guid)->first(['last_seen_at'])?->last_seen_at?->toIso8601String(),
-            population: $this->population->forZone($zone),
+            population: $population,
             critters: $critters,
             eggs: $eggs,
         );

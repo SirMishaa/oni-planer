@@ -128,6 +128,7 @@ return [
         'todo_partial' => 'Partial list: the game did not read everything.',
         'todo_unknown' => 'Unknown until the game sends the state of the zone.',
         'show' => 'show',
+        'show_flock' => 'flock',
         'contents' => 'Contents',
         'unknown' => 'unknown',
         'selection' => 'Selection',
@@ -196,6 +197,7 @@ return [
         'critters_unknown' => 'Critters: the game has not sent their state yet.',
         'eggs_unknown' => 'Eggs: the game has not sent their state yet.',
         'show_on_map' => 'Show :name on the map',
+        'show_in_flock' => 'Show :name in the flock',
     ],
     'flock' => [
         'stage' => [
@@ -273,6 +275,10 @@ return [
         'not_operational' => 'Stopped',
     ],
     'problems' => [
+        'region' => [
+            'pond' => 'Pond',
+            'cavity' => 'Room',
+        ],
         'wilting' => 'Wilting',
         'not_operational' => 'Not operational',
     ],

@@ -108,3 +108,18 @@ it('prints no population when the game sent no crowding regions', function (): v
 
     OniServer::tool(ZoneOverviewTool::class, ['zone' => 'Sodicane'])->assertOk()->assertSee('Population: unavailable');
 });
+
+it('lists the critter alerts among the problems', function (): void {
+    $colony = Colony::factory()->create();
+    Zone::factory()->create(['colony_guid' => $colony->guid, 'name' => 'Ranch', 'fast_state' => [
+        'schema' => 1,
+        'critters' => [[
+            'instanceId' => '7', 'prefabId' => 'Hatch', 'cell' => 100, 'x' => 1.0, 'y' => 1.0,
+            'statuses' => [['id' => 'Starving', 'bad' => true]], 'regionId' => null,
+        ]],
+    ]]);
+
+    OniServer::tool(ZoneOverviewTool::class, ['zone' => 'Ranch'])
+        ->assertOk()
+        ->assertSee('critter group 1 Hatch ·');
+});

@@ -10,6 +10,7 @@ import type {
     ZoneEntityData,
     ZonePopulationData,
 } from '@/types/App/Data/data.d';
+import { entitySpriteKind } from './zoneFlock';
 import { breedingStopped } from './zonePopulation';
 import ZonePopulation from './ZonePopulation.vue';
 import { zoneVerdict } from './zoneVerdict';
@@ -34,6 +35,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     select: [instanceId: string];
+    /** A critter problem: open the Entities tab on its flock band (and select the critter, if it is one). */
+    flock: [groupKey: string, instanceId: string | null];
 }>();
 
 // endregion
@@ -43,7 +46,12 @@ const emit = defineEmits<{
 const { t, tc } = useT();
 const text = useZoneText();
 
-const known = computed(() => props.plantsKnown || props.buildingStatesKnown);
+const known = computed(
+    () =>
+        props.plantsKnown ||
+        props.buildingStatesKnown ||
+        props.problems.length > 0,
+);
 const partial = computed(
     () => known.value && !(props.plantsKnown && props.buildingStatesKnown),
 );
@@ -110,6 +118,16 @@ const summary = computed(() => {
 // region Selection
 
 function select(entity: ZoneEntityData): void {
+    if (entity.groupKey !== null) {
+        emit(
+            'flock',
+            entity.groupKey,
+            entity.kind === 'critter' ? entity.instanceId : null,
+        );
+
+        return;
+    }
+
     if (entity.instanceId !== null) {
         emit('select', entity.instanceId);
     }
@@ -183,7 +201,7 @@ function select(entity: ZoneEntityData): void {
                     <span class="zone-issue__thumb">
                         <GameSprite
                             :src="entity.sprite"
-                            :kind="entity.kind"
+                            :kind="entitySpriteKind(entity.kind)"
                             :size="38"
                             :alt="entity.name"
                         />
@@ -204,7 +222,18 @@ function select(entity: ZoneEntityData): void {
                         >
                     </span>
                     <button
-                        v-if="entity.instanceId !== null && entity.x !== null"
+                        v-if="entity.groupKey !== null"
+                        type="button"
+                        class="zone-issue__show"
+                        @click="select(entity)"
+                    >
+                        <ZoneIcon name="paw" :size="13" />
+                        {{ t('zones.panel.show_flock') }}
+                    </button>
+                    <button
+                        v-else-if="
+                            entity.instanceId !== null && entity.x !== null
+                        "
                         type="button"
                         class="zone-issue__show"
                         @click="select(entity)"

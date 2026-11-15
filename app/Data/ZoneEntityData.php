@@ -7,12 +7,12 @@ namespace App\Data;
 use Spatie\LaravelData\Data;
 use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
 
-/** One plant or building of the zone with its state, for the entities tab and the problems. */
+/** One plant or building of the zone with its state, or a critter alert, for the entities tab and the problems. */
 final class ZoneEntityData extends Data
 {
     public function __construct(
-        #[LiteralTypeScriptType("'plant' | 'building'")]
-        /** @var 'plant'|'building' */
+        #[LiteralTypeScriptType("'plant' | 'building' | 'critter_group' | 'critter'")]
+        /** @var 'plant'|'building'|'critter_group'|'critter' */
         public string $kind,
         public ?string $instanceId,
         public string $prefabId,
@@ -32,5 +32,9 @@ final class ZoneEntityData extends Data
         public ?bool $autoHarvest = null,
         /** Sprite of the element a problem names (`Insufficient Resources: Fertilizer`), when one is recognised. */
         public ?string $neededItemSprite = null,
+        /** Critter problems: the flock band (`${prefabId}:${stage}`) to open; null for a crowding region. */
+        public ?string $groupKey = null,
+        /** `critter_group` problems: how many critters the problem covers. */
+        public ?int $count = null,
     ) {}
 }

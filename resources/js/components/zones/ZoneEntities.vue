@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import GameSprite from '@/components/viability/GameSprite.vue';
 import ZoneEggTimeline from '@/components/zones/ZoneEggTimeline.vue';
-import { groupEggs } from '@/components/zones/zoneFlock';
+import {
+    bandId,
+    entitySpriteKind,
+    groupEggs,
+} from '@/components/zones/zoneFlock';
 import ZoneFlock from '@/components/zones/ZoneFlock.vue';
 import ZoneIcon from '@/components/zones/ZoneIcon.vue';
 import { useT } from '@/composables/useT';
@@ -19,6 +23,10 @@ import type {
 const props = defineProps<{
     /** Problems first, then by time to harvest (the server's order). */
     entities: ZoneEntityData[];
+    /** What needs fixing: the entities with a problem, then the critter alerts (crowded regions, flock bands, single critters). */
+    problems: ZoneEntityData[];
+    /** The flock band to open (from a problem elsewhere on the page); the page clears it through `focused`. */
+    focusGroup?: string | null;
     /** Doors, ladders and stairs on the zone or its border ring: shown apart, never a problem. */
     borderEntities: ZoneEntityData[];
     plantsKnown: boolean;
@@ -35,6 +43,8 @@ const emit = defineEmits<{
     select: [instanceId: string];
     /** A critter of the flock: select it and stay on the tab (the map has no critter layer yet). */
     pick: [instanceId: string];
+    /** The requested flock band was opened. */
+    focused: [];
 }>();
 
 // endregion
@@ -47,9 +57,7 @@ const { t } = useT();
 const text = useZoneText();
 const filter = ref<Filter>('all');
 
-const withProblems = computed(() =>
-    props.entities.filter((entity) => entity.problems.length > 0),
-);
+const withProblems = computed(() => props.problems);
 const plants = computed(() =>
     props.entities.filter((entity) => entity.kind === 'plant'),
 );
@@ -137,9 +145,51 @@ function stateTone(entity: ZoneEntityData): 'ok' | 'warn' | 'bad' | 'ready' {
 }
 
 function select(entity: ZoneEntityData): void {
+    if (entity.groupKey !== null) {
+        openBand(entity.groupKey);
+
+        if (entity.kind === 'critter' && entity.instanceId !== null) {
+            emit('pick', entity.instanceId);
+        }
+
+        return;
+    }
+
+    if (entity.kind === 'critter_group') {
+        filter.value = 'critters';
+
+        return;
+    }
+
     if (entity.instanceId !== null) {
         emit('select', entity.instanceId);
     }
+}
+
+/** A critter problem opens the flock on the band it belongs to. */
+function openBand(groupKey: string): void {
+    filter.value = 'critters';
+    void nextTick(() => {
+        document
+            .getElementById(bandId(groupKey))
+            ?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+}
+
+watch(
+    () => props.focusGroup ?? null,
+    (groupKey) => {
+        if (groupKey !== null) {
+            openBand(groupKey);
+            emit('focused');
+        }
+    },
+    { immediate: true },
+);
+
+/** Whether the row leads somewhere: the map for a plant or building, the flock for a critter problem. */
+function isActionable(entity: ZoneEntityData): boolean {
+    return entity.instanceId !== null || entity.groupKey !== null;
 }
 
 // endregion
@@ -226,17 +276,21 @@ function select(entity: ZoneEntityData): void {
                             <button
                                 type="button"
                                 class="zone-table__entity"
-                                :disabled="entity.instanceId === null"
+                                :disabled="!isActionable(entity)"
                                 :aria-label="
-                                    t('zones.entities.show_on_map', {
-                                        name: entity.name,
-                                    })
+                                    t(
+                                        entity.kind === 'plant' ||
+                                            entity.kind === 'building'
+                                            ? 'zones.entities.show_on_map'
+                                            : 'zones.entities.show_in_flock',
+                                        { name: entity.name },
+                                    )
                                 "
                                 @click.stop="select(entity)"
                             >
                                 <GameSprite
                                     :src="entity.sprite"
-                                    :kind="entity.kind"
+                                    :kind="entitySpriteKind(entity.kind)"
                                     :size="24"
                                 />
                                 <span>{{ entity.name }}</span>

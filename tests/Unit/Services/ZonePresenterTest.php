@@ -685,3 +685,18 @@ it('keeps critters and eggs unknown until the game sent them', function (): void
         ->and($shown->counts->critters)->toBe(0)
         ->and($shown->counts->eggs)->toBe(0);
 });
+
+it('counts the critter alerts in the zone problems', function (): void {
+    $zone = populatedPond();
+    $fast = $zone->fast_state;
+    $fast['critters'][0]['statuses'] = [['id' => 'Scalded', 'bad' => true]];
+    $zone->update(['fast_state' => $fast]);
+
+    $shown = app(ZonePresenter::class)->present($zone->fresh());
+
+    expect($shown->counts->problems)->toBe(2)
+        ->and(array_column($shown->problems, 'kind'))->toBe(['critter_group', 'critter'])
+        ->and($shown->problems[0]->problems[0])->toContain('Cramped')->toContain('remove 1')
+        ->and($shown->problems[1]->problems)->toBe(['Scalded'])
+        ->and($shown->entities)->not->toContain($shown->problems[1]);
+});

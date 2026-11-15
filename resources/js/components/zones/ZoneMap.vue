@@ -52,6 +52,8 @@ import { entityProblemMark } from './zoneVerdict';
 const props = defineProps<{
     map: ZoneMapData;
     entities: ZoneEntityData[];
+    /** Critters with an alert of their own, pinned where they stand on the Problems layer. */
+    critterProblems?: ZoneEntityData[];
     layer: ZoneMapLayer;
     selectedId: string | null;
     zoneName: string;
@@ -598,6 +600,39 @@ const mapEntities = computed<MapEntity[]>(() => {
     );
 });
 
+/** Critter problems on the box, with the cell they stand on; none outside the Problems layer. */
+const critterPins = computed(() =>
+    props.layer !== 'problems'
+        ? []
+        : (props.critterProblems ?? []).filter(
+              (problem) =>
+                  problem.x !== null &&
+                  problem.y !== null &&
+                  footprintTouchesBox(
+                      problem.x,
+                      problem.y,
+                      1,
+                      1,
+                      props.map.box,
+                  ),
+          ),
+);
+
+function critterPinStyle(problem: ZoneEntityData): Record<string, string> {
+    const { column, row } = cellToLocal(
+        problem.x ?? 0,
+        problem.y ?? 0,
+        props.map.box,
+    );
+
+    return {
+        left: `${column * cellPx.value}px`,
+        top: `${row * cellPx.value}px`,
+        width: `${cellPx.value}px`,
+        height: `${cellPx.value}px`,
+    };
+}
+
 function entityStyle(entity: MapEntity): Record<string, string> {
     const box = entity.drawBox ?? entity;
     const { column, row } = cellToLocal(
@@ -1108,6 +1143,19 @@ const temperatureLegend = computed(() => {
                             >?</span
                         >
                     </button>
+                    <span
+                        v-for="problem in critterPins"
+                        :key="`c${problem.instanceId}`"
+                        class="zone-critter-pin"
+                        :style="critterPinStyle(problem)"
+                        role="img"
+                        :aria-label="`${problem.name}: ${problem.problems.join(', ')}`"
+                        :title="`${problem.name}: ${problem.problems.join(', ')}`"
+                    >
+                        <span class="zone-entity__pin" aria-hidden="true"
+                            >!</span
+                        >
+                    </span>
                 </div>
                 <!-- endregion -->
 
@@ -1563,6 +1611,11 @@ const temperatureLegend = computed(() => {
 
 .zone-entity__bar--wilting i {
     background: var(--warn);
+}
+
+.zone-critter-pin {
+    position: absolute;
+    pointer-events: none;
 }
 
 .zone-entity__pin.zone-entity__pin--unknown {

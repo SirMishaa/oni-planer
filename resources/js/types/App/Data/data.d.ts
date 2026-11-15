@@ -323,7 +323,7 @@ export type ZoneEggData = {
     incubationCycles: number | null;
 };
 export type ZoneEntityData = {
-    kind: 'plant' | 'building';
+    kind: 'plant' | 'building' | 'critter_group' | 'critter';
     instanceId: string | null;
     prefabId: string;
     name: string;
@@ -336,6 +336,8 @@ export type ZoneEntityData = {
     secondsUntilHarvest: number | null;
     autoHarvest: boolean | null;
     neededItemSprite: string | null;
+    groupKey: string | null;
+    count: number | null;
 };
 export type ZoneListItemData = {
     id: number;

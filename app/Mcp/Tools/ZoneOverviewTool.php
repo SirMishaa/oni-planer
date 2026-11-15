@@ -14,6 +14,7 @@ use App\Services\GameText;
 use App\Services\Mcp\McpFormat;
 use App\Services\Mcp\McpHeader;
 use App\Services\Mcp\ZoneTerrainSummary;
+use App\Services\Zones\CritterProblems;
 use App\Services\Zones\ZoneCritters;
 use App\Services\Zones\ZoneCritterState;
 use App\Services\Zones\ZoneGeometry;
@@ -358,6 +359,11 @@ final class ZoneOverviewTool extends Tool
             if (($problems = ZoneProblems::forBuilding($building)) !== []) {
                 $lines[] = sprintf(' building %s#%s: %s', $building['prefabId'] ?? '?', $building['instanceId'] ?? '?', implode('; ', $problems));
             }
+        }
+
+        $critters = ZoneCritterState::critters($zone);
+        foreach ($critters === null ? [] : CritterProblems::of($critters, app(ZonePopulation::class)->forZone($zone) ?? []) as $problem) {
+            $lines[] = sprintf(' %s %s: %s', str_replace('_', ' ', $problem->kind), $problem->name, implode('; ', $problem->problems));
         }
 
         return count($lines) === 1 ? ['Problems: none'] : $lines;

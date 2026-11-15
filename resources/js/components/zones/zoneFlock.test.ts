@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ZoneCritterData } from '@/types/App/Data/data.d';
 import {
+    bandId,
     cyclesToHatch,
+    entitySpriteKind,
     groupFlock,
     individualAlerts,
     isGroupAlert,
@@ -138,5 +140,20 @@ describe('cyclesToHatch', () => {
     it('computes cycles to hatch from incubation', () => {
         expect(cyclesToHatch({ incubation: 40 }, 5)).toBeCloseTo(3);
         expect(cyclesToHatch({ incubation: 100 }, 5)).toBe(0);
+    });
+});
+
+describe('entitySpriteKind', () => {
+    it('draws critter problems with the critter placeholder', () => {
+        expect(entitySpriteKind('critter')).toBe('critter');
+        expect(entitySpriteKind('critter_group')).toBe('critter');
+        expect(entitySpriteKind('plant')).toBe('plant');
+        expect(entitySpriteKind('building')).toBe('building');
+    });
+});
+
+describe('bandId', () => {
+    it('is a stable element id for a flock band', () => {
+        expect(bandId('Pacu:adult')).toBe('zone-band-Pacu:adult');
     });
 });

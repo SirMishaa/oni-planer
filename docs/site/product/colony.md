@@ -1,7 +1,7 @@
 ---
 title: Ma colonie
 description: Relier le jeu au planner avec le mod Uplink, puis suivre la viabilité alimentaire de ta colonie, la carte de tes zones et voir ce que le jeu envoie.
-sources: ["app/Http/Controllers/ColonyController.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Services/Viability/**", "resources/js/pages/Colony/**", "lang/fr/colony.php", "app/Http/Controllers/ZoneController.php", "app/Services/Zones/ZonePresenter.php", "resources/js/components/zones/**", "lang/fr/zones.php", "app/Services/Zones/ZonePopulation.php"]
+sources: ["app/Http/Controllers/ColonyController.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Services/Viability/**", "resources/js/pages/Colony/**", "lang/fr/colony.php", "app/Http/Controllers/ZoneController.php", "app/Services/Zones/ZonePresenter.php", "resources/js/components/zones/**", "lang/fr/zones.php", "app/Services/Zones/ZonePopulation.php", "app/Services/Zones/CritterProblems.php"]
 order: 6
 ---
 
@@ -55,6 +55,8 @@ Quand une pièce est **À l'étroit** ou **Confinée**, le verdict de la zone an
 ### Entités et bord
 
 L'onglet **Entités** liste les plantes et les bâtiments de la zone, ceux qui ont un problème en premier. Les bâtiments posés sur les murs, le sol ou le plafond de la zone comptent avec elle : une station de pêche ou un distributeur collé au bassin apparaît dans les entités et peut signaler un problème.
+
+Les alertes des créatures comptent aussi parmi les problèmes, sans les noyer : un statut partagé par tout un groupe (38 pacus à l'étroit) donne **un seul** problème, une alerte propre à une créature donne un problème pour elle, et chaque pièce ou bassin surpeuplé, à l'étroit ou confiné donne un problème qui indique combien de critters retirer. Un clic sur un problème de créature ouvre l'onglet Entités sur la bonne bande du troupeau, et le calque **Problèmes** de la carte épingle les créatures concernées.
 
 Les portes, échelles, poteaux de pompier et escaliers sur ce bord sont rangés à part, dans le groupe **Bord** : ils restent sur la carte, mais ne comptent ni dans les bâtiments ni dans les problèmes.
 
