@@ -70,7 +70,7 @@ const props = defineProps<{
     entities: ZoneEntityData[];
     /** Critters of the zone; null until the game sent them. */
     critters?: ZoneCritterData[] | null;
-    /** When the server stored the fast state the critters come from (ISO); a new value starts a new replay. */
+    /** When the critters were received (ISO): the stored fast state, or a raw frame the relay applied; a new value starts a new replay. */
     crittersAt?: string | null;
     eggs?: ZoneEggData[] | null;
     /** Critters with an alert of their own: their pin and hover card show it. */

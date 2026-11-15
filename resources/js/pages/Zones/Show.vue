@@ -13,6 +13,7 @@ import ZonePanel from '@/components/zones/ZonePanel.vue';
 import { useFormat } from '@/composables/useFormat';
 import { useT } from '@/composables/useT';
 import { useUplink } from '@/composables/useUplink';
+import { useUplinkFastRelay } from '@/composables/useUplinkFastRelay';
 import { latestTime, useZoneLive } from '@/composables/useZoneLive';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { ZoneShowData } from '@/types/App/Data/data.d';
@@ -43,6 +44,7 @@ const props = defineProps<{
     crittersAt: ZoneShowData['crittersAt'];
     liveProps: ZoneShowData['liveProps'];
     echo: ZoneShowData['echo'];
+    fastRelay: ZoneShowData['fastRelay'];
 }>();
 
 // endregion
@@ -62,6 +64,16 @@ const { live, ageLabel, gone } = useZoneLive({
             props.zone.fastStateAt,
         ]),
 });
+
+/** The map's critters move on the raw fast frames as they arrive; the reload brings the rest. */
+const { critters: mapCritters, crittersAt: mapCrittersAt } = useUplinkFastRelay(
+    {
+        relay: () => props.fastRelay,
+        zone: () => props.zone,
+        critters: () => props.critters,
+        crittersAt: () => props.crittersAt,
+    },
+);
 
 /** Three missed 15 s heartbeats: one late heartbeat (seen up to 30 s apart) must not disable the capture button. */
 const LINK_WINDOW_MS = 45_000;
@@ -377,8 +389,8 @@ function showOnMap(instanceId: string): void {
                             :terrain="mapTerrain"
                             :plants="mapPlants"
                             :entities="knownEntities"
-                            :critters="critters"
-                            :critters-at="crittersAt"
+                            :critters="mapCritters"
+                            :critters-at="mapCrittersAt"
                             :eggs="eggs"
                             :critter-problems="critterProblems"
                             :layer="layer"

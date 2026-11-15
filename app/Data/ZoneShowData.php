@@ -58,5 +58,14 @@ final class ZoneShowData extends Data
         /** @var array{channel: 'uplink', event: '.zone.updated'} Echo subscription of the live updates */
         #[LiteralTypeScriptType("{ channel: 'uplink'; event: '.zone.updated' }")]
         public array $echo = ['channel' => 'uplink', 'event' => '.zone.updated'],
+        /**
+         * Where the mod's raw fast frames are rebroadcast (Reverb relays client events to every
+         * subscriber of the channel), and the newest schema the page reads: the critters move on
+         * them before the stored state is reloaded.
+         *
+         * @var array{channel: 'uplink-data', event: '.client-zone.fast', schema: int}
+         */
+        #[LiteralTypeScriptType("{ channel: 'uplink-data'; event: '.client-zone.fast'; schema: number }")]
+        public array $fastRelay = ['channel' => 'uplink-data', 'event' => '.client-zone.fast', 'schema' => 1],
     ) {}
 }

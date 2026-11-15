@@ -306,6 +306,9 @@ export type ZoneData = {
     layoutAt: string | null;
     slowStateAt: string | null;
     fastStateAt: string | null;
+    colonyGuid: string;
+    fastSessionId: string | null;
+    fastGameSeconds: number | null;
 };
 export type ZoneEggData = {
     instanceId: string;
@@ -426,6 +429,11 @@ export type ZoneShowData = {
     feeding: ZoneFeedingData[] | null;
     liveProps: Record<string, string[]>;
     echo: { channel: 'uplink'; event: '.zone.updated' };
+    fastRelay: {
+        channel: 'uplink-data';
+        event: '.client-zone.fast';
+        schema: number;
+    };
 };
 export type ZoneSpriteRectData = {
     x: number;

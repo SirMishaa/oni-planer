@@ -20,6 +20,7 @@ use App\Data\ZoneTerrainData;
 use App\Data\ZoneTerrainElementData;
 use App\Data\ZoneTileData;
 use App\Enums\BuildLocationRule;
+use App\Enums\UplinkMessageType;
 use App\Models\Building;
 use App\Models\Colony;
 use App\Models\CritterMorph;
@@ -182,6 +183,9 @@ final class ZonePresenter
                 layoutAt: $zone->layout_at?->toIso8601String(),
                 slowStateAt: $zone->slow_state_at?->toIso8601String(),
                 fastStateAt: $zone->fast_state_at?->toIso8601String(),
+                colonyGuid: $zone->colony_guid,
+                fastSessionId: $zone->fast_session_id,
+                fastGameSeconds: $zone->fast_game_seconds,
             ),
             'map' => fn (): ?ZoneMapData => $placed ? $this->layoutMap($layout, $gridWidth, $position) : null,
             'entities' => $entities,
@@ -211,6 +215,11 @@ final class ZonePresenter
             'feeding' => fn (): ?array => $critters() === null ? null : $this->feeding->of($zone, $critters(), $population()),
             'liveProps' => fn (): array => self::PROPS_BY_KIND,
             'echo' => fn (): array => ['channel' => 'uplink', 'event' => '.zone.updated'],
+            'fastRelay' => fn (): array => [
+                'channel' => UplinkMessageType::ZoneFastState->channel(),
+                'event' => '.'.UplinkMessageType::ZoneFastState->value,
+                'schema' => UplinkMessageType::ZoneFastState->schema(),
+            ],
         ];
     }
 

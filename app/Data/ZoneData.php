@@ -23,5 +23,10 @@ final class ZoneData extends Data
         public ?string $layoutAt,
         public ?string $slowStateAt,
         public ?string $fastStateAt,
+        /** The game's colony id, as the raw frames of the mod carry it. */
+        public string $colonyGuid = '',
+        /** Session and game time (seconds) of the stored fast state: a raw frame applies only when newer in the same session. */
+        public ?string $fastSessionId = null,
+        public ?float $fastGameSeconds = null,
     ) {}
 }

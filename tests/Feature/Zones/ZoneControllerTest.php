@@ -115,7 +115,7 @@ it('groups the live props by stream, each a prop of the page', function (): void
 it('reloads every page prop with a stream except the link time, the stream map and the echo channel', function (): void {
     $properties = array_map(fn (ReflectionParameter $parameter): string => $parameter->getName(), (new ReflectionMethod(ZoneShowData::class, '__construct'))->getParameters());
 
-    expect(array_values(array_diff($properties, ...array_values(ZonePresenter::PROPS_BY_KIND))))->toEqualCanonicalizing(['linkSeenAt', 'liveProps', 'echo']);
+    expect(array_values(array_diff($properties, ...array_values(ZonePresenter::PROPS_BY_KIND))))->toEqualCanonicalizing(['linkSeenAt', 'liveProps', 'echo', 'fastRelay']);
 });
 
 it('does not find an archived zone', function (): void {
@@ -138,4 +138,16 @@ it('shares the active zones of the latest colony with every page, for the side n
                 ['id' => $farm->id, 'name' => 'Farm'],
                 ['id' => $pacu->id, 'name' => 'Pacu'],
             ]));
+});
+
+it('gives the page what it needs to apply the raw fast frames of the zone', function (): void {
+    $zone = Zone::factory()->sodicaneFarm()->create(['fast_session_id' => 'session-a', 'fast_game_seconds' => 3600.5]);
+
+    $this->get(route('zones.show', $zone))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('zone.colonyGuid', $zone->colony_guid)
+            ->where('zone.fastSessionId', 'session-a')
+            ->where('zone.fastGameSeconds', 3600.5)
+            ->where('fastRelay', ['channel' => 'uplink-data', 'event' => '.client-zone.fast', 'schema' => 1]));
 });
