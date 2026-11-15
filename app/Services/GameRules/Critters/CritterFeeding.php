@@ -15,17 +15,24 @@ use App\Services\Critters\CritterDietRepository;
  *
  * Free of database access: the diet and output rows come from a `CritterDietRepository`. A diet line's amount
  * is what one critter eats per cycle when that food alone covers its calories, so the lines are alternatives,
- * not a sum.
+ * not a sum. Only `item` lines (food picked up) are in kg and can be stocked; `plant` and `prey` lines are
+ * eaten in place and stay in `accepts` for display only.
  */
 final class CritterFeeding
 {
     public const SOURCE_KIND = 'critter_group';
 
+    public const STOCKABLE_KIND = 'item';
+
     public function __construct(private readonly CritterDietRepository $diets) {}
 
     /**
-     * One consumed flow listing every accepted food (named after the first diet line), then one produced flow
-     * per output row. A morph without a diet has no consumed flow.
+     * One consumed flow listing every accepted food, then one produced flow per output row. A morph without a
+     * diet has no consumed flow.
+     *
+     * The consumed flow is named after the first `item` line, in kg. A morph with no item line (a plant or prey
+     * eater) gets a flow named after its first line with `unit: 'count'`: its amount is plant growth or prey,
+     * not kg, and it must not be added to kg totals.
      *
      * @return list<ResourceFlowData>
      */
@@ -42,13 +49,17 @@ final class CritterFeeding
                     $kgPerCycle,
                     $diet['produces'],
                     $diet['produces'] !== null && $diet['conversionRatio'] !== null ? $kgPerCycle * $diet['conversionRatio'] : null,
+                    $diet['kind'],
                 );
             },
             $this->diets->diets($morphId),
         );
 
         if ($accepts !== []) {
-            $flows[] = new ResourceFlowData($accepts[0]->resource, $accepts[0]->kgPerCycle, 'kg', 'consumed', self::SOURCE_KIND, $groupKey, $zoneId, $accepts);
+            $named = $this->stockable($accepts)[0] ?? null;
+            $flows[] = $named !== null
+                ? new ResourceFlowData($named->resource, $named->kgPerCycle, 'kg', 'consumed', self::SOURCE_KIND, $groupKey, $zoneId, $accepts)
+                : new ResourceFlowData($accepts[0]->resource, $accepts[0]->kgPerCycle, 'count', 'consumed', self::SOURCE_KIND, $groupKey, $zoneId, $accepts);
         }
 
         foreach ($this->diets->outputs($morphId) as $output) {
@@ -59,16 +70,21 @@ final class CritterFeeding
     }
 
     /**
-     * Stock of the accepted foods against the need of a consumed flow. The main food (shown) is the accepted food
-     * with the most stock, ties going to the earlier diet line. Without stock, the main or first food's need is
-     * reported as the deficit.
+     * Stock of the accepted `item` foods against the need of a consumed flow. The main food (shown) is the item
+     * food with a need and the most stock, ties going to the earlier diet line. Without such stock the flow's need
+     * (its first item line) is reported as the deficit.
+     *
+     * A flow with no item line (a plant or prey eater) cannot be judged from stock: available is 0, and the
+     * deficit and autonomy are null.
      *
      * @param  list<InventoryItemData>  $inventory
      */
     public function balance(ResourceFlowData $consumed, array $inventory): FeedingBalanceData
     {
+        $foods = $this->stockable($consumed->accepts);
+
         $stock = [];
-        foreach ($consumed->accepts as $food) {
+        foreach ($foods as $food) {
             $stock[$food->resource] = 0.0;
         }
 
@@ -78,39 +94,50 @@ final class CritterFeeding
             }
         }
 
-        $availableKg = array_sum($stock);
         $main = null;
-        foreach ($consumed->accepts as $food) {
-            if ($stock[$food->resource] > 0 && ($main === null || $stock[$food->resource] > $stock[$main->resource])) {
+        foreach ($foods as $food) {
+            if ($food->kgPerCycle > 0 && $stock[$food->resource] > 0 && ($main === null || $stock[$food->resource] > $stock[$main->resource])) {
                 $main = $food;
             }
         }
 
-        $need = $main?->kgPerCycle ?? $consumed->perCycle;
-
         return new FeedingBalanceData(
             $consumed->sourceId,
             $consumed->accepts,
-            $availableKg,
+            array_sum($stock),
             $main?->resource,
-            $main === null ? $need : null,
-            $this->autonomy($consumed->accepts, $stock),
+            $main === null && $foods !== [] ? $consumed->perCycle : null,
+            $this->autonomy($foods, $stock),
         );
     }
 
     /**
-     * The diet lines are alternatives: each kg of food i covers 1 / kgPerCycle_i of a cycle for the whole group, so
-     * the stock lasts Σ stock_i ÷ kgPerCycle_i cycles. A food eaten at 0 kg per cycle adds nothing. Null when no
-     * accepted food has a need.
-     *
      * @param  list<AcceptedFoodData>  $accepts
+     * @return list<AcceptedFoodData>
+     */
+    private function stockable(array $accepts): array
+    {
+        return array_values(array_filter(
+            $accepts,
+            static fn (AcceptedFoodData $food): bool => $food->kind === self::STOCKABLE_KIND,
+        ));
+    }
+
+    /**
+     * The diet lines are alternatives: each kg of food i covers 1 / kgPerCycle_i of a cycle for the whole group, so
+     * the stock lasts Σ stock_i ÷ kgPerCycle_i cycles. Each food counts once, and a food eaten at 0 kg per cycle
+     * adds nothing. Null when no food has a need.
+     *
+     * @param  list<AcceptedFoodData>  $foods
      * @param  array<string, float>  $stock
      */
-    private function autonomy(array $accepts, array $stock): ?float
+    private function autonomy(array $foods, array $stock): ?float
     {
         $cycles = null;
-        foreach ($accepts as $food) {
-            if ($food->kgPerCycle > 0) {
+        $counted = [];
+        foreach ($foods as $food) {
+            if ($food->kgPerCycle > 0 && ! isset($counted[$food->resource])) {
+                $counted[$food->resource] = true;
                 $cycles = ($cycles ?? 0.0) + $stock[$food->resource] / $food->kgPerCycle;
             }
         }

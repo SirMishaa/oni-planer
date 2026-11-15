@@ -88,6 +88,7 @@ final readonly class CritterImporter
                     'amount_per_cycle' => $diet['amount_per_cycle'],
                     'produced_element_id' => $diet['produced_element_id'] ?? null,
                     'conversion_ratio' => $diet['conversion_ratio'] ?? null,
+                    'food_kind' => $diet['food_kind'] ?? 'item',
                 ]);
             }
 

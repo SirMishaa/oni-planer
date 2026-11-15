@@ -11,6 +11,7 @@ use App\Services\GameImport\OniExport\ModCatalog;
 use App\Services\GameImport\OniExport\OniExport;
 use App\Services\GameImport\StringResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 
 uses(RefreshDatabase::class);
 
@@ -61,6 +62,7 @@ it('reads hatch ranching data', function (): void {
             'amount_per_cycle' => 140.0,
             'produced_element_id' => 'Carbon',
             'conversion_ratio' => 0.5,
+            'food_kind' => 'item',
         ]);
 });
 
@@ -115,6 +117,33 @@ it('imports babies under their adult critter', function (): void {
 
     expect($hatch->morphs()->pluck('morph_id')->sort()->values()->all())->toBe(['Hatch', 'HatchBaby'])
         ->and($hatch->baseMorph->diets)->toHaveCount(2)
+        ->and($hatch->baseMorph->diets->first()->food_kind)->toBe('item')
         ->and($hatch->baseMorph->outputs->first()->element_id)->toBe('HatchEgg')
         ->and(Critter::query()->count())->toBe(2);
+});
+
+it('reads how a critter eats each diet line', function (): void {
+    $critters = readFixtureCritters();
+
+    expect($critters['Hatch']['diets'][0]['food_kind'])->toBe('item')
+        ->and($critters['HatchBaby']['diets'][0]['food_kind'])->toBe('item')
+        ->and($critters['HatchHard']['diets'][0]['food_kind'])->toBe('plant');
+});
+
+it('maps every export food type to a food kind', function (int $foodType, string $kind): void {
+    expect(CritterReader::foodKind($foodType))->toBe($kind);
+})->with([
+    'solid item' => [0, 'item'],
+    'plant eaten in place' => [1, 'plant'],
+    'plant storage' => [2, 'plant'],
+    'prey' => [3, 'prey'],
+    'butchered prey' => [4, 'prey'],
+]);
+
+it('warns and falls back to item for an unknown food type', function (): void {
+    Log::spy();
+
+    expect(CritterReader::foodKind(9))->toBe('item');
+
+    Log::shouldHaveReceived('warning')->once();
 });

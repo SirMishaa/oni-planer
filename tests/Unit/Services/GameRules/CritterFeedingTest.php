@@ -13,14 +13,32 @@ beforeEach(function (): void {
     {
         public function diets(string $morphId): array
         {
-            return $morphId === 'Pacu' ? [
-                ['resource' => 'Algae', 'kgPerCycle' => 7.5, 'produces' => 'ToxicSand', 'conversionRatio' => 0.6666667],
-                ['resource' => 'Kelp', 'kgPerCycle' => 20.0, 'produces' => 'ToxicSand', 'conversionRatio' => 0.5],
-                ['resource' => 'FishFood', 'kgPerCycle' => 1.0, 'produces' => null, 'conversionRatio' => null],
-            ] : ($morphId === 'Hatch' ? [
-                ['resource' => 'Sand', 'kgPerCycle' => 140.0, 'produces' => 'Carbon', 'conversionRatio' => 0.5],
-                ['resource' => 'Meat', 'kgPerCycle' => 0.4375, 'produces' => 'Carbon', 'conversionRatio' => 0.75],
-            ] : []);
+            return match ($morphId) {
+                'Pacu' => [
+                    ['resource' => 'Algae', 'kgPerCycle' => 7.5, 'produces' => 'ToxicSand', 'conversionRatio' => 0.6666667, 'kind' => 'item'],
+                    ['resource' => 'Kelp', 'kgPerCycle' => 20.0, 'produces' => 'ToxicSand', 'conversionRatio' => 0.5, 'kind' => 'item'],
+                    ['resource' => 'FishFood', 'kgPerCycle' => 1.0, 'produces' => null, 'conversionRatio' => null, 'kind' => 'item'],
+                ],
+                'Hatch' => [
+                    ['resource' => 'Sand', 'kgPerCycle' => 140.0, 'produces' => 'Carbon', 'conversionRatio' => 0.5, 'kind' => 'item'],
+                    ['resource' => 'Meat', 'kgPerCycle' => 0.4375, 'produces' => 'Carbon', 'conversionRatio' => 0.75, 'kind' => 'item'],
+                ],
+                'Drecko' => [
+                    ['resource' => 'SpiceVine', 'kgPerCycle' => 0.75, 'produces' => 'Phosphorite', 'conversionRatio' => 13.333333, 'kind' => 'plant'],
+                ],
+                'GoldBelly' => [
+                    ['resource' => 'BeanPlant', 'kgPerCycle' => 0.5, 'produces' => 'Gold', 'conversionRatio' => 2.0, 'kind' => 'plant'],
+                    ['resource' => 'BeanPlantSeed', 'kgPerCycle' => 3.0, 'produces' => 'Gold', 'conversionRatio' => 1.0, 'kind' => 'item'],
+                ],
+                'Odd' => [
+                    ['resource' => 'Sand', 'kgPerCycle' => 10.0, 'produces' => null, 'conversionRatio' => null, 'kind' => 'item'],
+                    ['resource' => 'Dust', 'kgPerCycle' => 0.0, 'produces' => null, 'conversionRatio' => null, 'kind' => 'item'],
+                ],
+                'Zero' => [
+                    ['resource' => 'Dust', 'kgPerCycle' => 0.0, 'produces' => null, 'conversionRatio' => null, 'kind' => 'item'],
+                ],
+                default => [],
+            };
         }
 
         public function outputs(string $morphId): array
@@ -53,6 +71,7 @@ it('builds one consumed flow listing every accepted food', function (): void {
 
     [$algae, $kelp, $fishFood] = $flow->accepts;
     expect($algae->kgPerCycle)->toEqualWithDelta(285.0, 0.0001)
+        ->and($algae->kind)->toBe('item')
         ->and($algae->produces)->toBe('ToxicSand')
         ->and($algae->producedKgPerCycle)->toEqualWithDelta(190.0, 0.001)
         ->and($kelp->kgPerCycle)->toEqualWithDelta(760.0, 0.0001)
@@ -78,6 +97,25 @@ it('builds no flow for a morph without diet or outputs', function (): void {
     expect($this->feeding->flows('Mystery:adult', 'Mystery', 3, null))->toBe([]);
 });
 
+it('counts eggs and weighs food in the flow units', function (): void {
+    $units = array_map(
+        fn (ResourceFlowData $flow): array => [$flow->resource, $flow->unit],
+        $this->feeding->flows('Pacu:adult', 'Pacu', 38, 65),
+    );
+
+    expect($units)->toBe([['Algae', 'kg'], ['PacuEgg', 'count']]);
+});
+
+it('names the consumed flow after the first item line and keeps plant lines in accepts', function (): void {
+    $flow = ($this->consumed)('GoldBelly', 2);
+
+    expect($flow->resource)->toBe('BeanPlantSeed')
+        ->and($flow->perCycle)->toEqualWithDelta(6.0, 0.0001)
+        ->and($flow->unit)->toBe('kg')
+        ->and(array_map(fn (AcceptedFoodData $food): array => [$food->resource, $food->kind], $flow->accepts))
+        ->toBe([['BeanPlant', 'plant'], ['BeanPlantSeed', 'item']]);
+});
+
 it('computes autonomy from matching stock only', function (): void {
     $balance = $this->feeding->balance(($this->consumed)(), [
         new InventoryItemData('Algae', 456.0, 'storage', '1201', 65),
@@ -91,6 +129,17 @@ it('computes autonomy from matching stock only', function (): void {
         ->and($balance->autonomyCycles)->toEqualWithDelta(1.6, 0.0001)
         ->and($balance->derived)->toBeTrue()
         ->and($balance->accepts)->toHaveCount(3);
+});
+
+it('sums autonomy per food when stock mixes foods', function (): void {
+    $balance = $this->feeding->balance(($this->consumed)('Hatch', 2), [
+        new InventoryItemData('Sand', 560.0, 'storage', '1301', 65),
+        new InventoryItemData('Meat', 7.0, 'storage', '1302', 65),
+    ]);
+
+    expect($balance->mainResource)->toBe('Sand')
+        ->and($balance->availableKg)->toEqualWithDelta(567.0, 0.0001)
+        ->and($balance->autonomyCycles)->toEqualWithDelta(560.0 / 280.0 + 7.0 / 0.875, 0.0001);
 });
 
 it('reports the need as deficit without stock', function (): void {
@@ -116,22 +165,40 @@ it('picks the accepted food with the most stock as main resource', function (): 
         ->and($balance->autonomyCycles)->toEqualWithDelta(50.0 / 285.0 + 760.0 / 760.0, 0.0001);
 });
 
-it('sums autonomy per food when stock mixes foods', function (): void {
-    $balance = $this->feeding->balance(($this->consumed)('Hatch', 2), [
-        new InventoryItemData('Sand', 560.0, 'storage', '1301', 65),
-        new InventoryItemData('Meat', 7.0, 'storage', '1302', 65),
+it('gives a stock tie to the earlier diet line', function (): void {
+    $balance = $this->feeding->balance(($this->consumed)(), [
+        new InventoryItemData('Kelp', 100.0, 'storage', '1203', 65),
+        new InventoryItemData('Algae', 100.0, 'storage', '1201', 65),
     ]);
 
-    expect($balance->mainResource)->toBe('Sand')
-        ->and($balance->availableKg)->toEqualWithDelta(567.0, 0.0001)
-        ->and($balance->autonomyCycles)->toEqualWithDelta(560.0 / 280.0 + 7.0 / 0.875, 0.0001);
+    expect($balance->mainResource)->toBe('Algae');
 });
 
-it('counts eggs and weighs food in the flow units', function (): void {
-    $units = array_map(
-        fn (ResourceFlowData $flow): array => [$flow->resource, $flow->unit],
-        $this->feeding->flows('Pacu:adult', 'Pacu', 38, 65),
-    );
+it('never picks a zero-rate food as main and leaves it out of autonomy', function (): void {
+    $balance = $this->feeding->balance(($this->consumed)('Odd', 1), [
+        new InventoryItemData('Dust', 500.0, 'storage', '1401', 65),
+    ]);
+    $zero = $this->feeding->balance(($this->consumed)('Zero', 1), [
+        new InventoryItemData('Dust', 500.0, 'storage', '1401', 65),
+    ]);
 
-    expect($units)->toBe([['Algae', 'kg'], ['PacuEgg', 'count']]);
+    expect($balance->mainResource)->toBeNull()
+        ->and($balance->deficitKgPerCycle)->toEqualWithDelta(10.0, 0.0001)
+        ->and($balance->autonomyCycles)->toBe(0.0)
+        ->and($zero->autonomyCycles)->toBeNull();
+});
+
+it('does not report a deficit for a plant eater', function (): void {
+    $flow = ($this->consumed)('Drecko', 4);
+    $balance = $this->feeding->balance($flow, [
+        new InventoryItemData('SpiceVine', 50.0, 'storage', '1501', 65),
+    ]);
+
+    expect($flow->unit)->toBe('count')
+        ->and($flow->resource)->toBe('SpiceVine')
+        ->and($flow->accepts[0]->kind)->toBe('plant')
+        ->and($balance->availableKg)->toBe(0.0)
+        ->and($balance->mainResource)->toBeNull()
+        ->and($balance->deficitKgPerCycle)->toBeNull()
+        ->and($balance->autonomyCycles)->toBeNull();
 });

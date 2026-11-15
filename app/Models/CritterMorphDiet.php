@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[GameData]
 #[Fillable([
     'critter_morph_id', 'consumed_element_id', 'amount_per_cycle',
-    'produced_element_id', 'conversion_ratio',
+    'produced_element_id', 'conversion_ratio', 'food_kind',
 ])]
 final class CritterMorphDiet extends Model
 {

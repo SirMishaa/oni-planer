@@ -77,7 +77,8 @@
                 "IsValid": true
               },
               "caloriesPerKg": 5000.0,
-              "producedConversionRate": 0.5
+              "producedConversionRate": 0.5,
+              "foodType": 0
             },
             {
               "consumedTags": [
@@ -216,7 +217,8 @@
                 "IsValid": true
               },
               "caloriesPerKg": 5000.0,
-              "producedConversionRate": 0.5
+              "producedConversionRate": 0.5,
+              "foodType": 1
             }
           ]
         }

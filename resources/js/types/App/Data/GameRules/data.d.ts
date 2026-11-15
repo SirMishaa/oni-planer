@@ -3,6 +3,7 @@ export type AcceptedFoodData = {
     kgPerCycle: number;
     produces: string | null;
     producedKgPerCycle: number | null;
+    kind: 'item' | 'plant' | 'prey';
 };
 export type CritterOverOccupancyData = {
     prefabId: string;

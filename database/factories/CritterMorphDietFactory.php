@@ -22,6 +22,7 @@ final class CritterMorphDietFactory extends Factory
             'amount_per_cycle' => 140,
             'produced_element_id' => fn () => Element::factory()->create()->element_id,
             'conversion_ratio' => 0.5,
+            'food_kind' => 'item',
         ];
     }
 }

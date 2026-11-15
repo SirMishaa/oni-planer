@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\GameImport\OniExport;
 
+use Illuminate\Support\Facades\Log;
+
 /**
  * Turns the creatures of `database/entities.json` into critter records for
  * {@see \App\Services\GameImport\CritterImporter::importRecords()}.
@@ -18,7 +20,7 @@ namespace App\Services\GameImport\OniExport;
  * diet products and eggs owned by one (counted in {@see self::skippedReferences()}).
  * Whether a referenced id exists in the database is the importer's concern.
  *
- * @phpstan-type CritterDietRecord array{consumed_element_id: string, amount_per_cycle: float, produced_element_id: string|null, conversion_ratio: float|null}
+ * @phpstan-type CritterDietRecord array{consumed_element_id: string, amount_per_cycle: float, produced_element_id: string|null, conversion_ratio: float|null, food_kind: 'item'|'plant'|'prey'}
  * @phpstan-type CritterOutputRecord array{element_id: string, amount_per_cycle: float, output_type: 'egg'}
  * @phpstan-type CritterRecord array{
  *     critter_id: string,
@@ -60,6 +62,23 @@ final class CritterReader
     private int $skippedReferences = 0;
 
     public function __construct(private readonly OniExport $export, private readonly ModCatalog $catalog) {}
+
+    /**
+     * How the critter eats a diet line, from the export's `foodType`: solid food it picks up (0), a plant eaten
+     * in place or from its storage (1, 2, e.g. Drecko, Seal), or another critter (3, 4, e.g. PrehistoricPacu,
+     * Raptor). Only item lines have an amount in kg. An unknown value is logged and read as an item.
+     *
+     * @return 'item'|'plant'|'prey'
+     */
+    public static function foodKind(int $foodType): string
+    {
+        return match ($foodType) {
+            0 => 'item',
+            1, 2 => 'plant',
+            3, 4 => 'prey',
+            default => self::unknownFoodKind($foodType),
+        };
+    }
 
     /** @return list<CritterRecord> */
     public function records(): array
@@ -119,6 +138,14 @@ final class CritterReader
         return $this->skippedReferences;
     }
 
+    /** @return 'item' */
+    private static function unknownFoodKind(int $foodType): string
+    {
+        Log::warning('Unknown critter diet foodType, read as item.', ['foodType' => $foodType]);
+
+        return 'item';
+    }
+
     /** @param  array<string, mixed>  $entity */
     private function isCreature(array $entity): bool
     {
@@ -175,6 +202,7 @@ final class CritterReader
                     'amount_per_cycle' => $caloriesPerKg > 0 ? $this->round($caloriesPerCycle / $caloriesPerKg) : 0.0,
                     'produced_element_id' => is_string($producedId) && $producedId !== '' ? $producedId : null,
                     'conversion_ratio' => isset($info['producedConversionRate']) ? $this->round((float) $info['producedConversionRate']) : null,
+                    'food_kind' => self::foodKind((int) ($info['foodType'] ?? 0)),
                 ];
             }
         }
