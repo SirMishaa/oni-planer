@@ -21,9 +21,9 @@ function stockOf(array $items, string $resource): float
 it('sums feeder storage per resource', function (): void {
     $items = ZoneInventory::of(inventoryZone(['buildings' => [
         ['instanceId' => '9001', 'prefabId' => 'CreatureFeeder', 'storage' => [['id' => 'Algae', 'mass' => 300.0], ['id' => 'Algae', 'mass' => 6.0]]],
-        ['instanceId' => '9002', 'prefabId' => 'CreatureFeeder', 'storage' => [['id' => 'Algae', 'mass' => 150.0], ['id' => 'Sand', 'mass' => 100.0]]],
-        ['instanceId' => '9003', 'prefabId' => 'StorageLocker', 'storage' => null],
-        ['instanceId' => '9004', 'prefabId' => 'StorageLocker', 'storage' => ['nope', ['mass' => 5.0], ['id' => 'Kelp', 'mass' => 'heavy']]],
+        ['instanceId' => '9002', 'prefabId' => 'FishFeeder', 'storage' => [['id' => 'Algae', 'mass' => 150.0], ['id' => 'Sand', 'mass' => 100.0]]],
+        ['instanceId' => '9003', 'prefabId' => 'CreatureFeeder', 'storage' => null],
+        ['instanceId' => '9004', 'prefabId' => 'FishFeeder', 'storage' => ['nope', ['mass' => 5.0], ['id' => 'Kelp', 'mass' => 'heavy']]],
     ]]));
 
     expect($items)->toHaveCount(4)
@@ -33,23 +33,21 @@ it('sums feeder storage per resource', function (): void {
         ->and(stockOf($items, 'Kelp'))->toBe(0.0);
 });
 
-it('adds grown edible plants', function (): void {
-    $items = ZoneInventory::of(inventoryZone(['plants' => [
-        ['id' => 'SeaLettuce', 'instanceId' => '4501', 'cropId' => 'Lettuce', 'cropUnits' => 12.0, 'grown' => true],
-        ['id' => 'SeaLettuce', 'instanceId' => '4502', 'cropId' => 'Lettuce', 'cropUnits' => 12.0, 'grown' => false],
-        ['id' => 'GardenDecorPlant', 'instanceId' => '4503', 'cropId' => null, 'cropUnits' => null, 'grown' => true],
-    ]]));
-
-    expect($items)->toHaveCount(2)
-        ->and($items[0]->toArray())->toBe(['resource' => 'Lettuce', 'kg' => 12.0, 'placeKind' => 'plant', 'placeId' => '4501', 'zoneId' => 61])
-        ->and($items[1]->kg)->toBe(0.0);
+it('leaves out storages critters cannot eat from', function (): void {
+    expect(ZoneInventory::of(inventoryZone(['buildings' => [
+        ['instanceId' => '9101', 'prefabId' => 'StorageLocker', 'storage' => [['id' => 'Algae', 'mass' => 500.0]]],
+        ['instanceId' => '9102', 'prefabId' => 'AlgaeHabitat', 'storage' => [['id' => 'Algae', 'mass' => 37.0]]],
+    ]])))->toBe([]);
 });
 
-it('leaves out border passages and has nothing when no state was read', function (): void {
-    expect(ZoneInventory::of(inventoryZone(['buildings' => [
-        ['instanceId' => '9101', 'prefabId' => 'Door', 'storage' => [['id' => 'Algae', 'mass' => 10.0]]],
-    ]])))->toBe([])
-        ->and(ZoneInventory::of(Zone::factory()->make(['fast_state' => null])))->toBe([]);
+it('leaves grown crops out of the stock until they are harvested', function (): void {
+    expect(ZoneInventory::of(inventoryZone(['buildings' => [], 'plants' => [
+        ['id' => 'SeaLettuce', 'instanceId' => '4501', 'cropId' => 'Lettuce', 'cropUnits' => 12.0, 'grown' => true],
+    ]])))->toBe([]);
+});
+
+it('has nothing when no state was read', function (): void {
+    expect(ZoneInventory::of(Zone::factory()->make(['fast_state' => null])))->toBe([]);
 });
 
 it('knows whether the building storages were read', function (): void {

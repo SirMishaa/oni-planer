@@ -24,7 +24,36 @@ final class CritterFeeding
 
     public const STOCKABLE_KIND = 'item';
 
+    /** A critter's Metabolism attribute with no modifier; its calorie burn is the diet rate × metabolism / 100. */
+    public const int BASE_METABOLISM = 100;
+
+    /** Metabolism modifier of a wild critter (the game's WILD_CALORIE_BURN_RATIO 0.25). */
+    public const int WILD_METABOLISM = -75;
+
+    /** Metabolism modifier of a glum or miserable tame critter. */
+    public const int UNHAPPY_TAME_METABOLISM = -80;
+
+    /** Metabolism modifier of a glum or miserable wild critter. */
+    public const int UNHAPPY_WILD_METABOLISM = -15;
+
+    /** @var list<string> happiness states that slow the metabolism */
+    private const array UNHAPPY_STATES = ['glum', 'miserable'];
+
     public function __construct(private readonly CritterDietRepository $diets) {}
+
+    /**
+     * What one critter eats, as a share of the diet rate (a tame, happy critter): 1.0 tame, 0.25 wild, and 0.20
+     * (tame) or 0.10 (wild) when glum or miserable. An unknown mood counts as happy.
+     */
+    public static function metabolismRatio(bool $wild, ?string $happinessState): float
+    {
+        $unhappy = in_array($happinessState, self::UNHAPPY_STATES, true);
+        $metabolism = self::BASE_METABOLISM
+            + ($wild ? self::WILD_METABOLISM : 0)
+            + ($unhappy ? ($wild ? self::UNHAPPY_WILD_METABOLISM : self::UNHAPPY_TAME_METABOLISM) : 0);
+
+        return max(0, $metabolism) / self::BASE_METABOLISM;
+    }
 
     /**
      * One consumed flow listing every accepted food, then one produced flow per output row. A morph without a
@@ -34,15 +63,19 @@ final class CritterFeeding
      * eater) gets a flow named after its first line with `unit: 'count'`: its amount is plant growth or prey,
      * not kg, and it must not be added to kg totals.
      *
+     * The diet lines are multiplied by `$eaters`, the sum of each critter's {@see self::metabolismRatio()} (the
+     * count when omitted); the outputs (eggs) by the count.
+     *
      * @return list<ResourceFlowData>
      */
-    public function flows(string $groupKey, string $morphId, int $count, ?int $zoneId): array
+    public function flows(string $groupKey, string $morphId, int $count, ?int $zoneId, ?float $eaters = null): array
     {
         $flows = [];
+        $eaters ??= (float) $count;
 
         $accepts = array_map(
-            static function (array $diet) use ($count): AcceptedFoodData {
-                $kgPerCycle = $diet['kgPerCycle'] * $count;
+            static function (array $diet) use ($eaters): AcceptedFoodData {
+                $kgPerCycle = $diet['kgPerCycle'] * $eaters;
 
                 return new AcceptedFoodData(
                     $diet['resource'],

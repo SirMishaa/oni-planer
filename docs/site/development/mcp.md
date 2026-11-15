@@ -17,7 +17,7 @@ Rien à lancer à la main : Claude Code démarre le serveur avec <Artisan comman
 |---|---|
 | `colony_status` | État de la synchro (dernier message, session, âge des données de chaque zone, commandes Uplink) et résumé de la colonie : duplicants, nourriture, créatures et plantes par espèce. |
 | `list_zones` | Une ligne par zone active : taille, origine, fraîcheur, nombre de problèmes, captures. |
-| `zone_overview` | Une zone en un écran : bâtiments et états, plantes, créatures, population par pièce ou bassin (verdict du jeu et critters à retirer), alimentation par groupe de critters (ce qu'il mange, stock, cycles tenus ou manque, production, marqués `(derived)`), éléments (masse, plage de température), problèmes (alertes des créatures comprises). |
+| `zone_overview` | Une zone en un écran : bâtiments et états, plantes, créatures, population par pièce ou bassin (verdict du jeu et critters à retirer), alimentation par groupe de critters (ce qu'il mange selon son métabolisme, stock des mangeoires, cycles tenus ou manque, production, marqués `(derived)`), éléments (masse, plage de température), problèmes (alertes des créatures comprises). |
 | `zone_map` | Où sont les choses : la carte texte de la zone (voir plus bas). |
 | `zone_cells` | Le détail case par case d'un petit rectangle (100 cases au plus). |
 | `entity` | Tout ce que le jeu envoie sur une plante, un bâtiment, une créature ou un œuf, par son identifiant d'instance. |
@@ -47,7 +47,7 @@ La légende ne liste que les caractères présents, avec une ligne par préfab e
 </Accordion>
 <Accordion title="Règles du code">
 - Les outils vivent dans `app/Mcp/Tools`, un par fichier, enregistrés dans `OniServer`. Les outils de lecture portent `#[IsReadOnly]` et n'écrivent rien en base.
-- Le processus stdio vit longtemps : aucun état de colonie ou de zone n'est gardé entre deux appels, chaque appel relit la base. Les noms traduits des objets du jeu, eux, restent en cache : après un `game:import`, relance la session Claude Code.
+- Le processus stdio vit longtemps : aucun état de colonie ou de zone n'est gardé entre deux appels, chaque appel relit la base. Les noms traduits des objets du jeu et les régimes des critters, eux, restent en cache : après un `game:import`, relance la session Claude Code.
 - Les règles de problèmes, d'emprise et de croissance sont partagées avec la page des zones (`ZoneProblems`, `CritterProblems`, `ZoneGeometry`, `ZonePlants`, `ZoneFeeding`) : ne pas les recopier dans un outil.
 - Les tests appellent chaque outil avec `OniServer::tool(...)` dans `tests/Feature/Mcp`.
 </Accordion>

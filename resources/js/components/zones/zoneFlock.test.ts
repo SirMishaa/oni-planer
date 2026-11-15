@@ -218,12 +218,24 @@ describe('feedingChip', () => {
         ).toEqual({ kind: 'missing', kgPerCycle: 285 });
     });
 
-    it('shows nothing with unknown stock or for a plant or prey eater', () => {
+    it('says the stock is unknown while the feeders were not read', () => {
         expect(
             feedingChip(
                 feeding({
                     availableKg: null,
                     deficitKgPerCycle: null,
+                    autonomyCycles: null,
+                }),
+            ),
+        ).toEqual({ kind: 'unknown' });
+    });
+
+    it('shows nothing for a plant or prey eater', () => {
+        expect(
+            feedingChip(
+                feeding({
+                    foods: [line({ kind: 'plant', inZone: 12 })],
+                    availableKg: null,
                     autonomyCycles: null,
                 }),
             ),

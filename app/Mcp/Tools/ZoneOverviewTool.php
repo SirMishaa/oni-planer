@@ -107,7 +107,7 @@ final class ZoneOverviewTool extends Tool
         return McpFormat::number((float) $amount['value']).'/'.(is_numeric($amount['max'] ?? null) ? McpFormat::number((float) $amount['max']) : '?');
     }
 
-    /** "eats Algae 285 kg/cycle or Kelp · grazes SpiceVine (3 in the zone)", or null without a diet. */
+    /** "eats Algae 285 kg/cycle or Kelp · or grazes SpiceVine (3 in the zone)", or null without a diet. */
     private static function eats(ZoneFeedingData $group): ?string
     {
         $items = array_values(array_filter($group->foods, fn (ZoneFeedingLineData $food): bool => $food->kind === 'item'));
@@ -117,6 +117,7 @@ final class ZoneOverviewTool extends Tool
                 .(count($items) > 1 ? ' or '.implode(', ', array_map(self::label(...), array_slice($items, 1))) : '');
         }
         foreach (['plant' => 'grazes', 'prey' => 'hunts'] as $kind => $verb) {
+            $verb = $items === [] ? $verb : 'or '.$verb;
             $grazed = array_filter($group->foods, fn (ZoneFeedingLineData $food): bool => $food->kind === $kind);
             if ($grazed !== []) {
                 $parts[] = $verb.' '.implode(', ', array_map(

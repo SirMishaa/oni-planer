@@ -8,33 +8,34 @@ use App\Data\GameRules\InventoryItemData;
 use App\Models\Zone;
 
 /**
- * What a zone holds, from its fast state: the storage of each content building (border passages
- * left out), then the crop of each plant (its harvest when grown, else 0 kg). Free of database
- * access. A crop's `cropUnits` is the game's yield: kg for an element crop, units of about 1 kg
- * for a food item.
+ * The food a zone's critters can reach, from its fast state: the storage of each feeder. Free of
+ * database access.
+ *
+ * The game's `SolidConsumerMonitor.FindFood` looks in the storages of the creature feeders and at
+ * loose items on the floor only. A storage locker or a building that consumes its own contents (an
+ * algae terrarium) is never eaten from. Loose items are not in the wire, so the stock can
+ * under-count. A crop still on its plant is not food for an item eater until it is harvested.
  */
 final class ZoneInventory
 {
-    /** @return list<InventoryItemData> */
+    /**
+     * Buildings critters eat from (the game's `CreatureFeeder` component); a mod feeder can be added here.
+     *
+     * @var list<string>
+     */
+    public const array FEEDER_PREFABS = ['CreatureFeeder', 'FishFeeder'];
+
+    /** @return list<InventoryItemData> one item per feeder and resource */
     public static function of(Zone $zone): array
     {
-        return [...self::storages($zone), ...self::crops($zone)];
-    }
-
-    /** False until a fast state carried the building states: the stock is then unknown, not empty. */
-    public static function storageKnown(Zone $zone): bool
-    {
-        return is_array($zone->fast_state['buildings'] ?? null);
-    }
-
-    /** @return list<InventoryItemData> one item per building and resource */
-    private static function storages(Zone $zone): array
-    {
         $buildings = $zone->fast_state['buildings'] ?? null;
-        [$content] = ZoneProblems::splitPassages(is_array($buildings) ? array_values(array_filter($buildings, is_array(...))) : null);
 
         $items = [];
-        foreach ($content ?? [] as $building) {
+        foreach (is_array($buildings) ? $buildings : [] as $building) {
+            if (! is_array($building) || ! in_array($building['prefabId'] ?? null, self::FEEDER_PREFABS, true)) {
+                continue;
+            }
+
             $totals = [];
             foreach (is_array($building['storage'] ?? null) ? $building['storage'] : [] as $stored) {
                 if (is_array($stored) && is_string($stored['id'] ?? null) && $stored['id'] !== '') {
@@ -49,22 +50,9 @@ final class ZoneInventory
         return $items;
     }
 
-    /** @return list<InventoryItemData> */
-    private static function crops(Zone $zone): array
+    /** False until a fast state carried the building states: the stock is then unknown, not empty. */
+    public static function storageKnown(Zone $zone): bool
     {
-        $plants = $zone->fast_state['plants'] ?? null;
-
-        $items = [];
-        foreach (is_array($plants) ? $plants : [] as $plant) {
-            if (! is_array($plant) || ! is_string($plant['cropId'] ?? null) || $plant['cropId'] === '') {
-                continue;
-            }
-
-            $grown = ($plant['grown'] ?? false) === true;
-            $units = is_numeric($plant['cropUnits'] ?? null) ? (float) $plant['cropUnits'] : 0.0;
-            $items[] = new InventoryItemData($plant['cropId'], $grown ? $units : 0.0, 'plant', (string) ($plant['instanceId'] ?? ''), $zone->id);
-        }
-
-        return $items;
+        return is_array($zone->fast_state['buildings'] ?? null);
     }
 }

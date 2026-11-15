@@ -30,16 +30,22 @@ final readonly class ZoneFeeding
      * One entry per flock band whose morph has a diet or an output, by group key. The diet rows are
      * read once per morph (the repository keeps them for the request).
      *
+     * Each critter eats at its own metabolism ({@see CritterFeeding::metabolismRatio()}): a band of babies
+     * can mix tame and wild ones. A critter is wild only when the wire sent `tame: false`; one whose
+     * tameness is unknown (an older mod) is fed as tame.
+     *
      * @param  list<ZoneCritterData>  $critters
      * @return list<ZoneFeedingData>
      */
     public function of(Zone $zone, array $critters): array
     {
+        $wild = $this->sentWild($zone);
         $groups = [];
         foreach ($critters as $critter) {
             $key = CritterGroupKey::of($critter);
-            $groups[$key] ??= ['prefabId' => $critter->prefabId, 'count' => 0];
+            $groups[$key] ??= ['prefabId' => $critter->prefabId, 'count' => 0, 'eaters' => 0.0];
             $groups[$key]['count']++;
+            $groups[$key]['eaters'] += CritterFeeding::metabolismRatio(isset($wild[$critter->instanceId]), $critter->happinessState);
         }
         ksort($groups);
 
@@ -50,7 +56,7 @@ final readonly class ZoneFeeding
 
         $feeding = [];
         foreach ($groups as $key => $group) {
-            $flows = $this->feeding->flows((string) $key, $group['prefabId'], $group['count'], $zone->id);
+            $flows = $this->feeding->flows((string) $key, $group['prefabId'], $group['count'], $zone->id, $group['eaters']);
             if ($flows === []) {
                 continue;
             }
@@ -138,6 +144,21 @@ final readonly class ZoneFeeding
         }
 
         return $lines;
+    }
+
+    /** @return array<string, true> instance ids of the critters the wire sent with `tame: false` */
+    private function sentWild(Zone $zone): array
+    {
+        $rows = $zone->fast_state['critters'] ?? null;
+
+        $wild = [];
+        foreach (is_array($rows) ? $rows : [] as $row) {
+            if (is_array($row) && ($row['tame'] ?? null) === false && is_scalar($row['instanceId'] ?? null)) {
+                $wild[(string) $row['instanceId']] = true;
+            }
+        }
+
+        return $wild;
     }
 
     /** @return array<string, int>|null plants of the zone by prefab, null when the plants were not read */

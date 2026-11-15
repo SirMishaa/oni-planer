@@ -202,3 +202,22 @@ it('does not report a deficit for a plant eater', function (): void {
         ->and($balance->deficitKgPerCycle)->toBeNull()
         ->and($balance->autonomyCycles)->toBeNull();
 });
+
+it('burns calories at the metabolism of tameness and mood', function (): void {
+    expect(CritterFeeding::metabolismRatio(false, 'happy'))->toBe(1.0)
+        ->and(CritterFeeding::metabolismRatio(false, 'neutral'))->toBe(1.0)
+        ->and(CritterFeeding::metabolismRatio(false, null))->toBe(1.0)
+        ->and(CritterFeeding::metabolismRatio(false, 'glum'))->toBe(0.2)
+        ->and(CritterFeeding::metabolismRatio(false, 'miserable'))->toBe(0.2)
+        ->and(CritterFeeding::metabolismRatio(true, 'happy'))->toBe(0.25)
+        ->and(CritterFeeding::metabolismRatio(true, 'glum'))->toBe(0.1);
+});
+
+it('scales the diet by the eaters and the eggs by the count', function (): void {
+    $flows = $this->feeding->flows('Pacu:wild', 'Pacu', 4, 65, eaters: 1.0);
+
+    expect($flows[0]->perCycle)->toBe(7.5)
+        ->and($flows[0]->accepts[1]->kgPerCycle)->toBe(20.0)
+        ->and($flows[0]->accepts[0]->producedKgPerCycle)->toEqualWithDelta(5.0, 1e-6)
+        ->and(end($flows)->perCycle)->toEqualWithDelta(4 * 0.0666667, 1e-6);
+});

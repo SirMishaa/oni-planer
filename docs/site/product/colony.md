@@ -78,7 +78,7 @@ Un groupe qui mange des plantes sur pied ou des proies n'a pas de puce : la lign
 <Accordion title="Fertilité gelée, stock, frise des œufs">
 La fertilité est marquée **gelée** quand le critter vit dans une pièce ou un bassin **À l'étroit** ou **Confiné** : le jeu garde sa valeur mais il ne pond plus.
 
-Le stock compte ce que contiennent les bâtiments de la zone (mangeoires, stockages, hors passages du bord) et la récolte des plantes mûres. Tant que le jeu n'a pas envoyé l'état des bâtiments, le stock est inconnu et la puce n'apparaît pas. Un régime peut lister des dizaines d'aliments : la ligne en montre trois, l'aliment le plus en stock d'abord, et compte les autres.
+Le stock compte ce que contiennent les mangeoires de la zone, rien d'autre : ni casier de stockage, ni terrarium à algues, ni récolte mûre pas encore ramassée. Les objets posés au sol, que les critters mangent aussi, ne sont pas envoyés par le jeu. Tant que le jeu n'a pas envoyé l'état des bâtiments, la puce dit **Stock inconnu**, sans couleur. Le besoin suit le métabolisme de chaque critter : un sauvage mange le quart d'un apprivoisé, un morose bien moins. Un régime peut lister des dizaines d'aliments : la ligne en montre trois, l'aliment le plus en stock d'abord, et compte les autres.
 
 Les œufs sont groupés par espèce et par lieu (par terre, en incubateur, en stockage). Chaque groupe a une frise qui va de maintenant à la dernière éclosion, avec un œuf posé à son temps restant. Ce temps est calculé par le planner, d'où la mention « dérivé » : incubation restante × durée d'incubation de l'espèce dans les données du jeu. Un œuf dont l'espèce est inconnue reste hors de la frise. Une puce signale les œufs dont la viabilité baisse.
 </Accordion>

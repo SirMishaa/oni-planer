@@ -212,6 +212,7 @@ function isActionable(entity: ZoneEntityData): boolean {
                     'zone-filter--bad':
                         item.key === 'problems' && item.count > 0,
                 }"
+                :data-test="`zone-filter-${item.key}`"
                 :aria-pressed="filter === item.key"
                 @click="filter = item.key"
             >

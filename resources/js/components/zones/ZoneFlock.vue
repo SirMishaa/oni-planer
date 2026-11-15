@@ -211,23 +211,31 @@ function producedLabel(line: ZoneFeedingLineData): string {
 function chipLabel(feeding: ZoneFeedingData): string | null {
     const chip = feedingChip(feeding);
 
-    if (chip === null) {
-        return null;
+    switch (chip?.kind) {
+        case undefined:
+            return null;
+        case 'unknown':
+            return t('zones.flock.feeding.stock_unknown');
+        case 'missing':
+            return t('zones.flock.feeding.missing', {
+                value: amount(chip.kgPerCycle),
+            });
+        case 'stock':
+            return tc('zones.flock.feeding.stock', shown(chip.cycles, 1), {
+                value: format.number(chip.cycles, 1),
+            });
     }
-
-    return chip.kind === 'missing'
-        ? t('zones.flock.feeding.missing', { value: amount(chip.kgPerCycle) })
-        : tc('zones.flock.feeding.stock', shown(chip.cycles, 1), {
-              value: format.number(chip.cycles, 1),
-          });
 }
 
+/** Unknown stock stays neutral; a missing need is always bad. */
 function chipTone(feeding: ZoneFeedingData): string {
     const chip = feedingChip(feeding);
 
-    return chip?.kind === 'stock'
-        ? `zone-chip--${chip.tone}`
-        : 'zone-chip--bad';
+    if (chip?.kind === 'stock') {
+        return `zone-chip--${chip.tone}`;
+    }
+
+    return chip?.kind === 'unknown' ? '' : 'zone-chip--bad';
 }
 
 // endregion
@@ -360,6 +368,7 @@ function chipTone(feeding: ZoneFeedingData): string {
                 v-for="feeding in feedingOf(group)"
                 :key="feeding.groupKey"
                 class="zone-band__facts zone-band__feeding"
+                data-test="zone-feeding"
             >
                 <span
                     v-for="food in feedingFoods(feeding).items.slice(0, 1)"
@@ -396,10 +405,13 @@ function chipTone(feeding: ZoneFeedingData): string {
                     ></span
                 >
                 <span v-if="chipLabel(feeding)" class="zone-band__balance"
-                    ><span class="zone-chip" :class="chipTone(feeding)">{{
-                        chipLabel(feeding)
-                    }}</span
+                    ><span
+                        class="zone-chip"
+                        :class="chipTone(feeding)"
+                        data-test="zone-feeding-chip"
+                        >{{ chipLabel(feeding) }}</span
                     ><small
+                        v-if="feedingChip(feeding)?.kind !== 'unknown'"
                         class="zone-band__derived"
                         :title="t('zones.flock.feeding.derived_hint')"
                         >{{ t('zones.flock.feeding.derived') }}</small
@@ -468,7 +480,7 @@ function chipTone(feeding: ZoneFeedingData): string {
 }
 
 .zone-chip--bad {
-    background: oklch(28% 0.07 25);
+    background: var(--bad-bg);
     color: var(--bad);
 }
 
@@ -622,12 +634,12 @@ function chipTone(feeding: ZoneFeedingData): string {
 }
 
 .zone-chip--ok {
-    background: oklch(28% 0.06 158);
+    background: var(--ok-bg);
     color: var(--ok);
 }
 
 .zone-chip--warn {
-    background: oklch(28% 0.06 62);
+    background: var(--warn-bg);
     color: var(--warn);
 }
 

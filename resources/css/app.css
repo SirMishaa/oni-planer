@@ -49,6 +49,9 @@
     --ok: oklch(78% 0.13 158);
     --warn: oklch(80% 0.14 62);
     --bad: oklch(72% 0.17 25);
+    --ok-bg: color-mix(in oklch, var(--ok) 18%, var(--ink-1));
+    --warn-bg: color-mix(in oklch, var(--warn) 18%, var(--ink-1));
+    --bad-bg: color-mix(in oklch, var(--bad) 18%, var(--ink-1));
     --wild: oklch(76% 0.09 205);
     --live: oklch(78% 0.15 150);
     --font-text: 'Barlow', ui-sans-serif, system-ui, sans-serif;

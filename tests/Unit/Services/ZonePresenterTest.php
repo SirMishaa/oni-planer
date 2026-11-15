@@ -702,10 +702,13 @@ it('counts the critter alerts in the zone problems', function (): void {
         ->and($shown->entities)->not->toContain($shown->problems[1]);
 });
 
-/** The pond's Pacu eat algae (7.5 kg each per cycle, 2/3 dropped as polluted sand) or hunt nothing, and lay eggs. */
+/** The pond's tame Pacu eat algae (7.5 kg each per cycle, 2/3 dropped as polluted sand) or hunt nothing, and lay eggs. */
 function feedingPond(array $fast = []): Zone
 {
     $zone = populatedPond($fast);
+    $state = $zone->fast_state;
+    $state['critters'] = array_map(fn (array $critter): array => [...$critter, 'tame' => true], $state['critters']);
+    $zone->update(['fast_state' => $state]);
     $morph = CritterMorph::query()->where('morph_id', 'Pacu')->firstOrFail();
     App\Models\CritterMorphDiet::factory()->create(['critter_morph_id' => $morph->id, 'consumed_element_id' => 'Algae', 'amount_per_cycle' => 7.5, 'produced_element_id' => 'ToxicSand', 'conversion_ratio' => 0.5, 'food_kind' => 'item']);
     App\Models\CritterMorphDiet::factory()->create(['critter_morph_id' => $morph->id, 'consumed_element_id' => 'Kelp', 'amount_per_cycle' => 20.0, 'produced_element_id' => 'ToxicSand', 'conversion_ratio' => 0.5, 'food_kind' => 'item']);
@@ -723,7 +726,7 @@ it('presents a feeding balance per flock group', function (): void {
     $feeding = app(ZonePresenter::class)->present($zone)->feeding;
 
     expect($feeding)->toHaveCount(1)
-        ->and($feeding[0]->groupKey)->toBe('Pacu:wild')
+        ->and($feeding[0]->groupKey)->toBe('Pacu:adult')
         ->and($feeding[0]->count)->toBe(11)
         ->and($feeding[0]->foods[0]->toArray())->toMatchArray(['resource' => 'Algae', 'name' => 'Algae', 'perCycle' => 82.5, 'kind' => 'item'])
         ->and($feeding[0]->foods[1]->resource)->toBe('Kelp')
@@ -793,4 +796,60 @@ it('lists first the prey a hunter finds in the zone and counts the others', func
 
     expect(array_map(fn ($food): array => [$food->resource, $food->inZone], $raptor->foods))->toBe([['Pacu', 11], ['Hatch', 0], ['HatchBaby', 0]])
         ->and($raptor->otherFoods)->toBe(1);
+});
+
+/**
+ * Sets the tameness and mood of the pond's critters as the wire sends them, and returns the presented feeding.
+ *
+ * @param  array<string, mixed>  $critter  keys merged into each critter row
+ * @return list<App\Data\ZoneFeedingData>
+ */
+function feedingOfPond(array $critter, int $count = 11): array
+{
+    $zone = feedingPond(['buildings' => []]);
+    $state = $zone->fast_state;
+    $state['critters'] = array_map(fn (array $row): array => [...$row, ...$critter], array_slice($state['critters'], 0, $count));
+    $zone->update(['fast_state' => $state]);
+
+    return app(ZonePresenter::class)->present($zone->fresh())->feeding;
+}
+
+it('feeds a wild band at a quarter of the tame need', function (): void {
+    $feeding = feedingOfPond(['tame' => false], 4);
+
+    expect($feeding[0]->groupKey)->toBe('Pacu:wild')
+        ->and($feeding[0]->foods[0]->perCycle)->toBe(7.5)
+        ->and($feeding[0]->deficitKgPerCycle)->toBe(7.5)
+        ->and($feeding[0]->produces[1]->perCycle)->toBe(0.2);
+});
+
+it('feeds a glum tame band at a fifth of the need', function (): void {
+    expect(feedingOfPond(['tame' => true, 'happiness' => ['value' => -2, 'state' => 'glum']], 10)[0]->foods[0]->perCycle)->toEqualWithDelta(15.0, 1e-9);
+});
+
+it('feeds a miserable wild band at a tenth of the need', function (): void {
+    expect(feedingOfPond(['tame' => false, 'happiness' => ['value' => -5, 'state' => 'miserable']], 10)[0]->foods[0]->perCycle)->toEqualWithDelta(7.5, 1e-9);
+});
+
+it('feeds a critter of unknown tameness as tame', function (): void {
+    $feeding = feedingOfPond(['tame' => null], 4);
+
+    expect($feeding[0]->groupKey)->toBe('Pacu:wild')
+        ->and($feeding[0]->foods[0]->perCycle)->toBe(30.0);
+});
+
+it('feeds a baby band of mixed tameness critter by critter', function (): void {
+    $zone = feedingPond(['buildings' => []]);
+    $state = $zone->fast_state;
+    $state['critters'] = [
+        [...$state['critters'][0], 'baby' => true, 'tame' => true],
+        [...$state['critters'][1], 'baby' => true, 'tame' => false],
+    ];
+    $zone->update(['fast_state' => $state]);
+
+    $feeding = app(ZonePresenter::class)->present($zone->fresh())->feeding;
+
+    expect($feeding[0]->groupKey)->toBe('Pacu:baby')
+        ->and($feeding[0]->count)->toBe(2)
+        ->and($feeding[0]->foods[0]->perCycle)->toBe(9.375);
 });

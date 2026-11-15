@@ -146,6 +146,7 @@ it('prints feeding per group', function (): void {
 it('prints the deficit and the grazed plants of a feeding group', function (): void {
     $pacu = CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => 'Pacu']);
     App\Models\CritterMorphDiet::factory()->create(['critter_morph_id' => $pacu->id, 'consumed_element_id' => 'Algae', 'amount_per_cycle' => 7.5, 'produced_element_id' => null, 'conversion_ratio' => null, 'food_kind' => 'item']);
+    App\Models\CritterMorphDiet::factory()->create(['critter_morph_id' => $pacu->id, 'consumed_element_id' => 'SpiceVine', 'amount_per_cycle' => 0.5, 'produced_element_id' => null, 'conversion_ratio' => null, 'food_kind' => 'plant']);
     $drecko = CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => 'Drecko']);
     App\Models\CritterMorphDiet::factory()->create(['critter_morph_id' => $drecko->id, 'consumed_element_id' => 'SpiceVine', 'amount_per_cycle' => 0.75, 'produced_element_id' => null, 'conversion_ratio' => null, 'food_kind' => 'plant']);
     $colony = Colony::factory()->create();
@@ -161,6 +162,6 @@ it('prints the deficit and the grazed plants of a feeding group', function (): v
 
     OniServer::tool(ZoneOverviewTool::class, ['zone' => 'Ranch'])
         ->assertOk()
-        ->assertSee('Pacu:adult ×1 · eats Algae 7.5 kg/cycle · stock 0 kg · missing 7.5 kg/cycle (derived)')
+        ->assertSee('Pacu:adult ×1 · eats Algae 7.5 kg/cycle · or grazes SpiceVine (1 in the zone) · stock 0 kg · missing 7.5 kg/cycle (derived)')
         ->assertSee('Drecko:adult ×1 · grazes SpiceVine (1 in the zone)');
 });

@@ -361,12 +361,20 @@ export type FeedingTone = 'ok' | 'warn' | 'bad';
 /** The balance chip of a band: how long the stock lasts, or the need nothing covers. */
 export type FeedingChip =
     | { kind: 'stock'; cycles: number; tone: FeedingTone }
-    | { kind: 'missing'; kgPerCycle: number };
+    | { kind: 'missing'; kgPerCycle: number }
+    | { kind: 'unknown' };
 
-/** Null with unknown stock, or for a band that only grazes or hunts (its food is not stocked). */
+/** `unknown` while the feeders were not read; null for a band that only grazes or hunts (its food is not stocked). */
 export function feedingChip(feeding: ZoneFeedingData): FeedingChip | null {
     if (feeding.deficitKgPerCycle !== null) {
         return { kind: 'missing', kgPerCycle: feeding.deficitKgPerCycle };
+    }
+
+    if (
+        feeding.availableKg === null &&
+        feeding.foods.some((food) => food.kind === 'item')
+    ) {
+        return { kind: 'unknown' };
     }
 
     if (feeding.autonomyCycles === null) {

@@ -85,7 +85,7 @@ it('lists a door on the zone border apart and knows its state on the map', funct
     $page = visit(route('zones.show', $zone));
 
     $page->click('#zone-tab-entities')
-        ->click('.zone-filters button:nth-child(4)')
+        ->click('[data-test=zone-filter-buildings]')
         ->assertSee(__('zones.entities.groups.border'))
         ->click('[aria-label="'.__('zones.entities.show_on_map', ['name' => 'Door']).'"]')
         ->assertSeeIn('.zone-panel', 'Door')
@@ -138,9 +138,9 @@ it('shows what each flock band eats and how long its stock lasts', function (): 
 
     visit(route('zones.show', $zone))
         ->click('#zone-tab-entities')
-        ->click('.zone-filters button:nth-child(5)')
+        ->click('[data-test=zone-filter-critters]')
         ->assertSee(__('zones.flock.feeding.eats'))
         ->assertSee(__('zones.flock.feeding.grazes'))
-        ->assertPresent('.zone-band__feeding .zone-chip--warn')
+        ->assertPresent('[data-test=zone-feeding] [data-test=zone-feeding-chip].zone-chip--warn')
         ->assertNoJavaScriptErrors();
 });

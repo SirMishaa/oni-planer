@@ -45,15 +45,16 @@ Un groupe qui ne mange que des plantes sur pied ou des proies n'a ni autonomie n
 
 ## Le stock d'une zone
 
-Dans une zone, le stock est ce que contiennent ses bâtiments (mangeoires, stockages ; les passages du bord ne comptent pas), plus la récolte de chaque plante mûre (son rendement dans le jeu ; 0 tant qu'elle pousse). Le bilan se calcule pour chaque bande du troupeau, une espèce à un stade : voir [Ma colonie](../colony.md). Tant que le jeu n'a pas envoyé l'état des bâtiments, le stock est inconnu : pas d'autonomie ni de déficit plutôt qu'un faux manque.
+Dans une zone, le stock est ce que contiennent ses **mangeoires** (mangeoire à critters et mangeoire à poissons) : un critter ne mange jamais dans un casier de stockage, ni dans un bâtiment qui consomme lui-même ce qu'il contient, comme un terrarium à algues. Les récoltes mûres, pas encore ramassées, ne comptent pas : une plante sur pied n'est pas un objet à ramasser. Le jeu laisse aussi les critters manger les objets posés au sol, mais Uplink ne les envoie pas : le stock peut donc être sous-estimé. Le bilan se calcule pour chaque bande du troupeau, une espèce à un stade : voir [Ma colonie](../colony.md). Tant que le jeu n'a pas envoyé l'état des bâtiments, le stock est inconnu : pas d'autonomie ni de déficit plutôt qu'un faux manque.
 
 Pour un groupe qui broute ou chasse, le planner compte à la place les plantes ou les critters de cette espèce présents dans la zone.
 
 <Accordion title="Comment les chiffres sont calculés">
 
 - **Besoin d'un aliment** : la quantité qu'un critter en mange par cycle (ses calories par cycle divisées par les calories par kg de l'aliment), multipliée par le nombre de critters. Elle est en kg pour un objet ramassé ; pour une plante, c'est de la croissance de plante, et pour une proie une quantité propre au jeu, jamais des kg.
+- **Métabolisme** : le besoin se compte critter par critter. Un critter sauvage mange 25 % de la ration d'un apprivoisé ; un critter morose ou misérable 20 % (apprivoisé) ou 10 % (sauvage). Un critter dont le jeu n'a pas dit s'il est apprivoisé est compté apprivoisé, et une humeur inconnue compte comme heureuse. Un groupe de bébés peut donc mélanger les deux taux.
 - **Rejet** : la quantité mangée multipliée par le taux de conversion du régime. Le rejet est toujours en kg, même pour une plante ou une proie.
-- **Production** : chaque sortie du critter (ses œufs) par cycle, multipliée par le nombre de critters. Les œufs se comptent en unités, pas en kg.
+- **Production** : chaque sortie du critter (ses œufs) par cycle, multipliée par le nombre de critters. Les œufs se comptent en unités, pas en kg. Le planner ne réduit pas la ponte des critters sauvages ou malheureux : leur fertilité suit d'autres modificateurs du jeu, hors de ce calcul.
 - **Autonomie** : la somme, sur chaque objet accepté, de son stock divisé par son besoin par cycle. Un stock mélangé reste exact : 560 kg de sable et 7 kg de viande pour 2 Hatchs (280 et 0,875 kg par cycle) tiennent 2 + 8 = 10 cycles. Un aliment au besoin nul ne compte pas et ne peut pas être l'aliment principal.
 - **Égalité** : si deux objets ont le même stock, l'aliment principal est celui qui vient en premier dans le régime du jeu.
 
