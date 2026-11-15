@@ -83,7 +83,7 @@ final class GameImportAssetsCommand extends Command
             $foods += (int) $this->convert($converter, $source, "{$assets}/foods/{$foodId}.webp");
         }
 
-        [$eggs, $eggsWithoutImage] = $this->importEggs($converter, $export, $assets);
+        [$eggs, $eggsWithoutImage, $emptyEggImages] = $this->importEggs($converter, $export, $assets);
         [$critterImages, $emptyCritterImages] = $this->repairEmptyCritterImages($converter, $export, $assets);
 
         [$terrains, $solidsWithoutTexture, $solidsWithoutAsset, $missingRenderFiles] = $this->importTerrain($converter, $export, $assets);
@@ -96,6 +96,10 @@ final class GameImportAssetsCommand extends Command
 
         if ($eggsWithoutImage !== []) {
             $this->warn('Missing egg images: '.implode(', ', $eggsWithoutImage));
+        }
+
+        if ($emptyEggImages !== []) {
+            $this->warn('Empty egg images: '.implode(', ', $emptyEggImages));
         }
 
         if ($emptyCritterImages !== []) {
@@ -114,20 +118,22 @@ final class GameImportAssetsCommand extends Command
             $this->error('Missing render files in the export: '.implode(', ', $missingRenderFiles));
         }
 
-        return $solidsWithoutAsset === [] && $missingRenderFiles === [] && $eggsWithoutImage === [] && $emptyCritterImages === []
+        return $solidsWithoutAsset === [] && $missingRenderFiles === [] && $eggsWithoutImage === [] && $emptyEggImages === [] && $emptyCritterImages === []
             ? self::SUCCESS
             : self::FAILURE;
     }
 
     /**
-     * Converts the egg icons: one per distinct egg prefab of the critter outputs.
+     * Converts the egg icons: one per distinct egg prefab of the critter outputs. An existing image under
+     * {@see self::MIN_IMAGE_BYTES} is an empty placeholder: it is converted again even when newer than its source.
      *
-     * @return array{int, list<string>} converted images, prefabs without an image in the export
+     * @return array{int, list<string>, list<string>} converted images, prefabs without an image in the export, prefabs whose image is still empty
      */
     private function importEggs(AssetConverter $converter, string $export, string $assets): array
     {
         $converted = 0;
         $missing = [];
+        $empty = [];
 
         $prefabs = CritterMorphOutput::query()->where('output_type', 'egg')->distinct()->orderBy('element_id')->pluck('element_id');
 
@@ -141,15 +147,29 @@ final class GameImportAssetsCommand extends Command
                 continue;
             }
 
-            $converted += (int) $this->convert($converter, $source, "{$assets}/eggs/{$prefabId}.webp");
+            $destination = "{$assets}/eggs/{$prefabId}.webp";
+            if (File::exists($destination) && File::size($destination) < self::MIN_IMAGE_BYTES) {
+                $converter->pngToWebp($source, $destination);
+                $converted++;
+            } else {
+                $converted += (int) $this->convert($converter, $source, $destination);
+            }
+
+            clearstatcache(true, $destination);
+            if (File::size($destination) < self::MIN_IMAGE_BYTES) {
+                $empty[] = $prefabId;
+            }
         }
 
-        return [$converted, $missing];
+        return [$converted, $missing, $empty];
     }
 
     /**
      * Re-creates critter images that are empty placeholders (under {@see self::MIN_IMAGE_BYTES})
      * from the export's UI image of the same critter.
+     *
+     * It calls the converter directly rather than {@see self::convert()}: the empty image is usually newer
+     * than its source, so the staleness check would keep it.
      *
      * @return array{int, list<string>} repaired images, empty images with no source in the export
      */

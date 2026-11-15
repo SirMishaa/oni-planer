@@ -21,6 +21,20 @@ function writePng(string $path, int $width = 8, int $height = 6): void
     imagepng($image, $path);
 }
 
+/** A PNG of random pixels: its WebP is well above the empty-image floor, unlike a flat fill. */
+function writeDetailedPng(string $path, int $size = 32): void
+{
+    File::ensureDirectoryExists(dirname($path));
+    $image = imagecreatetruecolor($size, $size);
+    mt_srand(7);
+    for ($x = 0; $x < $size; $x++) {
+        for ($y = 0; $y < $size; $y++) {
+            imagesetpixel($image, $x, $y, imagecolorallocate($image, mt_rand(0, 255), mt_rand(0, 255), mt_rand(0, 255)));
+        }
+    }
+    imagepng($image, $path);
+}
+
 beforeEach(function (): void {
     $this->workDir = sys_get_temp_dir().'/oni-assets-'.uniqid();
     $this->export = $this->workDir.'/export';
@@ -177,7 +191,7 @@ it('converts one image per egg prefab from the critter outputs', function (): vo
     CritterMorphOutput::factory()->create(['element_id' => 'PacuEgg', 'output_type' => 'egg']);
     CritterMorphOutput::factory()->create(['element_id' => 'PacuEgg', 'output_type' => 'egg']);
     CritterMorphOutput::factory()->create(['element_id' => 'Fish', 'output_type' => 'resource']);
-    writePng($this->export.'/ui_image/PacuEgg.png');
+    writeDetailedPng($this->export.'/ui_image/PacuEgg.png');
     writePng($this->export.'/ui_image/Fish.png');
 
     $this->artisan('game:import-assets')->assertSuccessful();
@@ -196,6 +210,28 @@ it('fails when an egg prefab has no image', function (): void {
         ->assertFailed();
 
     expect($this->assets.'/eggs/PacuEgg.webp')->toBeFile();
+});
+
+it('re-creates an empty egg image even when it is newer than its source', function (): void {
+    CritterMorphOutput::factory()->create(['element_id' => 'PacuEgg', 'output_type' => 'egg']);
+    writeDetailedPng($this->export.'/ui_image/PacuEgg.png');
+    File::ensureDirectoryExists($this->assets.'/eggs');
+    File::put($this->assets.'/eggs/PacuEgg.webp', 'tiny');
+    touch($this->assets.'/eggs/PacuEgg.webp', time() + 60);
+
+    $this->artisan('game:import-assets')->assertSuccessful();
+
+    expect(getimagesize($this->assets.'/eggs/PacuEgg.webp')['mime'])->toBe('image/webp')
+        ->and(File::size($this->assets.'/eggs/PacuEgg.webp'))->toBeGreaterThanOrEqual(200);
+});
+
+it('fails when an egg image is still empty after conversion', function (): void {
+    CritterMorphOutput::factory()->create(['element_id' => 'PacuEgg', 'output_type' => 'egg']);
+    writePng($this->export.'/ui_image/PacuEgg.png', 1, 1);
+
+    $this->artisan('game:import-assets')
+        ->expectsOutputToContain('Empty egg images: PacuEgg')
+        ->assertFailed();
 });
 
 it('replaces an empty critter image from the ui export', function (): void {
