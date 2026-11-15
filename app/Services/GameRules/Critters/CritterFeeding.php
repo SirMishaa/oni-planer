@@ -141,7 +141,8 @@ final class CritterFeeding
     /**
      * Stock of the accepted `item` foods against the need of a consumed flow. The main food (shown) is the item
      * food with a need and the most stock, ties going to the earlier diet line. Without such stock the flow's need
-     * (its first item line) is reported as the deficit.
+     * (its first item line) is reported as the deficit. Available counts only the item foods with a need: a food
+     * eaten at 0 kg per cycle feeds nothing.
      *
      * A flow with no item line (a plant or prey eater) cannot be judged from stock: available is 0, and the
      * deficit and autonomy are null.
@@ -154,7 +155,9 @@ final class CritterFeeding
 
         $stock = [];
         foreach ($foods as $food) {
-            $stock[$food->resource] = 0.0;
+            if ($food->kgPerCycle > 0) {
+                $stock[$food->resource] = 0.0;
+            }
         }
 
         foreach ($inventory as $item) {

@@ -34,6 +34,10 @@ beforeEach(function (): void {
                     ['resource' => 'Sand', 'kgPerCycle' => 10.0, 'produces' => null, 'conversionRatio' => null, 'kind' => 'item'],
                     ['resource' => 'Dust', 'kgPerCycle' => 0.0, 'produces' => null, 'conversionRatio' => null, 'kind' => 'item'],
                 ],
+                'Twice' => [
+                    ['resource' => 'Algae', 'kgPerCycle' => 10.0, 'produces' => null, 'conversionRatio' => null, 'kind' => 'item'],
+                    ['resource' => 'Algae', 'kgPerCycle' => 10.0, 'produces' => null, 'conversionRatio' => null, 'kind' => 'item'],
+                ],
                 'Zero' => [
                     ['resource' => 'Dust', 'kgPerCycle' => 0.0, 'produces' => null, 'conversionRatio' => null, 'kind' => 'item'],
                 ],
@@ -186,6 +190,25 @@ it('never picks a zero-rate food as main and leaves it out of autonomy', functio
         ->and($balance->deficitKgPerCycle)->toEqualWithDelta(10.0, 0.0001)
         ->and($balance->autonomyCycles)->toBe(0.0)
         ->and($zero->autonomyCycles)->toBeNull();
+});
+
+it('leaves the stock of a zero-rate food out of the available kg', function (): void {
+    $balance = $this->feeding->balance(($this->consumed)('Odd', 1), [
+        new InventoryItemData('Dust', 500.0, 'storage', '1401', 65),
+        new InventoryItemData('Sand', 20.0, 'storage', '1401', 65),
+    ]);
+
+    expect($balance->availableKg)->toEqualWithDelta(20.0, 0.0001)
+        ->and($balance->autonomyCycles)->toEqualWithDelta(2.0, 0.0001);
+});
+
+it('counts the stock of a food listed twice in the diet once', function (): void {
+    $balance = $this->feeding->balance(($this->consumed)('Twice', 1), [
+        new InventoryItemData('Algae', 50.0, 'storage', '1401', 65),
+    ]);
+
+    expect($balance->availableKg)->toEqualWithDelta(50.0, 0.0001)
+        ->and($balance->autonomyCycles)->toEqualWithDelta(5.0, 0.0001);
 });
 
 it('does not report a deficit for a plant eater', function (): void {
