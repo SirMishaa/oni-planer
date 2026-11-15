@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { breedingStopped, populationGauge } from './zonePopulation';
+import {
+    breedingStopped,
+    populationGauge,
+    removalOptions,
+} from './zonePopulation';
 
 describe('breedingStopped', () => {
     it('is false while unknown', () => {
@@ -27,5 +31,58 @@ describe('populationGauge', () => {
 
         expect(gauge.critters + gauge.eggs).toBeCloseTo(100);
         expect(gauge.limit).toBeCloseTo((104 / 112) * 100);
+    });
+});
+
+describe('removalOptions', () => {
+    const pond = {
+        cellCount: 203,
+        occupied: 168,
+        eggOccupied: 48,
+        overcrowded: false,
+    };
+    const option = (prefabId: string, toRemove: number, canFix: boolean) => ({
+        prefabId,
+        count: 4,
+        personalSpace: 8,
+        toRemove,
+        canFix,
+        derived: true,
+    });
+
+    it('is null when nothing is to be removed', () => {
+        expect(removalOptions({ ...pond, perType: [] })).toBeNull();
+    });
+
+    it('tells whether one species alone is enough', () => {
+        expect(
+            removalOptions({
+                ...pond,
+                perType: [
+                    option('Pacu', 2, true),
+                    option('SeaHorse', 1, false),
+                ],
+            }),
+        ).toEqual({ anyFixes: true, overOccupiedCells: 13 });
+    });
+
+    it('gives the cells to free when no species alone is enough', () => {
+        expect(
+            removalOptions({
+                ...pond,
+                perType: [option('SeaHorse', 1, false)],
+            }),
+        ).toEqual({ anyFixes: false, overOccupiedCells: 13 });
+    });
+
+    it('counts only the critters of an overcrowded region', () => {
+        expect(
+            removalOptions({
+                ...pond,
+                occupied: 210,
+                overcrowded: true,
+                perType: [{ ...option('Pacu', 1, true), derived: false }],
+            })?.overOccupiedCells,
+        ).toBe(7);
     });
 });

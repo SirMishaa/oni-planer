@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useT } from '@/composables/useT';
 import type { ZonePopulationData } from '@/types/App/Data/data.d';
-import { populationGauge } from './zonePopulation';
+import { populationGauge, removalOptions } from './zonePopulation';
 
 // region Props
 
@@ -16,9 +16,11 @@ const props = defineProps<{
 
 const { t, tc } = useT();
 
-/** `-toRemove` of one species of a region, 0 when nothing is to be removed. */
+/** The removal of one species of a region, null when none of it is to be removed. */
 function removal(region: ZonePopulationData, prefabId: string) {
-    return region.perType.find((type) => type.prefabId === prefabId) ?? null;
+    const type = region.perType.find((entry) => entry.prefabId === prefabId);
+
+    return type !== undefined && type.toRemove > 0 ? type : null;
 }
 
 // endregion
@@ -101,6 +103,26 @@ function removal(region: ZonePopulationData, prefabId: string) {
                 }}</span>
             </p>
 
+            <!-- region Removal options -->
+            <p
+                v-if="removalOptions(region) !== null"
+                class="zone-pop__options"
+                :class="{
+                    'zone-pop__options--none':
+                        !removalOptions(region)!.anyFixes,
+                }"
+            >
+                {{
+                    removalOptions(region)!.anyFixes
+                        ? t('zones.population.options')
+                        : tc(
+                              'zones.population.options_none',
+                              removalOptions(region)!.overOccupiedCells,
+                          )
+                }}
+            </p>
+            <!-- endregion -->
+
             <ul class="zone-pop__types">
                 <li
                     v-for="type in region.types"
@@ -119,13 +141,24 @@ function removal(region: ZonePopulationData, prefabId: string) {
                         ></span
                     >
                     <span
-                        v-if="
-                            removal(region, type.prefabId) !== null &&
-                            removal(region, type.prefabId)!.toRemove > 0
-                        "
+                        v-if="removal(region, type.prefabId) !== null"
                         class="zone-pop__remove"
+                        :class="{
+                            'zone-pop__remove--short': !removal(
+                                region,
+                                type.prefabId,
+                            )!.canFix,
+                        }"
                     >
                         −{{ removal(region, type.prefabId)!.toRemove }}
+                        <small
+                            v-if="
+                                !removal(region, type.prefabId)!.canFix &&
+                                removalOptions(region)!.anyFixes
+                            "
+                            class="zone-pop__short"
+                            >{{ t('zones.population.short') }}</small
+                        >
                         <small
                             v-if="removal(region, type.prefabId)!.derived"
                             class="zone-pop__derived"
@@ -273,6 +306,26 @@ function removal(region: ZonePopulationData, prefabId: string) {
     color: var(--warn);
     font-weight: 600;
     white-space: nowrap;
+}
+
+.zone-pop__options {
+    margin-top: 2px;
+    color: var(--text-2);
+    font-size: 12px;
+}
+
+.zone-pop__options--none {
+    color: var(--warn);
+}
+
+.zone-pop__remove--short {
+    color: var(--text-3);
+    font-weight: 500;
+}
+
+.zone-pop__remove .zone-pop__short {
+    margin-left: 4px;
+    font-weight: 400;
 }
 
 .zone-pop__remove .zone-pop__derived {

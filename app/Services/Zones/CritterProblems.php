@@ -139,19 +139,8 @@ final class CritterProblems
             }
 
             $names = array_column($region->types, 'name', 'prefabId');
-            $removals = [];
-            $derived = false;
-            foreach ($region->perType as $type) {
-                if ($type->toRemove > 0) {
-                    $removals[] = __('zones.population.remove', ['count' => $type->toRemove]).' '.($names[$type->prefabId] ?? $type->prefabId);
-                    $derived = $derived || $type->derived;
-                }
-            }
-
-            $text = implode(', ', $statuses);
-            if ($removals !== []) {
-                $text .= ': '.implode(', ', $removals).($derived ? ' ('.__('zones.population.derived').')' : '');
-            }
+            $advice = RemovalAdvice::text($region);
+            $text = implode(', ', $statuses).($advice === null ? '' : ': '.$advice);
 
             $lead = $region->perType[0]->prefabId ?? array_key_first($names);
             $sprite = null;

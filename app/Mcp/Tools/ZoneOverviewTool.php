@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
-use App\Data\GameRules\CritterOverOccupancyData;
 use App\Data\ZoneCritterData;
 use App\Data\ZoneFeedingData;
 use App\Data\ZoneFeedingLineData;
@@ -18,6 +17,7 @@ use App\Services\Mcp\McpFormat;
 use App\Services\Mcp\McpHeader;
 use App\Services\Mcp\ZoneTerrainSummary;
 use App\Services\Zones\CritterProblems;
+use App\Services\Zones\RemovalAdvice;
 use App\Services\Zones\ZoneCritters;
 use App\Services\Zones\ZoneCritterState;
 use App\Services\Zones\ZoneFeeding;
@@ -344,7 +344,7 @@ final class ZoneOverviewTool extends Tool
         $lines = ['Population:'];
         foreach ($regions as $region) {
             $states = array_column($region->states, 'id');
-            $names = array_column($region->types, 'name', 'prefabId');
+            $advice = RemovalAdvice::text($region, 'en');
             $lines[] = sprintf(
                 ' %s %d/%d · +%d eggs · %s%s',
                 $region->regionId,
@@ -352,10 +352,7 @@ final class ZoneOverviewTool extends Tool
                 $region->cellCount,
                 $region->eggOccupied,
                 $states === [] ? 'ok' : implode(', ', $states),
-                implode('', array_map(
-                    fn (CritterOverOccupancyData $type): string => sprintf(' · remove %d %s%s', $type->toRemove, $names[$type->prefabId] ?? $type->prefabId, $type->derived ? ' (derived)' : ''),
-                    array_filter($region->perType, fn (CritterOverOccupancyData $type): bool => $type->toRemove > 0),
-                )),
+                $advice === null ? '' : ' · '.$advice,
             );
         }
         if ($regions === []) {

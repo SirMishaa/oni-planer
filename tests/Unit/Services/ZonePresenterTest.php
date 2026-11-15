@@ -772,6 +772,19 @@ it('counts the critter alerts in the zone problems', function (): void {
         ->and($shown->entities)->not->toContain($shown->problems[1]);
 });
 
+it('words the region problem as alternatives, apart from a species that cannot fix it alone', function (): void {
+    CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => 'SeaHorse', 'overcrowding_threshold' => 8]);
+    $zone = populatedPond(['crowding' => [[
+        'id' => 'pond:1201', 'kind' => 'pond', 'cellCount' => 203, 'occupied' => 136, 'eggOccupied' => 80,
+        'counts' => ['Pacu' => 16, 'SeaHorse' => 1],
+        'states' => ['Pacu' => ['overcrowded' => false, 'cramped' => true, 'confined' => false, 'modifier' => 0]],
+    ]]]);
+
+    $shown = app(ZonePresenter::class)->present($zone);
+
+    expect($shown->problems[0]->problems[0])->toEndWith('remove 2 Pacu — 1 SeaHorse is not enough (derived)');
+});
+
 /** The pond's tame Pacu, in a pond with room to lay, eat algae (7.5 kg each per cycle, 2/3 dropped as polluted sand) or hunt nothing, and lay eggs. */
 function feedingPond(array $fast = []): Zone
 {

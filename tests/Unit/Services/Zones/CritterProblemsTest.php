@@ -113,3 +113,50 @@ it('names only the confined state of a confined region, from the game strings', 
         ->and($problems[0]->problems[0])->not->toContain(__('STRINGS.CREATURES.MODIFIERS.OVERCROWDED.CROWDED.NAME'))
         ->and($problems[0]->problems[0])->not->toContain(__('STRINGS.CREATURES.MODIFIERS.OVERCROWDED.CRAMPED.NAME'));
 });
+
+/**
+ * The live PacuOne pond: 203 cells, 21 fish of 8 cells (168 occupied) and 48 cells of eggs, 13 cells over.
+ *
+ * @param  list<CritterOverOccupancyData>|null  $perType
+ */
+function mixedPond(?array $perType = null): ZonePopulationData
+{
+    return new ZonePopulationData(
+        regionId: 'pond:1', kind: 'pond', cellCount: 203, occupied: 168, eggOccupied: 48,
+        overcrowded: false, cramped: true, confined: false,
+        states: [['id' => 'cramped', 'name' => 'Cramped']],
+        perType: $perType ?? [
+            new CritterOverOccupancyData('Pacu', 16, 8, 2, true, true),
+            new CritterOverOccupancyData('PufferFish', 4, 8, 2, true, true),
+            new CritterOverOccupancyData('SeaHorse', 1, 8, 1, false, true),
+        ],
+        types: [
+            ['prefabId' => 'Pacu', 'name' => 'Pacu', 'count' => 16, 'personalSpace' => 8],
+            ['prefabId' => 'PufferFish', 'name' => 'Blowter', 'count' => 4, 'personalSpace' => 8],
+            ['prefabId' => 'SeaHorse', 'name' => 'Seaquine', 'count' => 1, 'personalSpace' => 8],
+        ],
+    );
+}
+
+it('offers the removals as alternatives and sets apart the species that cannot fix it alone', function (): void {
+    $problems = CritterProblems::of([problemCritter('1')], [mixedPond()]);
+
+    expect($problems[0]->problems[0])->toBe('Cramped: remove 2 Pacu or 2 Blowter — 1 Seaquine is not enough (derived)');
+});
+
+it('says when no single species is enough and gives the cells to free', function (): void {
+    $problems = CritterProblems::of([problemCritter('1')], [mixedPond([
+        new CritterOverOccupancyData('PufferFish', 1, 8, 1, false, true),
+        new CritterOverOccupancyData('SeaHorse', 1, 8, 1, false, true),
+    ])]);
+
+    expect($problems[0]->problems[0])->toBe('Cramped: no single species is enough, free 13 cells (derived)');
+});
+
+it('words the alternatives in French', function (): void {
+    app()->setLocale('fr');
+
+    $problems = CritterProblems::of([problemCritter('1')], [mixedPond()]);
+
+    expect($problems[0]->problems[0])->toBe('Cramped: retirer 2 Pacu ou 2 Blowter — 1 Seaquine ne suffit pas (dérivé)');
+});

@@ -117,6 +117,26 @@ it('prints the population per region', function (): void {
         ->assertSee('pond:1201 88/104 · +24 eggs · cramped · remove 1 Pacu (derived)');
 });
 
+it('prints the removals of a mixed pond as alternatives', function (): void {
+    foreach (['Pacu', 'PufferFish', 'SeaHorse'] as $morph) {
+        CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => $morph, 'overcrowding_threshold' => 8]);
+    }
+    $colony = Colony::factory()->create();
+    Zone::factory()->sodicaneFarm()->create(['colony_guid' => $colony->guid, 'name' => 'Pond', 'fast_state' => [
+        'schema' => 1,
+        'critters' => [],
+        'crowding' => [[
+            'id' => 'pond:1201', 'kind' => 'pond', 'cellCount' => 203, 'occupied' => 168, 'eggOccupied' => 48,
+            'counts' => ['Pacu' => 16, 'PufferFish' => 4, 'SeaHorse' => 1],
+            'states' => ['Pacu' => ['overcrowded' => false, 'cramped' => true, 'confined' => false, 'modifier' => 0]],
+        ]],
+    ]]);
+
+    OniServer::tool(ZoneOverviewTool::class, ['zone' => 'Pond'])
+        ->assertOk()
+        ->assertSee('pond:1201 168/203 · +48 eggs · cramped · remove 2 Pacu or 2 PufferFish — 1 SeaHorse is not enough (derived)');
+});
+
 it('prints only the confined state of a confined region', function (): void {
     CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => 'Pacu', 'overcrowding_threshold' => 8]);
     $colony = Colony::factory()->create();

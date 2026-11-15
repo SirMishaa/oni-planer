@@ -4,6 +4,7 @@ description: "Ce que veulent dire Surpeuplé, À l'étroit et Confiné pour une 
 sources:
   - app/Services/GameRules/Critters/Overcrowding.php
   - app/Services/Zones/ZonePopulation.php
+  - app/Services/Zones/RemovalAdvice.php
   - app/Services/Critters/OccupancyInputBuilder.php
 ---
 
@@ -23,7 +24,11 @@ Quand une pièce est **Confinée**, seul cet état s'affiche : dans le jeu, il r
 
 ## Retirer combien
 
-Sous la jauge, chaque espèce affiche `−N` : le nombre de critters à retirer de cette espèce seule pour sortir de l'état. Le marqueur **dérivé** signale un chiffre calculé par le planner (voir plus bas).
+Sous la jauge, chaque espèce affiche `−N` : le nombre de critters à retirer de cette espèce seule pour sortir de l'état. Ces lignes sont des alternatives, pas une somme : **une seule** suffit, comme l'indique l'en-tête « Une de ces options suffit ». Le problème de la zone le dit de la même façon : « retirer 2 Pacu ou 2 Blowter ».
+
+Une espèce trop peu nombreuse pour régler le problème seule est grisée et marquée « ne suffit pas ». Si aucune espèce seule ne suffit, l'en-tête le dit et donne le nombre de cases à libérer : il faut alors retirer des critters de plusieurs espèces.
+
+Le marqueur **dérivé** signale un chiffre calculé par le planner (voir plus bas).
 
 <Accordion title="Quand les œufs comptent">
 
@@ -42,7 +47,7 @@ Pour une espèce, le nombre à retirer est le dépassement divisé par son espac
 - **Surpeuplé** : les cases des critters moins celles de la pièce. Le jeu calcule ce chiffre lui-même, il n'est pas marqué dérivé.
 - **À l'étroit** : les cases des critters plus celles des œufs, moins celles de la pièce. Le jeu ne le calcule pas : il est marqué **dérivé**.
 
-Si retirer cette espèce seule ne suffit pas, la ligne montre tout de même le maximum possible.
+Si retirer cette espèce seule ne suffit pas, la ligne montre tout de même le maximum possible, marqué « ne suffit pas ». Les cases à libérer sont le dépassement lui-même.
 
 Le calcul compte tous les critters de la pièce ou du bassin, y compris ceux qui se trouvent hors de la zone.
 

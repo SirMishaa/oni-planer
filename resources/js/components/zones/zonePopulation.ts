@@ -25,3 +25,31 @@ export function populationGauge(
         limit: (region.cellCount / scale) * 100,
     };
 }
+
+/**
+ * How the removal of a region reads: each species of `perType` is an alternative, so the rows need to say whether
+ * one of them alone is enough, else how many cells to free. Null when nothing is to be removed.
+ */
+export function removalOptions(
+    region: Pick<
+        ZonePopulationData,
+        'perType' | 'cellCount' | 'occupied' | 'eggOccupied' | 'overcrowded'
+    >,
+): { anyFixes: boolean; overOccupiedCells: number } | null {
+    const types = region.perType.filter((type) => type.toRemove > 0);
+    if (types.length === 0) {
+        return null;
+    }
+
+    const withEggs = region.perType[0]?.derived ?? !region.overcrowded;
+
+    return {
+        anyFixes: types.some((type) => type.canFix),
+        overOccupiedCells: Math.max(
+            0,
+            region.occupied +
+                (withEggs ? region.eggOccupied : 0) -
+                region.cellCount,
+        ),
+    };
+}
