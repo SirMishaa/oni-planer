@@ -631,6 +631,32 @@ it('removes from every critter of the pond, including those outside the zone', f
         ->and($block->perType[0]->toArray())->toMatchArray(['prefabId' => 'Pacu', 'count' => 20, 'toRemove' => 7, 'canFix' => true, 'derived' => false]);
 });
 
+it('presents a crowded cavity with the game removal count', function (): void {
+    CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => 'Hatch', 'overcrowding_threshold' => 12]);
+    $zone = Zone::factory()->sodicaneFarm()->create(['fast_state' => [
+        'schema' => 1,
+        'critters' => [],
+        'crowding' => [[
+            'id' => 'cavity:7', 'kind' => 'cavity', 'cellCount' => 30, 'occupied' => 36, 'eggOccupied' => 0,
+            'counts' => ['Hatch' => 3],
+            'states' => ['Hatch' => ['overcrowded' => true, 'cramped' => false, 'confined' => false, 'modifier' => -1]],
+        ]],
+    ]]);
+
+    $block = app(ZonePresenter::class)->present($zone)->population[0];
+
+    expect($block->kind)->toBe('cavity')
+        ->and(array_column($block->states, 'id'))->toBe(['overcrowded'])
+        ->and($block->perType[0]->toArray())->toMatchArray(['prefabId' => 'Hatch', 'count' => 3, 'toRemove' => 1, 'derived' => false]);
+});
+
+it('dates the critters with the fast state and has no date without them', function (): void {
+    $zone = populatedPond();
+
+    expect(app(ZonePresenter::class)->present($zone)->crittersAt)->toBe($zone->fast_state_at->toIso8601String())
+        ->and(app(ZonePresenter::class)->present(Zone::factory()->sodicaneFarm()->create())->crittersAt)->toBeNull();
+});
+
 it('takes the egg space of the population from the game, not from the lagging egg list', function (): void {
     $zone = populatedPond();
     $zone->update(['slow_state' => [...$zone->slow_state, 'eggs' => []]]);

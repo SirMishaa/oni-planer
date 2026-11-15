@@ -90,7 +90,9 @@ it('computes only the requested props on a partial reload', function (): void {
     ])->get(route('zones.show', $zone));
 
     $partial->assertOk();
-    expect(array_keys($partial->json('props')))->not->toContain('mapTerrain', 'map', 'entities')
+    expect(array_keys($partial->json('props')))->not->toContain('mapTerrain')
+        ->and(array_keys($partial->json('props')))->not->toContain('map')
+        ->and(array_keys($partial->json('props')))->not->toContain('entities')
         ->and($partial->json('props.critters.0.instanceId'))->toBe('1201')
         ->and($tables)->not->toContain('elements')
         ->and($tables)->not->toContain('buildings')
@@ -102,8 +104,18 @@ it('groups the live props by stream, each a prop of the page', function (): void
 
     expect(array_keys(ZonePresenter::PROPS_BY_KIND))->toBe(['list', 'layout', 'slow', 'fast', 'capture'])
         ->and(array_diff(array_merge(...array_values(ZonePresenter::PROPS_BY_KIND)), $properties))->toBe([])
-        ->and(ZonePresenter::PROPS_BY_KIND['fast'])->toContain('critters', 'mapPlants', 'zone')->not->toContain('mapTerrain', 'map')
-        ->and(ZonePresenter::PROPS_BY_KIND['slow'])->toContain('mapTerrain', 'eggs', 'zone')->not->toContain('critters', 'map');
+        ->and(ZonePresenter::PROPS_BY_KIND['fast'])->toContain('critters', 'mapPlants', 'zone')
+        ->and(ZonePresenter::PROPS_BY_KIND['fast'])->not->toContain('mapTerrain')
+        ->and(ZonePresenter::PROPS_BY_KIND['fast'])->not->toContain('map')
+        ->and(ZonePresenter::PROPS_BY_KIND['slow'])->toContain('mapTerrain', 'eggs', 'zone')
+        ->and(ZonePresenter::PROPS_BY_KIND['slow'])->not->toContain('critters')
+        ->and(ZonePresenter::PROPS_BY_KIND['slow'])->not->toContain('map');
+});
+
+it('reloads every page prop with a stream except the link time, the stream map and the echo channel', function (): void {
+    $properties = array_map(fn (ReflectionParameter $parameter): string => $parameter->getName(), (new ReflectionMethod(ZoneShowData::class, '__construct'))->getParameters());
+
+    expect(array_values(array_diff($properties, ...array_values(ZonePresenter::PROPS_BY_KIND))))->toEqualCanonicalizing(['linkSeenAt', 'liveProps', 'echo']);
 });
 
 it('does not find an archived zone', function (): void {

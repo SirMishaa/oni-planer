@@ -51,6 +51,21 @@ it('names the candidates when the zone is ambiguous', function (): void {
     OniServer::tool(ZoneOverviewTool::class, ['zone' => 'aquafarm'])->assertHasErrors(['AquaFarm/PacuTwo']);
 });
 
+it('labels critters matched by their cell as derived with an older mod', function (): void {
+    $colony = Colony::factory()->create(['state' => ['critters' => [
+        ['id' => 'Crab', 'worldId' => 0, 'cell' => 201 * 606 + 105, 'tame' => false],
+    ]]]);
+    $zone = Zone::factory()->sodicaneFarm()->create(['colony_guid' => $colony->guid, 'name' => 'Sodicane']);
+    $fast = $zone->fast_state;
+    unset($fast['critters'], $fast['crowding']);
+    $zone->update(['fast_state' => $fast]);
+
+    OniServer::tool(ZoneOverviewTool::class, ['zone' => 'Sodicane'])
+        ->assertOk()
+        ->assertSee('Critters (derived from their cell):')
+        ->assertSee('(Crab) @ w(105,201) wild age unavailable cal unavailable (derived)');
+});
+
 it('lists what each critter drops', function (): void {
     $colony = Colony::factory()->create(['state' => ['critters' => [
         ['id' => 'Crab', 'worldId' => 0, 'cell' => 201 * 606 + 105, 'tame' => true, 'drops' => [['id' => 'CrabShell', 'units' => 60]]],
