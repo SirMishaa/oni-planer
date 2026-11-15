@@ -17,7 +17,9 @@ import {
 import type { ZoneBoxData, ZoneCritterData } from '@/types/App/Data/data.d';
 
 /**
- * Drawn pose of each critter, replayed between two fast states. The tracks
+ * Drawn pose of each critter, replayed between two fast states: it travels
+ * from where it is drawn to its new game position, then walks the path the
+ * game sent. The tracks
  * are rebuilt when `receivedAt` (ms, on the `requestAnimationFrame` clock)
  * changes: the caller bumps it once per new fast state, never for a reload
  * that resends the same critters. Each frame the poses are updated in place

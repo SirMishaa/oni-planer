@@ -658,7 +658,8 @@ function select(entity: MapEntity): void {
 // region Critter motion
 
 /**
- * Critters walk their path between two fast states. Vue places each critter
+ * Between two fast states, each critter travels from where it is drawn to
+ * its new game position, then walks its path. Vue places each critter
  * where the game saw it (left/top); every frame, the replay moves it by a CSS
  * `translate` written straight on its element, so neither the template nor
  * the layout runs per frame. The facing goes the same way (`data-facing`).

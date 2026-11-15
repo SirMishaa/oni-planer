@@ -3,11 +3,13 @@ import { effectScope, nextTick, ref } from 'vue';
 import { useCritterMotion } from '@/composables/useCritterMotion';
 import type { ZoneCritterData } from '@/types/App/Data/data.d';
 import {
+    CADENCE_SECONDS,
     EASE_SECONDS,
     isReplayable,
     NON_LOOPING_SECONDS,
     positionAt,
     reconcile,
+    teleportCells,
     trackFrom,
 } from './critterMotion';
 
@@ -54,6 +56,16 @@ function critter(overrides: Partial<ZoneCritterData> = {}): ZoneCritterData {
 }
 
 const at = (seconds: number): number => RECEIVED_AT + seconds * 1000;
+
+/** A critter standing still, as a track received at `RECEIVED_AT`. */
+function still(overrides: Partial<ZoneCritterData> = {}) {
+    return trackFrom(
+        critter({ moving: false, path: [], ...overrides }),
+        RECEIVED_AT,
+        gridWidth,
+        box,
+    );
+}
 
 describe('critter motion', () => {
     it('moves along the path at its speed', () => {
@@ -157,32 +169,143 @@ describe('critter motion', () => {
         });
     });
 
-    it('eases a small correction and jumps a large one', () => {
-        const next = trackFrom(
-            critter({ moving: false }),
+    it('travels a small gap in the minimum time', () => {
+        // Half a cell at 2 cells/s would take 0.25 s.
+        const next = still({ speed: 2 });
+        const travel = reconcile(
+            still({ x: 176, cell: cell(176, 221) }),
+            next,
+            RECEIVED_AT,
+        );
+
+        expect(positionAt(travel, at(0)).x).toBeCloseTo(176);
+        expect(positionAt(travel, at(EASE_SECONDS / 2)).x).toBeCloseTo(176.25);
+        expect(positionAt(travel, at(EASE_SECONDS)).x).toBeCloseTo(176.5);
+    });
+
+    it('travels to a far new position at its speed instead of jumping', () => {
+        const travel = reconcile(
+            still({ x: 172.5, cell: cell(172, 221) }),
+            still({ speed: 2 }),
+            RECEIVED_AT,
+        );
+
+        expect(positionAt(travel, at(0)).x).toBeCloseTo(172.5);
+        expect(positionAt(travel, at(1)).x).toBeCloseTo(174.5);
+        expect(positionAt(travel, at(2)).x).toBeCloseTo(176.5);
+        expect(positionAt(travel, at(60)).x).toBeCloseTo(176.5);
+    });
+
+    it('jumps beyond the teleport distance', () => {
+        // Speed 2 over a 5 s cadence: 15 cells.
+        const far = reconcile(
+            still({ x: 160.5, cell: cell(160, 221) }),
+            still({ speed: 2 }),
+            RECEIVED_AT,
+        );
+        // Speed 0.2 would give 1.5 cells: the floor of 6 applies.
+        const slow = reconcile(
+            still({ x: 169.5, cell: cell(169, 221) }),
+            still({ speed: 0.2 }),
+            RECEIVED_AT,
+        );
+
+        expect(teleportCells(2)).toBeCloseTo(15);
+        expect(teleportCells(0.2)).toBe(6);
+        expect(positionAt(far, at(0)).x).toBeCloseTo(176.5);
+        expect(positionAt(slow, at(0)).x).toBeCloseTo(176.5);
+    });
+
+    it('caps travel time at the cadence', () => {
+        // 4 cells at 0.5 cell/s would take 8 s: it arrives in 5.
+        const travel = reconcile(
+            still({ x: 172.5, cell: cell(172, 221) }),
+            still({ speed: 0.5 }),
+            RECEIVED_AT,
+        );
+
+        expect(positionAt(travel, at(CADENCE_SECONDS / 2)).x).toBeCloseTo(
+            174.5,
+        );
+        expect(positionAt(travel, at(CADENCE_SECONDS)).x).toBeCloseTo(176.5);
+    });
+
+    it('keeps facing on a vertical travel', () => {
+        const travel = reconcile(
+            still({ x: 176.42, y: 218, cell: cell(176, 218), facing: 'left' }),
+            still({ speed: 2, navType: 'Swim' }),
+            RECEIVED_AT,
+        );
+
+        const midway = positionAt(travel, at(0.5));
+        expect(midway.y).toBeCloseTo(219);
+        expect(midway.facing).toBe('left');
+        expect(positionAt(travel, at(60)).facing).toBe('left');
+    });
+
+    it('turns facing with the horizontal direction of travel', () => {
+        const travel = reconcile(
+            still({ x: 179.5, cell: cell(179, 221), facing: 'right' }),
+            still({ speed: 2 }),
+            RECEIVED_AT,
+        );
+
+        expect(positionAt(travel, at(0.5)).facing).toBe('left');
+    });
+
+    it('follows the previous path toward the new position', () => {
+        const before = trackFrom(
+            critter({
+                x: 173.5,
+                cell: cell(173, 221),
+                navType: 'Swim',
+                speed: 1,
+                path: [
+                    { cell: cell(174, 221), navType: 'Swim' },
+                    { cell: cell(174, 222), navType: 'Swim' },
+                    { cell: cell(174, 223), navType: 'Swim' },
+                ],
+            }),
             RECEIVED_AT,
             gridWidth,
             box,
         );
+        const travel = reconcile(
+            before,
+            still({ x: 174.5, y: 223, cell: cell(174, 223), speed: 2 }),
+            RECEIVED_AT,
+        );
 
-        const eased = reconcile({ x: 175.5, y: 221 }, next, RECEIVED_AT);
-        expect(positionAt(eased, at(0)).x).toBeCloseTo(175.5);
-        const midway = positionAt(eased, at(EASE_SECONDS / 2)).x;
-        expect(midway).toBeGreaterThan(175.5);
-        expect(midway).toBeLessThan(176.5);
-        expect(positionAt(eased, at(EASE_SECONDS)).x).toBeCloseTo(176.5);
-
-        const jumped = reconcile({ x: 170.5, y: 221 }, next, RECEIVED_AT);
-        expect(positionAt(jumped, at(0)).x).toBeCloseTo(176.5);
+        // Three cells along the L at 2 cells/s; the straight line would cut the corner.
+        expect(positionAt(travel, at(0.5))).toMatchObject({
+            x: 174.5,
+            y: 221,
+        });
+        expect(positionAt(travel, at(1)).y).toBeCloseTo(222);
+        expect(positionAt(travel, at(1.5))).toMatchObject({
+            x: 174.5,
+            y: 223,
+        });
     });
 
-    it('keeps moving while it eases', () => {
-        const next = trackFrom(critter(), RECEIVED_AT, gridWidth, box);
-        const eased = reconcile({ x: 176, y: 221 }, next, RECEIVED_AT);
-
-        expect(positionAt(eased, at(EASE_SECONDS)).x).toBeCloseTo(
-            176.5 + EASE_SECONDS,
+    it('walks the new path once it has arrived', () => {
+        const travel = reconcile(
+            still({ x: 175.5, cell: cell(175, 221) }),
+            trackFrom(critter({ speed: 2 }), RECEIVED_AT, gridWidth, box),
+            RECEIVED_AT,
         );
+
+        // One cell at 2 cells/s: arrives after 0.5 s, then walks on.
+        expect(positionAt(travel, at(0.5)).x).toBeCloseTo(176.5);
+        expect(positionAt(travel, at(1)).x).toBeCloseTo(177.5);
+        expect(positionAt(travel, at(60)).x).toBeCloseTo(178.5);
+    });
+
+    it('leaves a still critter with no gap where it is', () => {
+        const travel = reconcile(still(), still(), RECEIVED_AT);
+
+        expect(travel.path).toEqual([]);
+        expect(positionAt(travel, at(1)).x).toBeCloseTo(176.5);
     });
 
     it('keeps facing on a vertical step', () => {

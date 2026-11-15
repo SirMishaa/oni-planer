@@ -5,10 +5,12 @@ import { layerIndex } from './zoneMapGeometry';
 
 /** Seconds a non-looping step (jump, climb, drop, change of nav type) takes: the game plays an animation, it has no speed. Tune after measuring in game. */
 export const NON_LOOPING_SECONDS = 0.6;
-/** A new game position at most this many cells from the drawn one is eased into; farther, the critter jumps. */
-export const SNAP_CELLS = 2;
-/** Seconds the drawn position takes to catch up with a corrected game position. */
+/** Shortest travel (seconds) from the drawn position to a new game position, so a small gap still glides. */
 export const EASE_SECONDS = 0.4;
+/** Seconds between two fast states: the longest travel, so the drawn critter never lags more than one message. */
+export const CADENCE_SECONDS = 5;
+/** Smallest gap (cells) at which a critter jumps to its new game position instead of travelling. */
+export const MIN_TELEPORT_CELLS = 6;
 /** A fast state older than this when it arrives (paused game, page opened late) is drawn as sent, not replayed. */
 export const REPLAY_WINDOW_MS = 12_000;
 
@@ -42,18 +44,19 @@ export type MotionStep = {
 };
 
 /**
- * The replay of one critter from a fast state: from the sent position along
- * the path the game sent. `correction` is the gap to the previously drawn
- * position, eased out from `since` (ms).
+ * The replay of one critter from a fast state: from `from` along `path`.
+ * Built from a fast state alone, it starts at the sent position; once
+ * reconciled with the drawn critter, it starts where the critter is drawn and
+ * its path first travels to the sent position (`reconcile`).
  */
 export type MotionTrack = {
     instanceId: string;
     from: { x: number; y: number };
     facing: Facing;
+    navType: string;
     path: MotionStep[];
     speed: number;
     startedAt: number;
-    correction: { x: number; y: number; since: number } | null;
 };
 
 // endregion
@@ -112,10 +115,10 @@ export function trackFrom(
         instanceId: critter.instanceId,
         from: { x: critter.x, y: critter.y },
         facing: facingOf(critter),
+        navType: critter.navType,
         path: [],
         speed: critter.speed,
         startedAt: receivedAt,
-        correction: null,
     };
 
     if (!critter.moving || !(critter.speed > 0)) {
@@ -167,15 +170,9 @@ export function trackFrom(
     return track;
 }
 
-/** Fast at first, slow at the end: the correction settles in. */
-function easeOutCubic(t: number): number {
-    return 1 - (1 - t) ** 3;
-}
-
 /** Where the critter is drawn at `now` (ms), and which way it looks. */
 export function positionAt(track: MotionTrack, now: number): CritterPose {
     const elapsed = Math.max(0, (now - track.startedAt) / 1000);
-    let pose: CritterPose = { ...track.from, facing: track.facing };
     let start = { ...track.from, arrivesAfter: 0 };
 
     for (const step of track.path) {
@@ -183,66 +180,141 @@ export function positionAt(track: MotionTrack, now: number): CritterPose {
             const t =
                 (elapsed - start.arrivesAfter) /
                 (step.arrivesAfter - start.arrivesAfter);
-            pose = {
+
+            return {
                 x: start.x + (step.x - start.x) * t,
                 y: start.y + (step.y - start.y) * t,
                 facing: step.facing,
             };
-            start = step;
-            break;
         }
 
-        pose = { x: step.x, y: step.y, facing: step.facing };
         start = step;
     }
 
-    const correction = track.correction;
+    const last = track.path.at(-1);
 
-    if (correction) {
-        const t = (now - correction.since) / (EASE_SECONDS * 1000);
-        const remaining = t >= 1 ? 0 : 1 - easeOutCubic(Math.max(0, t));
-        pose.x += correction.x * remaining;
-        pose.y += correction.y * remaining;
-    }
-
-    return pose;
+    return last
+        ? { x: last.x, y: last.y, facing: last.facing }
+        : { ...track.from, facing: track.facing };
 }
 
-/** Time (ms) after which the track no longer moves: end of its path and of its easing. */
+/** Time (ms) after which the track no longer moves: the end of its path. */
 export function trackEndsAt(track: MotionTrack): number {
-    const walkEnd =
-        track.startedAt + (track.path.at(-1)?.arrivesAfter ?? 0) * 1000;
-    const easeEnd = track.correction
-        ? track.correction.since + EASE_SECONDS * 1000
-        : 0;
+    return track.startedAt + (track.path.at(-1)?.arrivesAfter ?? 0) * 1000;
+}
 
-    return Math.max(walkEnd, easeEnd);
+/** Gap (cells) beyond which a critter at `speed` (cells/s) jumps: farther than it could travel in one and a half messages. */
+export function teleportCells(speed: number): number {
+    return Math.max(
+        MIN_TELEPORT_CELLS,
+        (speed > 0 ? speed : 0) * CADENCE_SECONDS * 1.5,
+    );
 }
 
 /**
- * The new track, starting from the drawn position `previous` when the game
- * position is close (eased out over `EASE_SECONDS` while the track moves on),
- * or jumping to the game position when it is farther than `SNAP_CELLS`.
+ * Waypoints from the drawn position to `target`: the nodes the previous
+ * track has yet to reach, as long as each one comes closer to `target`, then
+ * `target` itself.
+ */
+function travelWaypoints(
+    before: MotionTrack,
+    drawn: { x: number; y: number },
+    target: { x: number; y: number },
+    now: number,
+): { x: number; y: number; navType: string }[] {
+    const elapsed = (now - before.startedAt) / 1000;
+    const distance = (point: { x: number; y: number }): number =>
+        Math.hypot(point.x - target.x, point.y - target.y);
+    const waypoints: { x: number; y: number; navType: string }[] = [];
+    let closest = distance(drawn);
+
+    for (const step of before.path) {
+        if (step.arrivesAfter <= elapsed) {
+            continue;
+        }
+
+        const remaining = distance(step);
+
+        if (remaining >= closest - EPSILON) {
+            break;
+        }
+
+        waypoints.push({ x: step.x, y: step.y, navType: step.navType });
+        closest = remaining;
+    }
+
+    if (closest > EPSILON) {
+        waypoints.push({ ...target, navType: '' });
+    }
+
+    return waypoints;
+}
+
+/**
+ * The new track `next`, reconciled at `now` with the critter as `before`
+ * draws it. The critter travels from where it is drawn to the new game
+ * position at its speed, in `EASE_SECONDS` at least and `CADENCE_SECONDS` at
+ * most, along the previous path while it leads there and straight
+ * otherwise; then it walks the new path. Its facing follows the columns it
+ * crosses, so a vertical travel keeps it. Beyond `teleportCells` it jumps to
+ * the game position, and with no gap it stays put.
  */
 export function reconcile(
-    previous: { x: number; y: number },
+    before: MotionTrack,
     next: MotionTrack,
     now: number,
 ): MotionTrack {
-    const target = positionAt({ ...next, correction: null }, now);
-    const gap = Math.hypot(previous.x - target.x, previous.y - target.y);
+    const drawn = positionAt(before, now);
+    const target = next.from;
+    const gap = Math.hypot(drawn.x - target.x, drawn.y - target.y);
 
-    if (gap > SNAP_CELLS || gap < EPSILON) {
-        return { ...next, correction: null };
+    if (gap < EPSILON || gap > teleportCells(next.speed)) {
+        return next;
+    }
+
+    const waypoints = travelWaypoints(before, drawn, target, now);
+    let length = 0;
+    let previous: { x: number; y: number } = drawn;
+
+    for (const point of waypoints) {
+        length += Math.hypot(point.x - previous.x, point.y - previous.y);
+        previous = point;
+    }
+
+    const seconds = Math.min(
+        CADENCE_SECONDS,
+        Math.max(EASE_SECONDS, next.speed > 0 ? length / next.speed : Infinity),
+    );
+    const travel: MotionStep[] = [];
+    let facing = drawn.facing;
+    let travelled = 0;
+    previous = drawn;
+
+    for (const point of waypoints) {
+        travelled += Math.hypot(point.x - previous.x, point.y - previous.y);
+        const columnStep = Math.floor(point.x) - Math.floor(previous.x);
+        facing = columnStep > 0 ? 'right' : columnStep < 0 ? 'left' : facing;
+        travel.push({
+            x: point.x,
+            y: point.y,
+            navType: point.navType || next.navType,
+            arrivesAfter: length > 0 ? (travelled / length) * seconds : seconds,
+            facing,
+        });
+        previous = point;
     }
 
     return {
         ...next,
-        correction: {
-            x: previous.x - target.x,
-            y: previous.y - target.y,
-            since: now,
-        },
+        from: { x: drawn.x, y: drawn.y },
+        facing: drawn.facing,
+        path: [
+            ...travel,
+            ...next.path.map((step) => ({
+                ...step,
+                arrivesAfter: step.arrivesAfter + seconds,
+            })),
+        ],
     };
 }
 
@@ -255,8 +327,8 @@ export function isReplayable(sentAt: string | null, nowMs: number): boolean {
 
 /**
  * Tracks of a new fast state received at `receivedAt`. A critter already
- * replayed starts from where it is drawn (`reconcile`); the others start
- * where the game saw them. Only the critters of the new state are kept, so a
+ * replayed travels from where it is drawn to its new position (`reconcile`);
+ * a critter just seen starts where the game saw it. Only the critters of the new state are kept, so a
  * new session (every instance id changed) starts over. Without `replay`
  * (reduced motion, stale state), every critter stands where it was sent.
  */
@@ -281,9 +353,7 @@ export function buildTracks(
         const before = previous.get(critter.instanceId);
         tracks.set(
             critter.instanceId,
-            before
-                ? reconcile(positionAt(before, receivedAt), track, receivedAt)
-                : track,
+            before ? reconcile(before, track, receivedAt) : track,
         );
     }
 
