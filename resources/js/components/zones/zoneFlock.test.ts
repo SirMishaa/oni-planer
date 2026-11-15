@@ -122,6 +122,14 @@ describe('alerts', () => {
         expect(individualAlerts(group, starving)).toEqual(['Affamé']);
         expect(individualAlerts(group, group.critters[0])).toEqual([]);
     });
+
+    it('a lone critter has individual alerts, never group ones', () => {
+        const lone = critter({ statuses: [hungry] });
+        const [group] = groupFlock([lone]);
+
+        expect(isGroupAlert(group, 'Affamé')).toBe(false);
+        expect(individualAlerts(group, lone)).toEqual(['Affamé']);
+    });
 });
 
 describe('sortByMetric', () => {

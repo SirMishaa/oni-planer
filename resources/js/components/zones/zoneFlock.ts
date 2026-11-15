@@ -108,11 +108,18 @@ export function entitySpriteKind(
 
 // region Alerts
 
-/** A bad status carried by every critter of the group: shown once on the band, never on each vignette. */
+/**
+ * A bad status carried by every critter of a group of two or more: shown once on the band, never on each
+ * vignette. A lone critter's statuses stay individual, like its problem in the zone problems.
+ */
 export function isGroupAlert(group: FlockGroup, statusName: string): boolean {
-    return group.groupAlerts.some(
-        (alert) =>
-            alert.name === statusName && alert.count === group.critters.length,
+    return (
+        group.critters.length > 1 &&
+        group.groupAlerts.some(
+            (alert) =>
+                alert.name === statusName &&
+                alert.count === group.critters.length,
+        )
     );
 }
 
@@ -241,7 +248,10 @@ export function ageRange(
         : { min: Math.min(...ages), max: Math.max(...ages) };
 }
 
-/** Fertility is frozen (×−1) in a cramped or confined region: the critter keeps its value but lays no egg. */
+/**
+ * Laying stops in a cramped or confined region: the critter keeps its fertility value, but the game holds it
+ * infertile (`FertilityMonitor.IsFertile`), a hard stop, as in `CritterFeeding::fertilityRatio`.
+ */
 export function fertilityFrozen(
     critter: Pick<ZoneCritterData, 'regionId'>,
     population: ZonePopulationData[] | null,
