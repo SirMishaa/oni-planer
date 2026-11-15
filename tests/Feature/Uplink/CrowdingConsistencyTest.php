@@ -118,6 +118,23 @@ it('skips a region with an unknown prefab and logs it', function (): void {
     ))->once();
 });
 
+it('logs a skipped region once while its unknown prefabs stay the same', function (): void {
+    Log::spy();
+    $zone = crowdedZone(prefab: 'Mystery');
+
+    checkCrowding();
+    checkCrowding();
+
+    Log::shouldHaveReceived('warning')->with('crowding check skipped, unknown prefab', Mockery::type('array'))->once();
+
+    $states = $zone->fast_state;
+    $states['crowding'][0]['counts']['Shadow'] = 1;
+    $zone->update(['fast_state' => $states]);
+    checkCrowding();
+
+    Log::shouldHaveReceived('warning')->with('crowding check skipped, unknown prefab', Mockery::type('array'))->twice();
+});
+
 it('ignores slow states', function (): void {
     $zone = crowdedZone(['occupied' => 96]);
 

@@ -9,6 +9,7 @@ use App\Models\Zone;
 use App\Services\Critters\OccupancyInputBuilder;
 use App\Services\GameRules\Critters\Overcrowding;
 use App\Services\Zones\ZoneCritterState;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -20,10 +21,14 @@ use Illuminate\Support\Facades\Log;
  * `eggOccupied` depend on the egg list and are never compared. `confined` is compared one way only: a mismatch
  * is the game saying confined while the planner does not, because the planner cannot know the confinement
  * immunity of a burrowed or digger species. A mismatch is logged and stored only when the set of mismatches
- * (ignoring `at`) changes, so a persisting one keeps its first `at`.
+ * (ignoring `at`) changes, so a persisting one keeps its first `at`. A region skipped for an unknown prefab is
+ * logged once per set of unknown prefabs, then again after {@see self::SKIP_LOG_TTL_SECONDS}.
  */
 final class CheckCrowdingConsistency
 {
+    /** How long a logged skip stays quiet while its unknown prefabs do not change. */
+    private const int SKIP_LOG_TTL_SECONDS = 3600;
+
     public function __construct(
         private readonly OccupancyInputBuilder $builder,
         private readonly Overcrowding $overcrowding,
@@ -38,7 +43,7 @@ final class CheckCrowdingConsistency
         $zone = Zone::query()
             ->where('colony_guid', $event->colonyGuid)
             ->where('zone_guid', $event->zoneGuid)
-            ->first();
+            ->first(['id', 'zone_guid', 'fast_state', 'slow_state', 'crowding_mismatches']);
 
         $regions = $zone instanceof Zone ? ZoneCritterState::regions($zone) : null;
         if ($regions === null) {
@@ -52,11 +57,7 @@ final class CheckCrowdingConsistency
         foreach ($regions as $region) {
             $input = $this->builder->forRegion($region, $eggs);
             if ($input === null) {
-                Log::warning('crowding check skipped, unknown prefab', [
-                    'zone' => $zone->zone_guid,
-                    'regionId' => $region->id,
-                    'prefabs' => $this->builder->unknownPrefabs(),
-                ]);
+                $this->logSkip($zone->zone_guid, $region->id, $this->builder->unknownPrefabs());
 
                 continue;
             }
@@ -93,6 +94,22 @@ final class CheckCrowdingConsistency
         }
 
         $zone->forceFill(['crowding_mismatches' => $mismatches === [] ? null : $mismatches])->saveQuietly();
+    }
+
+    /**
+     * Logs a skipped region only when its set of unknown prefabs is new: the fast state comes every few seconds.
+     *
+     * @param  list<string>  $prefabs
+     */
+    private function logSkip(string $zoneGuid, string $regionId, array $prefabs): void
+    {
+        sort($prefabs);
+        $key = 'crowding-skip:'.$zoneGuid.':'.$regionId.':'.md5(implode(',', $prefabs));
+        if (! Cache::add($key, true, self::SKIP_LOG_TTL_SECONDS)) {
+            return;
+        }
+
+        Log::warning('crowding check skipped, unknown prefab', ['zone' => $zoneGuid, 'regionId' => $regionId, 'prefabs' => $prefabs]);
     }
 
     /**
