@@ -34,15 +34,14 @@ final class ZonePopulation
      */
     public function forZone(Zone $zone): ?array
     {
-        $critters = ZoneCritterState::critters($zone);
         $regions = ZoneCritterState::regions($zone);
-        if ($critters === null || $regions === null) {
+        if (! is_array($zone->fast_state['critters'] ?? null) || $regions === null) {
             return null;
         }
 
-        return array_map(function (ZoneCrowdingRegionData $region) use ($critters): ZonePopulationData {
+        return array_map(function (ZoneCrowdingRegionData $region): ZonePopulationData {
             $states = array_values($region->states);
-            $input = $this->builder->forRegion($region, $critters, []);
+            $input = $this->builder->forRegion($region, []);
             $perType = [];
             if ($input !== null) {
                 $hatching = $region->eggOccupied > 0 ? [new OccupantData('', $region->eggOccupied, $input->isPond, false)] : [];

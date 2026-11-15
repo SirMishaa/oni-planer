@@ -6,7 +6,6 @@ namespace App\Services\Critters;
 
 use App\Data\GameRules\OccupancyInputData;
 use App\Data\GameRules\OccupantData;
-use App\Data\ZoneCritterData;
 use App\Data\ZoneCrowdingRegionData;
 use App\Data\ZoneEggData;
 use App\Models\CritterMorph;
@@ -27,28 +26,29 @@ final class OccupancyInputBuilder
     /**
      * Null when a prefab of the region has no morph: the planner cannot judge a region it does not know.
      *
-     * @param  list<ZoneCritterData>  $critters  every critter of the zone; only those of the region are kept
+     * The critters come from the region's `counts`, which the game fills over the whole cavity or pond
+     * (`Occupancy.CritterCounts`), never from the zone's critter list: a region can extend past the zone.
+     *
      * @param  list<ZoneEggData>  $eggs  every egg of the zone; only those of the region are kept
      */
-    public function forRegion(ZoneCrowdingRegionData $region, array $critters, array $eggs): ?OccupancyInputData
+    public function forRegion(ZoneCrowdingRegionData $region, array $eggs): ?OccupancyInputData
     {
         $this->unknown = [];
         $isPond = $region->kind === 'pond';
 
         $occupants = [];
-        foreach ($critters as $critter) {
-            if ($critter->regionId !== $region->id) {
-                continue;
-            }
-
-            $space = $this->personalSpace($critter->prefabId);
+        foreach ($region->counts as $prefabId => $count) {
+            $prefabId = (string) $prefabId;
+            $space = $this->personalSpace($prefabId);
             if ($space === null) {
-                $this->markUnknown($critter->prefabId);
+                $this->markUnknown($prefabId);
 
                 continue;
             }
 
-            $occupants[] = new OccupantData($critter->prefabId, $space, $critter->aquatic, false);
+            for ($index = 0; $index < $count; $index++) {
+                $occupants[] = new OccupantData($prefabId, $space, $isPond, false);
+            }
         }
 
         $hatching = [];

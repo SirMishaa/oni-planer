@@ -45,13 +45,12 @@ final class CheckCrowdingConsistency
             return;
         }
 
-        $critters = ZoneCritterState::critters($zone) ?? [];
         $eggs = ZoneCritterState::eggs($zone) ?? [];
         $at = now()->toIso8601String();
 
         $mismatches = [];
         foreach ($regions as $region) {
-            $input = $this->builder->forRegion($region, $critters, $eggs);
+            $input = $this->builder->forRegion($region, $eggs);
             if ($input === null) {
                 Log::warning('crowding check skipped, unknown prefab', [
                     'zone' => $zone->zone_guid,

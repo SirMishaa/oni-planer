@@ -58,6 +58,18 @@ it('records nothing when the planner agrees with the game', function (): void {
     expect($zone->fresh()->crowding_mismatches)->toBeNull();
 });
 
+it('judges the whole pond from its counts when only part of it is in the zone', function (): void {
+    $zone = crowdedZone([
+        'occupied' => 160, 'eggOccupied' => 0, 'counts' => ['Pacu' => 20],
+        'states' => ['Pacu' => ['overcrowded' => true, 'cramped' => false, 'confined' => false, 'modifier' => -7]],
+    ]);
+    $zone->update(['fast_state' => [...$zone->fast_state, 'critters' => array_slice($zone->fast_state['critters'], 0, 5)]]);
+
+    checkCrowding();
+
+    expect($zone->fresh()->crowding_mismatches)->toBeNull();
+});
+
 it('records a mismatch when occupied differs', function (): void {
     Log::spy();
     $zone = crowdedZone(['occupied' => 96]);

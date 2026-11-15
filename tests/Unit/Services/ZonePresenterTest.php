@@ -612,6 +612,25 @@ it('presents one population block per crowding region with the derived removal',
         ->and($population[0]->perType[0]->toArray())->toMatchArray(['prefabId' => 'Pacu', 'toRemove' => 1, 'derived' => true]);
 });
 
+it('removes from every critter of the pond, including those outside the zone', function (): void {
+    $zone = populatedPond([
+        'critters' => array_map(fn (int $index): array => [
+            'instanceId' => (string) (1200 + $index), 'prefabId' => 'Pacu', 'cell' => 100 + $index, 'x' => 1.0, 'y' => 1.0,
+            'aquatic' => true, 'regionId' => 'pond:1201',
+        ], range(1, 5)),
+        'crowding' => [[
+            'id' => 'pond:1201', 'kind' => 'pond', 'cellCount' => 104, 'occupied' => 160, 'eggOccupied' => 0,
+            'counts' => ['Pacu' => 20],
+            'states' => ['Pacu' => ['overcrowded' => true, 'cramped' => false, 'confined' => false, 'modifier' => -7]],
+        ]],
+    ]);
+
+    $block = app(ZonePresenter::class)->present($zone)->population[0];
+
+    expect($block->perType)->toHaveCount(1)
+        ->and($block->perType[0]->toArray())->toMatchArray(['prefabId' => 'Pacu', 'count' => 20, 'toRemove' => 7, 'canFix' => true, 'derived' => false]);
+});
+
 it('takes the egg space of the population from the game, not from the lagging egg list', function (): void {
     $zone = populatedPond();
     $zone->update(['slow_state' => [...$zone->slow_state, 'eggs' => []]]);

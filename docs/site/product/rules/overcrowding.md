@@ -44,6 +44,8 @@ Pour une espèce, le nombre à retirer est le dépassement divisé par son espac
 
 Si retirer cette espèce seule ne suffit pas, la ligne montre tout de même le maximum possible.
 
+Le calcul compte tous les critters de la pièce ou du bassin, y compris ceux qui se trouvent hors de la zone.
+
 </Accordion>
 
 <Accordion title="Jeu ou dérivé">
