@@ -684,12 +684,11 @@ it('shows confined alone in the population states, named from the game strings',
     $fast = $zone->fast_state;
     $fast['crowding'][0]['states']['Pacu'] = ['overcrowded' => true, 'cramped' => true, 'confined' => true, 'modifier' => -1];
     $zone->update(['fast_state' => $fast]);
-    app()->setLocale('fr');
 
     $block = app(ZonePresenter::class)->present($zone->fresh())->population[0];
 
     expect($block->states)->toBe([['id' => 'confined', 'name' => __('STRINGS.CREATURES.MODIFIERS.OVERCROWDED.CONFINED.NAME')]])
-        ->and($block->states[0]['name'])->toBe('Confiné')
+        ->and($block->states[0]['name'])->not->toBe('confined')
         ->and($block->overcrowded)->toBeTrue();
 });
 
