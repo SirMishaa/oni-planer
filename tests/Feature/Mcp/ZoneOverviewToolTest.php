@@ -121,5 +121,5 @@ it('lists the critter alerts among the problems', function (): void {
 
     OniServer::tool(ZoneOverviewTool::class, ['zone' => 'Ranch'])
         ->assertOk()
-        ->assertSee('critter group 1 Hatch ·');
+        ->assertSee('critter Hatch: ');
 });

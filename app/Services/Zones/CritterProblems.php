@@ -13,7 +13,7 @@ use App\Services\Critters\CritterStatusText;
 /**
  * The critter alerts of a zone, as problems: one per crowded region (it carries the Cramped,
  * Overcrowded and Confined statuses and the removal), one per bad status shared by a whole flock
- * band (38 cramped Pacus are one problem, not 38) and one per critter with an alert of its own.
+ * band of several critters (38 cramped Pacus are one problem, not 38) and one per critter with an alert of its own.
  */
 final class CritterProblems
 {
@@ -41,7 +41,7 @@ final class CritterProblems
         $groupProblems = [];
         $critterProblems = [];
         foreach ($groups as $key => $members) {
-            $shared = self::sharedStatuses($members);
+            $shared = count($members) > 1 ? self::sharedStatuses($members) : [];
             foreach ($shared as $status) {
                 $groupProblems[] = self::groupProblem($key, $members, $status);
             }

@@ -92,3 +92,12 @@ it('raises one problem per crowded region and does not repeat its status on crit
 it('does not raise anything for a healthy zone', function (): void {
     expect(CritterProblems::of([problemCritter('1'), problemCritter('2')], [crowdedRegion(cramped: false)]))->toBe([]);
 });
+
+it('raises a critter problem, not a group problem, for a lone critter', function (): void {
+    $problems = CritterProblems::of([problemCritter('1', [badStatus('Starving', 'Starving')])], []);
+
+    expect($problems)->toHaveCount(1)
+        ->and($problems[0]->kind)->toBe('critter')
+        ->and($problems[0]->instanceId)->toBe('1')
+        ->and([$problems[0]->x, $problems[0]->y])->toBe([12, 30]);
+});

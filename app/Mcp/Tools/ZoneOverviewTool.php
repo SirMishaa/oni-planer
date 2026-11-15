@@ -6,6 +6,7 @@ namespace App\Mcp\Tools;
 
 use App\Data\GameRules\CritterOverOccupancyData;
 use App\Data\ZoneCritterData;
+use App\Data\ZonePopulationData;
 use App\Mcp\Tools\Concerns\ResolvesZone;
 use App\Models\Colony;
 use App\Models\Element;
@@ -45,6 +46,7 @@ final class ZoneOverviewTool extends Tool
         }
         [$colony, $zone] = $resolved;
 
+        $regions = $population->forZone($zone);
         $lines = [
             McpHeader::line($colony, $zone),
             '',
@@ -57,11 +59,11 @@ final class ZoneOverviewTool extends Tool
             '',
             ...$this->critters($zone, $colony, $text),
             '',
-            ...$this->population($zone, $population),
+            ...$this->population($regions),
             '',
             ...$this->elements($zone, $text),
             '',
-            ...$this->problems($zone),
+            ...$this->problems($zone, $regions),
             '',
             sprintf('More: zone_map for positions · %d captures (zone_captures) · app page %s', $zone->captures()->count(), route('zones.show', $zone)),
         ];
@@ -282,11 +284,11 @@ final class ZoneOverviewTool extends Tool
     /**
      * The game's crowding verdict of each cavity and pond, with the planner's removal count.
      *
+     * @param  list<ZonePopulationData>|null  $regions
      * @return list<string>
      */
-    private function population(Zone $zone, ZonePopulation $population): array
+    private function population(?array $regions): array
     {
-        $regions = $population->forZone($zone);
         if ($regions === null) {
             return ['Population: unavailable'];
         }
@@ -340,8 +342,11 @@ final class ZoneOverviewTool extends Tool
         return $lines;
     }
 
-    /** @return list<string> */
-    private function problems(Zone $zone): array
+    /**
+     * @param  list<ZonePopulationData>|null  $regions
+     * @return list<string>
+     */
+    private function problems(Zone $zone, ?array $regions): array
     {
         $summary = ZoneProblems::summary($zone);
         if ($summary['count'] === null) {
@@ -362,7 +367,7 @@ final class ZoneOverviewTool extends Tool
         }
 
         $critters = ZoneCritterState::critters($zone);
-        foreach ($critters === null ? [] : CritterProblems::of($critters, app(ZonePopulation::class)->forZone($zone) ?? []) as $problem) {
+        foreach ($critters === null ? [] : CritterProblems::of($critters, $regions ?? []) as $problem) {
             $lines[] = sprintf(' %s %s: %s', str_replace('_', ' ', $problem->kind), $problem->name, implode('; ', $problem->problems));
         }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Services\Critters\OccupancyInputBuilder;
 use App\Services\GameText;
 use Illuminate\Foundation\DevCommands;
 use Illuminate\Support\ServiceProvider;
@@ -13,6 +14,7 @@ final class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(GameText::class);
+        $this->app->scoped(OccupancyInputBuilder::class);
     }
 
     public function boot(): void

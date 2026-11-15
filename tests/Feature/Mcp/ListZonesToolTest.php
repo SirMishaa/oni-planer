@@ -10,6 +10,7 @@ use App\Models\Critter;
 use App\Models\CritterMorph;
 use App\Models\Zone;
 use App\Services\Mcp\McpZones;
+use Illuminate\Support\Facades\DB;
 
 it('lists active zones with size, age and problems', function (): void {
     $colony = Colony::factory()->create();
@@ -78,4 +79,35 @@ it('counts critter problems in the zone list summary', function (): void {
         ->assertOk()
         ->assertSee('Pacu pond')
         ->assertSee('problems 1');
+});
+
+it('reads the species data once however many zones share it', function (): void {
+    CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => 'Pacu', 'overcrowding_threshold' => 8]);
+    $colony = Colony::factory()->create();
+    $makeZone = fn (string $name): Zone => Zone::factory()->create(['colony_guid' => $colony->guid, 'name' => $name, 'fast_state' => [
+        'schema' => 1,
+        'critters' => [['instanceId' => '1', 'prefabId' => 'Pacu', 'cell' => 100, 'x' => 1.0, 'y' => 1.0, 'aquatic' => true, 'regionId' => 'pond:1']],
+        'crowding' => [[
+            'id' => 'pond:1', 'kind' => 'pond', 'cellCount' => 104, 'occupied' => 8, 'eggOccupied' => 0,
+            'counts' => ['Pacu' => 1],
+            'states' => ['Pacu' => ['overcrowded' => false, 'cramped' => false, 'confined' => false, 'modifier' => 0]],
+        ]],
+    ]]);
+    $morphQueries = function (): int {
+        $count = 0;
+        DB::listen(function ($query) use (&$count): void {
+            $count += str_contains($query->sql, 'critter_morphs') ? 1 : 0;
+        });
+        app()->forgetScopedInstances();
+        OniServer::tool(ListZonesTool::class)->assertOk();
+
+        return $count;
+    };
+
+    $makeZone('One');
+    $single = $morphQueries();
+    $makeZone('Two');
+    $makeZone('Three');
+
+    expect($morphQueries())->toBe($single);
 });

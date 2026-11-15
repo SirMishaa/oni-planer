@@ -91,7 +91,7 @@ final class ZoneProblems
             return ['count' => null, 'partial' => false];
         }
 
-        $critterProblems = $critters === null ? 0 : count(CritterProblems::of($critters, app(ZonePopulation::class)->forZone($zone) ?? []));
+        $critterProblems = $critters === null ? 0 : count(CritterProblems::of($critters, self::population($zone)));
 
         $withProblems = count(array_filter($plants ?? [], fn (array $plant): bool => self::forPlant($plant) !== []))
             + count(array_filter($buildings ?? [], fn (array $building): bool => self::forBuilding($building) !== []));
@@ -153,6 +153,20 @@ final class ZoneProblems
         }
 
         return $problems;
+    }
+
+    /**
+     * The crowding of the zone's regions; none (and no analysis) when the game sent no crowding section.
+     *
+     * @return list<\App\Data\ZonePopulationData>
+     */
+    private static function population(Zone $zone): array
+    {
+        if (($zone->fast_state['crowding'] ?? []) === []) {
+            return [];
+        }
+
+        return app(ZonePopulation::class)->forZone($zone) ?? [];
     }
 
     /**
