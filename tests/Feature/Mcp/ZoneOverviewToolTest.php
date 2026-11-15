@@ -123,3 +123,44 @@ it('lists the critter alerts among the problems', function (): void {
         ->assertOk()
         ->assertSee('critter Hatch: ');
 });
+
+it('prints feeding per group', function (): void {
+    $morph = CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => 'Pacu', 'overcrowding_threshold' => 8]);
+    App\Models\CritterMorphDiet::factory()->create(['critter_morph_id' => $morph->id, 'consumed_element_id' => 'Algae', 'amount_per_cycle' => 7.5, 'produced_element_id' => 'ToxicSand', 'conversion_ratio' => 0.5, 'food_kind' => 'item']);
+    App\Models\CritterMorphOutput::factory()->create(['critter_morph_id' => $morph->id, 'element_id' => 'PacuEgg', 'amount_per_cycle' => 0.05, 'output_type' => 'egg']);
+    $colony = Colony::factory()->create();
+    Zone::factory()->sodicaneFarm()->create(['colony_guid' => $colony->guid, 'name' => 'Pond', 'fast_state' => [
+        'schema' => 1,
+        'critters' => array_map(fn (int $index): array => [
+            'instanceId' => (string) (1200 + $index), 'prefabId' => 'Pacu', 'cell' => 100 + $index, 'x' => 1.0, 'y' => 1.0, 'tame' => true,
+        ], range(1, 38)),
+        'buildings' => [['instanceId' => '9001', 'prefabId' => 'CreatureFeeder', 'storage' => [['id' => 'Algae', 'mass' => 456.0]]]],
+    ]]);
+
+    OniServer::tool(ZoneOverviewTool::class, ['zone' => 'Pond'])
+        ->assertOk()
+        ->assertSee('Feeding:')
+        ->assertSee('Pacu:adult ×38 · eats Algae 285 kg/cycle · stock 456 kg · lasts 1.6 cycles (derived) · produces ToxicSand 142.5 kg/cycle, PacuEgg 1.9 eggs/cycle');
+});
+
+it('prints the deficit and the grazed plants of a feeding group', function (): void {
+    $pacu = CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => 'Pacu']);
+    App\Models\CritterMorphDiet::factory()->create(['critter_morph_id' => $pacu->id, 'consumed_element_id' => 'Algae', 'amount_per_cycle' => 7.5, 'produced_element_id' => null, 'conversion_ratio' => null, 'food_kind' => 'item']);
+    $drecko = CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => 'Drecko']);
+    App\Models\CritterMorphDiet::factory()->create(['critter_morph_id' => $drecko->id, 'consumed_element_id' => 'SpiceVine', 'amount_per_cycle' => 0.75, 'produced_element_id' => null, 'conversion_ratio' => null, 'food_kind' => 'plant']);
+    $colony = Colony::factory()->create();
+    Zone::factory()->sodicaneFarm()->create(['colony_guid' => $colony->guid, 'name' => 'Ranch', 'fast_state' => [
+        'schema' => 1,
+        'critters' => [
+            ['instanceId' => '1', 'prefabId' => 'Pacu', 'cell' => 100, 'x' => 1.0, 'y' => 1.0, 'tame' => true],
+            ['instanceId' => '2', 'prefabId' => 'Drecko', 'cell' => 100, 'x' => 1.0, 'y' => 1.0, 'tame' => true],
+        ],
+        'plants' => [['id' => 'SpiceVine', 'instanceId' => '4001']],
+        'buildings' => [],
+    ]]);
+
+    OniServer::tool(ZoneOverviewTool::class, ['zone' => 'Ranch'])
+        ->assertOk()
+        ->assertSee('Pacu:adult ×1 · eats Algae 7.5 kg/cycle · stock 0 kg · missing 7.5 kg/cycle (derived)')
+        ->assertSee('Drecko:adult ×1 · grazes SpiceVine (1 in the zone)');
+});

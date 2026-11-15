@@ -5,14 +5,19 @@ import { useFormat } from '@/composables/useFormat';
 import { useT } from '@/composables/useT';
 import type {
     ZoneCritterData,
+    ZoneFeedingData,
+    ZoneFeedingLineData,
     ZonePopulationData,
 } from '@/types/App/Data/data.d';
 import ZoneCritterSheet from './ZoneCritterSheet.vue';
 import {
     FLOCK_METRICS,
+    amountDigits,
     bandId,
     ageRange,
     defaultMetric,
+    feedingChip,
+    feedingFoods,
     fertilityFrozen,
     groupFlock,
     happinessCounts,
@@ -28,6 +33,8 @@ import type { FlockGroup, FlockMetric } from './zoneFlock';
 const props = defineProps<{
     critters: ZoneCritterData[];
     population: ZonePopulationData[] | null;
+    /** What each band eats and how long its stock lasts (derived), by group key. */
+    feeding: ZoneFeedingData[] | null;
     selectedId: string | null;
 }>();
 
@@ -110,6 +117,117 @@ function leave(critter: ZoneCritterData): void {
 
 function stomachMedian(group: FlockGroup): number | null {
     return median(group.critters.map((critter) => critter.caloriesRatio));
+}
+
+// endregion
+
+// region Feeding
+
+const feedingByKey = computed(
+    () =>
+        new Map(
+            (props.feeding ?? []).map((feeding) => [feeding.groupKey, feeding]),
+        ),
+);
+
+/** The band's feeding as a list of zero or one, for a `v-for` that names it. */
+function feedingOf(group: FlockGroup): ZoneFeedingData[] {
+    const feeding = feedingByKey.value.get(group.key);
+
+    return feeding === undefined ? [] : [feeding];
+}
+
+function amount(value: number): string {
+    return format.number(value, amountDigits(value));
+}
+
+/** The value as shown, so the plural agrees with it (1,96 shows as 2). */
+function shown(value: number, digits: number): number {
+    return Number(value.toFixed(digits));
+}
+
+/** "Épicier (12 dans la zone)", the count left out when the zone's plants were not read. */
+function grazedLabel(food: ZoneFeedingLineData): string {
+    return food.inZone === null
+        ? food.name
+        : `${food.name} (${t('zones.flock.feeding.in_zone', { count: format.number(food.inZone) })})`;
+}
+
+/** "Varech, Grès, +74 autres": the other item foods, then the count of foods not sent; null when there are none. */
+function alternativesLabel(feeding: ZoneFeedingData): string | null {
+    const names = feedingFoods(feeding)
+        .items.slice(1)
+        .map((food) => food.name);
+
+    if (feeding.otherFoods > 0) {
+        names.push(tc('zones.flock.feeding.other_foods', feeding.otherFoods));
+    }
+
+    return names.length === 0 ? null : names.join(', ');
+}
+
+/** The plants grazed and the prey hunted; alternatives to the item foods when the band also eats items. */
+function grazing(
+    feeding: ZoneFeedingData,
+): { verb: string; names: string; alternative: boolean }[] {
+    const foods = feedingFoods(feeding);
+    const alternative = foods.items.length > 0;
+    const prefix = alternative ? 'or_' : '';
+
+    const parts = [
+        { verb: `${prefix}grazes`, lines: foods.plants },
+        { verb: `${prefix}hunts`, lines: foods.prey },
+    ]
+        .filter((part) => part.lines.length > 0)
+        .map((part) => ({
+            verb: part.verb,
+            names: part.lines.map(grazedLabel).join(', '),
+            alternative,
+        }));
+    const last = parts[parts.length - 1];
+
+    // Without an item line, the foods not sent are counted here.
+    if (!alternative && last !== undefined && feeding.otherFoods > 0) {
+        last.names += `, ${tc('zones.flock.feeding.other_foods', feeding.otherFoods)}`;
+    }
+
+    return parts;
+}
+
+function producedLabel(line: ZoneFeedingLineData): string {
+    return line.kind === 'egg'
+        ? tc(
+              'zones.flock.feeding.eggs_per_cycle',
+              shown(line.perCycle, amountDigits(line.perCycle)),
+              {
+                  value: amount(line.perCycle),
+              },
+          )
+        : t('zones.flock.feeding.kg_per_cycle', {
+              value: amount(line.perCycle),
+          });
+}
+
+function chipLabel(feeding: ZoneFeedingData): string | null {
+    const chip = feedingChip(feeding);
+
+    if (chip === null) {
+        return null;
+    }
+
+    return chip.kind === 'missing'
+        ? t('zones.flock.feeding.missing', { value: amount(chip.kgPerCycle) })
+        : tc('zones.flock.feeding.stock', shown(chip.cycles, 1), {
+              value: format.number(chip.cycles, 1),
+          });
+}
+
+function chipTone(feeding: ZoneFeedingData): string {
+    const chip = feedingChip(feeding);
+
+    return chip?.kind === 'stock'
+        ? `zone-chip--${chip.tone}`
+        : 'zone-chip--bad';
 }
 
 // endregion
@@ -234,6 +352,59 @@ function stomachMedian(group: FlockGroup): number | null {
                         max: format.number(ageRange(group.critters)!.max),
                     })
                 }}</span>
+            </p>
+            <!-- endregion -->
+
+            <!-- region Feeding -->
+            <p
+                v-for="feeding in feedingOf(group)"
+                :key="feeding.groupKey"
+                class="zone-band__facts zone-band__feeding"
+            >
+                <span
+                    v-for="food in feedingFoods(feeding).items.slice(0, 1)"
+                    :key="food.resource"
+                    >{{ t('zones.flock.feeding.eats') }}
+                    <b>{{ food.name }}</b>
+                    {{
+                        t('zones.flock.feeding.kg_per_cycle', {
+                            value: amount(food.perCycle),
+                        })
+                    }}<span
+                        v-if="alternativesLabel(feeding)"
+                        class="zone-band__alt"
+                    >
+                        ({{ t('zones.flock.feeding.or') }}
+                        {{ alternativesLabel(feeding) }})</span
+                    ></span
+                >
+                <span
+                    v-for="part in grazing(feeding)"
+                    :key="part.verb"
+                    :class="{ 'zone-band__alt': part.alternative }"
+                    >{{ t(`zones.flock.feeding.${part.verb}`) }}
+                    <b>{{ part.names }}</b></span
+                >
+                <span v-if="feeding.produces.length > 0"
+                    >{{ t('zones.flock.feeding.produces') }}
+                    <template
+                        v-for="(line, index) in feeding.produces"
+                        :key="line.resource"
+                        ><template v-if="index > 0">, </template
+                        ><b>{{ line.name }}</b>
+                        {{ producedLabel(line) }}</template
+                    ></span
+                >
+                <span v-if="chipLabel(feeding)" class="zone-band__balance"
+                    ><span class="zone-chip" :class="chipTone(feeding)">{{
+                        chipLabel(feeding)
+                    }}</span
+                    ><small
+                        class="zone-band__derived"
+                        :title="t('zones.flock.feeding.derived_hint')"
+                        >{{ t('zones.flock.feeding.derived') }}</small
+                    ></span
+                >
             </p>
             <!-- endregion -->
 
@@ -432,6 +603,42 @@ function stomachMedian(group: FlockGroup): number | null {
 
 .zone-band__sheet {
     margin-top: 12px;
+}
+/* endregion */
+
+/* region Feeding */
+.zone-band__feeding {
+    margin-top: 6px;
+}
+
+.zone-band__alt {
+    color: var(--text-3);
+}
+
+.zone-band__balance {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.zone-chip--ok {
+    background: oklch(28% 0.06 158);
+    color: var(--ok);
+}
+
+.zone-chip--warn {
+    background: oklch(28% 0.06 62);
+    color: var(--warn);
+}
+
+.zone-band__derived {
+    padding: 1px 4px;
+    border: 1px solid var(--ink-3);
+    border-radius: 3px;
+    color: var(--text-3);
+    font-family: var(--font-figure);
+    font-size: 11px;
+    font-weight: 500;
 }
 /* endregion */
 </style>

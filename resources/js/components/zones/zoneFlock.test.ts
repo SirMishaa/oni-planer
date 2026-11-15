@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import type { ZoneCritterData } from '@/types/App/Data/data.d';
+import type {
+    ZoneCritterData,
+    ZoneFeedingData,
+    ZoneFeedingLineData,
+} from '@/types/App/Data/data.d';
 import {
+    amountDigits,
     bandId,
     cyclesToHatch,
     entitySpriteKind,
+    feedingChip,
+    feedingFoods,
     groupFlock,
     individualAlerts,
     isGroupAlert,
@@ -155,5 +162,107 @@ describe('entitySpriteKind', () => {
 describe('bandId', () => {
     it('is a stable element id for a flock band', () => {
         expect(bandId('Pacu:adult')).toBe('zone-band-Pacu:adult');
+    });
+});
+
+function line(
+    overrides: Partial<ZoneFeedingLineData> = {},
+): ZoneFeedingLineData {
+    return {
+        resource: 'Algae',
+        name: 'Algues',
+        perCycle: 285,
+        kind: 'item',
+        inZone: null,
+        ...overrides,
+    };
+}
+
+function feeding(overrides: Partial<ZoneFeedingData> = {}): ZoneFeedingData {
+    return {
+        groupKey: 'Pacu:adult',
+        count: 38,
+        foods: [line()],
+        otherFoods: 0,
+        produces: [],
+        availableKg: 456,
+        deficitKgPerCycle: null,
+        autonomyCycles: 1.6,
+        derived: true,
+        ...overrides,
+    };
+}
+
+describe('feedingChip', () => {
+    it('tones the stock by the cycles it lasts', () => {
+        expect(feedingChip(feeding({ autonomyCycles: 3 }))).toEqual({
+            kind: 'stock',
+            cycles: 3,
+            tone: 'ok',
+        });
+        expect(feedingChip(feeding())).toMatchObject({ tone: 'warn' });
+        expect(feedingChip(feeding({ autonomyCycles: 0.4 }))).toMatchObject({
+            tone: 'bad',
+        });
+    });
+
+    it('shows the need as missing without stock', () => {
+        expect(
+            feedingChip(
+                feeding({
+                    availableKg: 0,
+                    deficitKgPerCycle: 285,
+                    autonomyCycles: 0,
+                }),
+            ),
+        ).toEqual({ kind: 'missing', kgPerCycle: 285 });
+    });
+
+    it('shows nothing with unknown stock or for a plant or prey eater', () => {
+        expect(
+            feedingChip(
+                feeding({
+                    availableKg: null,
+                    deficitKgPerCycle: null,
+                    autonomyCycles: null,
+                }),
+            ),
+        ).toBeNull();
+        expect(
+            feedingChip(
+                feeding({
+                    foods: [line({ kind: 'plant', inZone: 12 })],
+                    availableKg: 0,
+                    autonomyCycles: null,
+                }),
+            ),
+        ).toBeNull();
+    });
+});
+
+describe('feedingFoods', () => {
+    it('splits the shown foods into items, plants and prey', () => {
+        const kelp = line({ resource: 'Kelp', name: 'Varech' });
+        const spice = line({ resource: 'SpiceVine', kind: 'plant' });
+        const pacu = line({ resource: 'Pacu', kind: 'prey' });
+
+        expect(
+            feedingFoods(feeding({ foods: [line(), kelp, spice, pacu] })),
+        ).toEqual({
+            items: [line(), kelp],
+            plants: [spice],
+            prey: [pacu],
+        });
+    });
+});
+
+describe('amountDigits', () => {
+    it('keeps a small amount from rounding to zero', () => {
+        expect(amountDigits(285)).toBe(0);
+        expect(amountDigits(41.25)).toBe(1);
+        expect(amountDigits(0.55)).toBe(2);
+        expect(amountDigits(0.05)).toBe(3);
+        expect(amountDigits(0.011)).toBe(3);
+        expect(amountDigits(0)).toBe(0);
     });
 });

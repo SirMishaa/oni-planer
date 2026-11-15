@@ -15,6 +15,7 @@ import type {
     ZoneCritterData,
     ZoneEggData,
     ZoneEntityData,
+    ZoneFeedingData,
     ZonePopulationData,
 } from '@/types/App/Data/data.d';
 
@@ -35,6 +36,8 @@ const props = defineProps<{
     critters: ZoneCritterData[] | null;
     eggs: ZoneEggData[] | null;
     population: ZonePopulationData[] | null;
+    /** What each flock band eats and how long its stock lasts (derived); null until the game sent the critters. */
+    feeding: ZoneFeedingData[] | null;
     selectedId: string | null;
 }>();
 
@@ -392,6 +395,7 @@ function isActionable(entity: ZoneEntityData): boolean {
             <ZoneFlock
                 :critters="critters ?? []"
                 :population="population"
+                :feeding="feeding"
                 :selected-id="selectedId"
                 @select="emit('select', $event)"
             />

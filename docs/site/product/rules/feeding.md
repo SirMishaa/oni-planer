@@ -10,6 +10,9 @@ sources:
   - app/Data/GameRules/AcceptedFoodData.php
   - app/Data/GameRules/InventoryItemData.php
   - app/Data/GameRules/FeedingBalanceData.php
+  - app/Services/Zones/ZoneInventory.php
+  - app/Services/Zones/ZoneFeeding.php
+  - app/Data/ZoneFeedingData.php
 ---
 
 # Alimentation
@@ -39,6 +42,12 @@ Seuls les objets ramassés comptent dans le stock ; une plante ou une proie, et 
 Chaque aliment en stock nourrit le groupe pendant son stock divisé par son besoin par cycle ; l'autonomie est la somme de ces durées. Sans aucun objet accepté en stock, le besoin par cycle du premier objet accepté est affiché comme un **déficit**.
 
 Un groupe qui ne mange que des plantes sur pied ou des proies n'a ni autonomie ni déficit : sa nourriture ne se compte pas en stock.
+
+## Le stock d'une zone
+
+Dans une zone, le stock est ce que contiennent ses bâtiments (mangeoires, stockages ; les passages du bord ne comptent pas), plus la récolte de chaque plante mûre (son rendement dans le jeu ; 0 tant qu'elle pousse). Le bilan se calcule pour chaque bande du troupeau, une espèce à un stade : voir [Ma colonie](../colony.md). Tant que le jeu n'a pas envoyé l'état des bâtiments, le stock est inconnu : pas d'autonomie ni de déficit plutôt qu'un faux manque.
+
+Pour un groupe qui broute ou chasse, le planner compte à la place les plantes ou les critters de cette espèce présents dans la zone.
 
 <Accordion title="Comment les chiffres sont calculés">
 

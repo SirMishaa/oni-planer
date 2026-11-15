@@ -1,7 +1,7 @@
 ---
 title: Ma colonie
 description: Relier le jeu au planner avec le mod Uplink, puis suivre la viabilité alimentaire de ta colonie, la carte de tes zones et voir ce que le jeu envoie.
-sources: ["app/Http/Controllers/ColonyController.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Services/Viability/**", "resources/js/pages/Colony/**", "lang/fr/colony.php", "app/Http/Controllers/ZoneController.php", "app/Services/Zones/ZonePresenter.php", "resources/js/components/zones/**", "lang/fr/zones.php", "app/Services/Zones/ZonePopulation.php", "app/Services/Zones/CritterProblems.php"]
+sources: ["app/Http/Controllers/ColonyController.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Services/Viability/**", "resources/js/pages/Colony/**", "lang/fr/colony.php", "app/Http/Controllers/ZoneController.php", "app/Services/Zones/ZonePresenter.php", "resources/js/components/zones/**", "lang/fr/zones.php", "app/Services/Zones/ZonePopulation.php", "app/Services/Zones/CritterProblems.php", "app/Services/Zones/ZoneFeeding.php", "app/Services/Zones/ZoneInventory.php"]
 order: 6
 ---
 
@@ -71,8 +71,14 @@ Les filtres **Critters** et **Œufs** de l'onglet **Entités** montrent les anim
 
 Sous les vignettes, une ligne résume le groupe : l'humeur, l'estomac médian et les âges.
 
-<Accordion title="Fertilité gelée, frise des œufs">
+Une seconde ligne dit ce que le groupe mange et produit, et combien de temps le stock de la zone tient. Par exemple pour 38 pacus : « Mange : Algues 285 kg/cycle (ou Varech) · Produit : Sable pollué 143 kg/cycle, Œuf de Pacu 1,9 œuf/cycle » et la puce **Stock pour 1,6 cycle**. La puce est verte à partir de 3 cycles, orange en dessous, rouge sous 1 cycle ; sans aucun aliment accepté en stock, elle devient **Il manque 285 kg/cycle**. Elle est marquée « dérivé » : voir [Alimentation](./rules/feeding.md) pour le calcul.
+
+Un groupe qui mange des plantes sur pied ou des proies n'a pas de puce : la ligne dit ce qu'il broute ou chasse, avec le nombre de ces plantes ou proies dans la zone (« Broute : Épicier (12 dans la zone) »). Un groupe qui mange les deux montre le bilan de ses objets, puis ses plantes comme alternative (« ou broute : … »).
+
+<Accordion title="Fertilité gelée, stock, frise des œufs">
 La fertilité est marquée **gelée** quand le critter vit dans une pièce ou un bassin **À l'étroit** ou **Confiné** : le jeu garde sa valeur mais il ne pond plus.
+
+Le stock compte ce que contiennent les bâtiments de la zone (mangeoires, stockages, hors passages du bord) et la récolte des plantes mûres. Tant que le jeu n'a pas envoyé l'état des bâtiments, le stock est inconnu et la puce n'apparaît pas. Un régime peut lister des dizaines d'aliments : la ligne en montre trois, l'aliment le plus en stock d'abord, et compte les autres.
 
 Les œufs sont groupés par espèce et par lieu (par terre, en incubateur, en stockage). Chaque groupe a une frise qui va de maintenant à la dernière éclosion, avec un œuf posé à son temps restant. Ce temps est calculé par le planner, d'où la mention « dérivé » : incubation restante × durée d'incubation de l'espèce dans les données du jeu. Un œuf dont l'espèce est inconnue reste hors de la frise. Une puce signale les œufs dont la viabilité baisse.
 </Accordion>

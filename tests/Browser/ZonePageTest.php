@@ -119,3 +119,28 @@ it('zooms the map with its buttons and ctrl + wheel, never with a plain wheel', 
         ->assertSeeIn('[data-test=zone-map-zoom-reset]', '110 %')
         ->assertNoJavaScriptErrors();
 });
+
+it('shows what each flock band eats and how long its stock lasts', function (): void {
+    $pacu = App\Models\CritterMorph::factory()->for(App\Models\Critter::factory())->create(['morph_id' => 'Pacu']);
+    App\Models\CritterMorphDiet::factory()->create(['critter_morph_id' => $pacu->id, 'consumed_element_id' => 'Algae', 'amount_per_cycle' => 7.5, 'produced_element_id' => 'ToxicSand', 'conversion_ratio' => 0.5, 'food_kind' => 'item']);
+    App\Models\CritterMorphDiet::factory()->create(['critter_morph_id' => $pacu->id, 'consumed_element_id' => 'Kelp', 'amount_per_cycle' => 20.0, 'produced_element_id' => 'ToxicSand', 'conversion_ratio' => 0.5, 'food_kind' => 'item']);
+    App\Models\CritterMorphOutput::factory()->create(['critter_morph_id' => $pacu->id, 'element_id' => 'PacuEgg', 'amount_per_cycle' => 0.05, 'output_type' => 'egg']);
+    $drecko = App\Models\CritterMorph::factory()->for(App\Models\Critter::factory())->create(['morph_id' => 'Drecko']);
+    App\Models\CritterMorphDiet::factory()->create(['critter_morph_id' => $drecko->id, 'consumed_element_id' => 'SaltySticksPlant', 'amount_per_cycle' => 0.75, 'produced_element_id' => 'Phosphorite', 'conversion_ratio' => 13.3, 'food_kind' => 'plant']);
+    $zone = Zone::factory()->sodicaneFarm()->create();
+    $critter = fn (int $index, string $prefabId): array => [
+        'instanceId' => (string) (1200 + $index), 'prefabId' => $prefabId, 'cell' => 201 * 606 + 100 + $index % 10, 'x' => 100.0 + $index % 10, 'y' => 201.0, 'tame' => true,
+    ];
+    $zone->update(['fast_state' => [...$zone->fast_state,
+        'critters' => [...array_map(fn (int $index): array => $critter($index, 'Pacu'), range(1, 38)), $critter(40, 'Drecko'), $critter(41, 'Drecko')],
+        'buildings' => [...$zone->fast_state['buildings'], ['instanceId' => '9001', 'prefabId' => 'CreatureFeeder', 'operational' => true, 'active' => false, 'statusItems' => [], 'storage' => [['id' => 'Algae', 'mass' => 456.0]]]],
+    ]]);
+
+    visit(route('zones.show', $zone))
+        ->click('#zone-tab-entities')
+        ->click('.zone-filters button:nth-child(5)')
+        ->assertSee(__('zones.flock.feeding.eats'))
+        ->assertSee(__('zones.flock.feeding.grazes'))
+        ->assertPresent('.zone-band__feeding .zone-chip--warn')
+        ->assertNoJavaScriptErrors();
+});

@@ -701,3 +701,96 @@ it('counts the critter alerts in the zone problems', function (): void {
         ->and($shown->problems[1]->problems)->toBe(['Scalded'])
         ->and($shown->entities)->not->toContain($shown->problems[1]);
 });
+
+/** The pond's Pacu eat algae (7.5 kg each per cycle, 2/3 dropped as polluted sand) or hunt nothing, and lay eggs. */
+function feedingPond(array $fast = []): Zone
+{
+    $zone = populatedPond($fast);
+    $morph = CritterMorph::query()->where('morph_id', 'Pacu')->firstOrFail();
+    App\Models\CritterMorphDiet::factory()->create(['critter_morph_id' => $morph->id, 'consumed_element_id' => 'Algae', 'amount_per_cycle' => 7.5, 'produced_element_id' => 'ToxicSand', 'conversion_ratio' => 0.5, 'food_kind' => 'item']);
+    App\Models\CritterMorphDiet::factory()->create(['critter_morph_id' => $morph->id, 'consumed_element_id' => 'Kelp', 'amount_per_cycle' => 20.0, 'produced_element_id' => 'ToxicSand', 'conversion_ratio' => 0.5, 'food_kind' => 'item']);
+    App\Models\CritterMorphOutput::factory()->create(['critter_morph_id' => $morph->id, 'element_id' => 'PacuEgg', 'amount_per_cycle' => 0.05, 'output_type' => 'egg']);
+    PrefabName::factory()->create(['prefab_id' => 'Algae', 'name_key' => 'STRINGS.ELEMENTS.ALGAE.NAME']);
+
+    return $zone;
+}
+
+it('presents a feeding balance per flock group', function (): void {
+    $zone = feedingPond(['buildings' => [
+        ['instanceId' => '9001', 'prefabId' => 'CreatureFeeder', 'storage' => [['id' => 'Algae', 'mass' => 132.0], ['id' => 'Sand', 'mass' => 100.0]]],
+    ]]);
+
+    $feeding = app(ZonePresenter::class)->present($zone)->feeding;
+
+    expect($feeding)->toHaveCount(1)
+        ->and($feeding[0]->groupKey)->toBe('Pacu:wild')
+        ->and($feeding[0]->count)->toBe(11)
+        ->and($feeding[0]->foods[0]->toArray())->toMatchArray(['resource' => 'Algae', 'name' => 'Algae', 'perCycle' => 82.5, 'kind' => 'item'])
+        ->and($feeding[0]->foods[1]->resource)->toBe('Kelp')
+        ->and($feeding[0]->otherFoods)->toBe(0)
+        ->and(array_map(fn ($line): array => [$line->resource, $line->kind, round($line->perCycle, 4)], $feeding[0]->produces))
+        ->toBe([['ToxicSand', 'dropping', 41.25], ['PacuEgg', 'egg', 0.55]])
+        ->and($feeding[0]->availableKg)->toBe(132.0)
+        ->and($feeding[0]->autonomyCycles)->toBe(1.6)
+        ->and($feeding[0]->deficitKgPerCycle)->toBeNull()
+        ->and($feeding[0]->derived)->toBeTrue();
+});
+
+it('reports the need of a flock group without accepted stock as a deficit', function (): void {
+    $feeding = app(ZonePresenter::class)->present(feedingPond(['buildings' => []]))->feeding;
+
+    expect($feeding[0]->deficitKgPerCycle)->toBe(82.5)
+        ->and($feeding[0]->autonomyCycles)->toBe(0.0);
+});
+
+it('keeps the stock unknown while the building storages were not read', function (): void {
+    $feeding = app(ZonePresenter::class)->present(feedingPond(['buildings' => null]))->feeding;
+
+    expect($feeding[0]->availableKg)->toBeNull()
+        ->and($feeding[0]->deficitKgPerCycle)->toBeNull()
+        ->and($feeding[0]->autonomyCycles)->toBeNull();
+});
+
+it('names what a plant eater grazes with the matching plants of the zone', function (): void {
+    $zone = feedingPond();
+    $morph = CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => 'Drecko']);
+    App\Models\CritterMorphDiet::factory()->create(['critter_morph_id' => $morph->id, 'consumed_element_id' => 'Algae', 'amount_per_cycle' => 0.75, 'produced_element_id' => null, 'conversion_ratio' => null, 'food_kind' => 'plant']);
+    $fast = $zone->fast_state;
+    $fast['critters'][] = ['instanceId' => '1300', 'prefabId' => 'Drecko', 'cell' => 100, 'x' => 1.0, 'y' => 1.0, 'tame' => true];
+    $fast['plants'] = [['id' => 'Algae', 'instanceId' => '4001'], ['id' => 'Algae', 'instanceId' => '4002'], ['id' => 'Other', 'instanceId' => '4003']];
+    $zone->update(['fast_state' => $fast]);
+
+    $drecko = collect(app(ZonePresenter::class)->present($zone->fresh())->feeding)->firstWhere('groupKey', 'Drecko:adult');
+
+    expect($drecko->foods)->toHaveCount(1)
+        ->and($drecko->foods[0]->toArray())->toMatchArray(['resource' => 'Algae', 'kind' => 'plant', 'inZone' => 2])
+        ->and($drecko->deficitKgPerCycle)->toBeNull()
+        ->and($drecko->autonomyCycles)->toBeNull();
+});
+
+it('presents no feeding for a group without a diet and unknown feeding without critters', function (): void {
+    expect(app(ZonePresenter::class)->present(populatedPond())->feeding)->toBe([])
+        ->and(presentZone()->feeding)->toBeNull();
+});
+
+it('reloads the feeding with the fast state', function (): void {
+    expect(ZonePresenter::PROPS_BY_KIND['fast'])->toContain('feeding')
+        ->and(ZonePresenter::PROPS_BY_KIND['slow'])->not->toContain('feeding')
+        ->and(ZonePresenter::PROPS_BY_KIND['layout'])->toContain('feeding');
+});
+
+it('lists first the prey a hunter finds in the zone and counts the others', function (): void {
+    $zone = feedingPond();
+    $morph = CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => 'Raptor']);
+    foreach (['Hatch', 'HatchBaby', 'Squirrel', 'Pacu'] as $prey) {
+        App\Models\CritterMorphDiet::factory()->create(['critter_morph_id' => $morph->id, 'consumed_element_id' => $prey, 'amount_per_cycle' => 1.0, 'produced_element_id' => null, 'conversion_ratio' => null, 'food_kind' => 'prey']);
+    }
+    $fast = $zone->fast_state;
+    $fast['critters'][] = ['instanceId' => '1400', 'prefabId' => 'Raptor', 'cell' => 100, 'x' => 1.0, 'y' => 1.0, 'tame' => true];
+    $zone->update(['fast_state' => $fast]);
+
+    $raptor = collect(app(ZonePresenter::class)->present($zone->fresh())->feeding)->firstWhere('groupKey', 'Raptor:adult');
+
+    expect(array_map(fn ($food): array => [$food->resource, $food->inZone], $raptor->foods))->toBe([['Pacu', 11], ['Hatch', 0], ['HatchBaby', 0]])
+        ->and($raptor->otherFoods)->toBe(1);
+});

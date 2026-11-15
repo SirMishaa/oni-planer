@@ -2,6 +2,8 @@ import type {
     ZoneCritterData,
     ZoneEggData,
     ZoneEntityData,
+    ZoneFeedingData,
+    ZoneFeedingLineData,
     ZonePopulationData,
 } from '@/types/App/Data/data.d';
 
@@ -342,6 +344,70 @@ export function eggTimeline(eggs: ZoneEggData[]): {
             Math.ceil(placed[placed.length - 1]?.cycles ?? 0),
         ),
     };
+}
+
+// endregion
+
+// region Feeding
+
+/** The stock lasts long enough from this many cycles on. */
+export const FEEDING_OK_CYCLES = 3;
+
+/** Below this many cycles the stock is about to run out. */
+export const FEEDING_BAD_CYCLES = 1;
+
+export type FeedingTone = 'ok' | 'warn' | 'bad';
+
+/** The balance chip of a band: how long the stock lasts, or the need nothing covers. */
+export type FeedingChip =
+    | { kind: 'stock'; cycles: number; tone: FeedingTone }
+    | { kind: 'missing'; kgPerCycle: number };
+
+/** Null with unknown stock, or for a band that only grazes or hunts (its food is not stocked). */
+export function feedingChip(feeding: ZoneFeedingData): FeedingChip | null {
+    if (feeding.deficitKgPerCycle !== null) {
+        return { kind: 'missing', kgPerCycle: feeding.deficitKgPerCycle };
+    }
+
+    if (feeding.autonomyCycles === null) {
+        return null;
+    }
+
+    const cycles = feeding.autonomyCycles;
+
+    return {
+        kind: 'stock',
+        cycles,
+        tone:
+            cycles >= FEEDING_OK_CYCLES
+                ? 'ok'
+                : cycles < FEEDING_BAD_CYCLES
+                  ? 'bad'
+                  : 'warn',
+    };
+}
+
+/** The shown foods by how they are eaten: items picked up (the main one first), plants grazed, prey hunted. */
+export function feedingFoods(feeding: ZoneFeedingData): {
+    items: ZoneFeedingLineData[];
+    plants: ZoneFeedingLineData[];
+    prey: ZoneFeedingLineData[];
+} {
+    const of = (kind: ZoneFeedingLineData['kind']): ZoneFeedingLineData[] =>
+        feeding.foods.filter((food) => food.kind === kind);
+
+    return { items: of('item'), plants: of('plant'), prey: of('prey') };
+}
+
+/** Decimals to show an amount per cycle with: none from 100, one from 1, two significant digits below (0.55, 0.011). */
+export function amountDigits(value: number): number {
+    const size = Math.abs(value);
+
+    if (size === 0 || size >= 100) {
+        return 0;
+    }
+
+    return size >= 1 ? 1 : Math.floor(-Math.log10(size)) + 2;
 }
 
 // endregion

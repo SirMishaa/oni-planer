@@ -57,7 +57,7 @@ final class ZonePresenter
         'slow' => ['zone', 'mapTerrain', 'eggs', 'counts'],
         'fast' => [
             'zone', 'mapPlants', 'entities', 'problems', 'borderEntities', 'counts', 'plantsKnown',
-            'buildingStatesKnown', 'population', 'critters', 'crittersAt',
+            'buildingStatesKnown', 'population', 'critters', 'crittersAt', 'feeding',
         ],
         'capture' => ['captures', 'captureRequest'],
     ];
@@ -70,7 +70,7 @@ final class ZonePresenter
      */
     private const array ALL_LIVE_PROPS = [
         'zone', 'map', 'mapTerrain', 'mapPlants', 'entities', 'problems', 'borderEntities', 'counts',
-        'plantsKnown', 'buildingStatesKnown', 'captures', 'captureRequest', 'population', 'critters', 'crittersAt', 'eggs',
+        'plantsKnown', 'buildingStatesKnown', 'captures', 'captureRequest', 'population', 'critters', 'crittersAt', 'eggs', 'feeding',
     ];
 
     /**
@@ -104,7 +104,11 @@ final class ZonePresenter
     /** @var array<int, array{stair: bool, facingLeft: bool, solid: bool}> what stands on each cell of the layout's building layer, for one layoutMap() call */
     private array $occupants = [];
 
-    public function __construct(private readonly GameText $text, private readonly ZonePopulation $population) {}
+    public function __construct(
+        private readonly GameText $text,
+        private readonly ZonePopulation $population,
+        private readonly ZoneFeeding $feeding,
+    ) {}
 
     /** @see self::props() */
     public function present(Zone $zone): ZoneShowData
@@ -204,6 +208,7 @@ final class ZonePresenter
                 array_values(array_filter($fastPlants(), fn (array $plant): bool => is_numeric($plant['cell'] ?? null))),
             ) : null,
             'crittersAt' => fn (): ?string => $critters() === null ? null : $zone->fast_state_at?->toIso8601String(),
+            'feeding' => fn (): ?array => $critters() === null ? null : $this->feeding->of($zone, $critters()),
             'liveProps' => fn (): array => self::PROPS_BY_KIND,
             'echo' => fn (): array => ['channel' => 'uplink', 'event' => '.zone.updated'],
         ];

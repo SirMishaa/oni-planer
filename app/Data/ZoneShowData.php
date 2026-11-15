@@ -51,6 +51,8 @@ final class ZoneShowData extends Data
         public ?array $mapPlants = null,
         /** ISO-8601 time of the fast state the critters came from (their age label); null with no critters. */
         public ?string $crittersAt = null,
+        /** @var list<ZoneFeedingData>|null what each flock band eats and produces and how long its stock lasts (derived); null until the game sent the critters */
+        public ?array $feeding = null,
         /** @var array<string, list<string>> the props each `ZoneUpdated` kind changes, {@see ZonePresenter::PROPS_BY_KIND} */
         public array $liveProps = [],
         /** @var array{channel: 'uplink', event: '.zone.updated'} Echo subscription of the live updates */

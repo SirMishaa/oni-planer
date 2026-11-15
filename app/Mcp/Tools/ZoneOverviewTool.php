@@ -6,6 +6,8 @@ namespace App\Mcp\Tools;
 
 use App\Data\GameRules\CritterOverOccupancyData;
 use App\Data\ZoneCritterData;
+use App\Data\ZoneFeedingData;
+use App\Data\ZoneFeedingLineData;
 use App\Data\ZonePopulationData;
 use App\Mcp\Tools\Concerns\ResolvesZone;
 use App\Models\Colony;
@@ -18,6 +20,7 @@ use App\Services\Mcp\ZoneTerrainSummary;
 use App\Services\Zones\CritterProblems;
 use App\Services\Zones\ZoneCritters;
 use App\Services\Zones\ZoneCritterState;
+use App\Services\Zones\ZoneFeeding;
 use App\Services\Zones\ZoneGeometry;
 use App\Services\Zones\ZonePlants;
 use App\Services\Zones\ZonePopulation;
@@ -38,7 +41,7 @@ final class ZoneOverviewTool extends Tool
 {
     use ResolvesZone;
 
-    public function handle(Request $request, GameText $text, ZonePopulation $population): Response
+    public function handle(Request $request, GameText $text, ZonePopulation $population, ZoneFeeding $feeding): Response
     {
         $resolved = $this->colonyAndZone($request);
         if ($resolved instanceof Response) {
@@ -60,6 +63,8 @@ final class ZoneOverviewTool extends Tool
             ...$this->critters($zone, $colony, $text),
             '',
             ...$this->population($regions),
+            '',
+            ...$this->feeding($zone, $feeding),
             '',
             ...$this->elements($zone, $text),
             '',
@@ -100,6 +105,48 @@ final class ZoneOverviewTool extends Tool
         }
 
         return McpFormat::number((float) $amount['value']).'/'.(is_numeric($amount['max'] ?? null) ? McpFormat::number((float) $amount['max']) : '?');
+    }
+
+    /** "eats Algae 285 kg/cycle or Kelp · grazes SpiceVine (3 in the zone)", or null without a diet. */
+    private static function eats(ZoneFeedingData $group): ?string
+    {
+        $items = array_values(array_filter($group->foods, fn (ZoneFeedingLineData $food): bool => $food->kind === 'item'));
+        $parts = [];
+        if ($items !== []) {
+            $parts[] = 'eats '.self::label($items[0]).' '.McpFormat::number($items[0]->perCycle).' kg/cycle'
+                .(count($items) > 1 ? ' or '.implode(', ', array_map(self::label(...), array_slice($items, 1))) : '');
+        }
+        foreach (['plant' => 'grazes', 'prey' => 'hunts'] as $kind => $verb) {
+            $grazed = array_filter($group->foods, fn (ZoneFeedingLineData $food): bool => $food->kind === $kind);
+            if ($grazed !== []) {
+                $parts[] = $verb.' '.implode(', ', array_map(
+                    fn (ZoneFeedingLineData $food): string => self::label($food).($food->inZone === null ? '' : " ({$food->inZone} in the zone)"),
+                    $grazed,
+                ));
+            }
+        }
+        if ($group->otherFoods > 0) {
+            $parts[] = "+{$group->otherFoods} other foods";
+        }
+
+        return $parts === [] ? null : implode(' · ', $parts);
+    }
+
+    /** "stock 456 kg · lasts 1.6 cycles (derived)", "stock 0 kg · missing 285 kg/cycle (derived)", or null without an item food. */
+    private static function stock(ZoneFeedingData $group): ?string
+    {
+        return match (true) {
+            $group->deficitKgPerCycle !== null => sprintf('stock %s · missing %s kg/cycle (derived)', McpFormat::kg($group->availableKg ?? 0.0), McpFormat::number($group->deficitKgPerCycle)),
+            $group->autonomyCycles !== null => sprintf('stock %s · lasts %s cycles (derived)', McpFormat::kg($group->availableKg), McpFormat::number($group->autonomyCycles)),
+            $group->availableKg === null && in_array('item', array_column($group->foods, 'kind'), true) => 'stock unavailable',
+            default => null,
+        };
+    }
+
+    /** The display name, with the id when it differs. */
+    private static function label(ZoneFeedingLineData $line): string
+    {
+        return $line->name === $line->resource ? $line->resource : "{$line->name} ({$line->resource})";
     }
 
     private function boxLine(Zone $zone): string
@@ -311,6 +358,37 @@ final class ZoneOverviewTool extends Tool
             );
         }
         if ($regions === []) {
+            $lines[] = ' none';
+        }
+
+        return $lines;
+    }
+
+    /**
+     * What each flock band eats and produces, and how long the zone's stock of its accepted items lasts.
+     *
+     * @return list<string>
+     */
+    private function feeding(Zone $zone, ZoneFeeding $feeding): array
+    {
+        $critters = ZoneCritterState::critters($zone);
+        if ($critters === null) {
+            return ['Feeding: unavailable'];
+        }
+
+        $lines = ['Feeding:'];
+        foreach ($feeding->of($zone, $critters) as $group) {
+            $lines[] = ' '.implode(' · ', array_filter([
+                sprintf('%s ×%d', $group->groupKey, $group->count),
+                self::eats($group),
+                self::stock($group),
+                $group->produces === [] ? null : 'produces '.implode(', ', array_map(
+                    fn (ZoneFeedingLineData $line): string => self::label($line).' '.($line->kind === 'egg' ? McpFormat::number($line->perCycle, 2).' eggs/cycle' : McpFormat::number($line->perCycle).' kg/cycle'),
+                    $group->produces,
+                )),
+            ]));
+        }
+        if (count($lines) === 1) {
             $lines[] = ' none';
         }
 

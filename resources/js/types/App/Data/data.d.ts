@@ -339,6 +339,24 @@ export type ZoneEntityData = {
     groupKey: string | null;
     count: number | null;
 };
+export type ZoneFeedingData = {
+    groupKey: string;
+    count: number;
+    foods: ZoneFeedingLineData[];
+    otherFoods: number;
+    produces: ZoneFeedingLineData[];
+    availableKg: number | null;
+    deficitKgPerCycle: number | null;
+    autonomyCycles: number | null;
+    derived: boolean;
+};
+export type ZoneFeedingLineData = {
+    resource: string;
+    name: string;
+    perCycle: number;
+    kind: 'item' | 'plant' | 'prey' | 'dropping' | 'egg';
+    inZone: number | null;
+};
 export type ZoneListItemData = {
     id: number;
     name: string;
@@ -404,6 +422,7 @@ export type ZoneShowData = {
     mapTerrain: ZoneTerrainData | null;
     mapPlants: ZonePlantData[] | null;
     crittersAt: string | null;
+    feeding: ZoneFeedingData[] | null;
     liveProps: Record<string, string[]>;
     echo: { channel: 'uplink'; event: '.zone.updated' };
 };

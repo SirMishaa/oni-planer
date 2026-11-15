@@ -1,0 +1,160 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services\Zones;
+
+use App\Data\GameRules\AcceptedFoodData;
+use App\Data\GameRules\ResourceFlowData;
+use App\Data\ZoneCritterData;
+use App\Data\ZoneFeedingData;
+use App\Data\ZoneFeedingLineData;
+use App\Models\Zone;
+use App\Services\Critters\CritterGroupKey;
+use App\Services\GameRules\Critters\CritterFeeding;
+use App\Services\GameText;
+
+/**
+ * The feeding of each flock band of a zone: the {@see CritterFeeding} flows of the band against the
+ * zone's {@see ZoneInventory}, with display names, the matching plants or prey in the zone, and the
+ * foods trimmed to what the band shows. Shared by the zone page and the MCP server.
+ */
+final readonly class ZoneFeeding
+{
+    /** Item foods, and plant or prey foods, listed per band; the rest are counted in `otherFoods`. */
+    public const int SHOWN_FOODS = 3;
+
+    public function __construct(private CritterFeeding $feeding, private GameText $text) {}
+
+    /**
+     * One entry per flock band whose morph has a diet or an output, by group key. The diet rows are
+     * read once per morph (the repository keeps them for the request).
+     *
+     * @param  list<ZoneCritterData>  $critters
+     * @return list<ZoneFeedingData>
+     */
+    public function of(Zone $zone, array $critters): array
+    {
+        $groups = [];
+        foreach ($critters as $critter) {
+            $key = CritterGroupKey::of($critter);
+            $groups[$key] ??= ['prefabId' => $critter->prefabId, 'count' => 0];
+            $groups[$key]['count']++;
+        }
+        ksort($groups);
+
+        $inventory = ZoneInventory::of($zone);
+        $storageKnown = ZoneInventory::storageKnown($zone);
+        $plants = $this->plantCounts($zone);
+        $prey = array_count_values(array_map(fn (ZoneCritterData $critter): string => $critter->prefabId, $critters));
+
+        $feeding = [];
+        foreach ($groups as $key => $group) {
+            $flows = $this->feeding->flows((string) $key, $group['prefabId'], $group['count'], $zone->id);
+            if ($flows === []) {
+                continue;
+            }
+
+            $consumed = array_values(array_filter($flows, fn (ResourceFlowData $flow): bool => $flow->direction === 'consumed'))[0] ?? null;
+            $balance = $consumed === null ? null : $this->feeding->balance($consumed, $inventory);
+            $accepts = $consumed->accepts ?? [];
+            [$foods, $otherFoods] = $this->foods($accepts, $balance?->mainResource, $plants, $prey);
+
+            $feeding[] = new ZoneFeedingData(
+                groupKey: (string) $key,
+                count: $group['count'],
+                foods: $foods,
+                otherFoods: $otherFoods,
+                produces: $this->produces($accepts, $balance?->mainResource, $flows),
+                availableKg: $storageKnown ? $balance?->availableKg : null,
+                deficitKgPerCycle: $storageKnown ? $balance?->deficitKgPerCycle : null,
+                autonomyCycles: $storageKnown ? $balance?->autonomyCycles : null,
+            );
+        }
+
+        return $feeding;
+    }
+
+    /**
+     * The item foods (the main one first), then the plants and prey (the most present in the zone first),
+     * each list cut to SHOWN_FOODS.
+     *
+     * @param  list<AcceptedFoodData>  $accepts
+     * @param  array<string, int>|null  $plants  plants of the zone by prefab, null when unread
+     * @param  array<string, int>  $prey  critters of the zone by prefab
+     * @return array{0: list<ZoneFeedingLineData>, 1: int}
+     */
+    private function foods(array $accepts, ?string $mainResource, ?array $plants, array $prey): array
+    {
+        $inZone = fn (AcceptedFoodData $food): ?int => match ($food->kind) {
+            'plant' => $plants === null ? null : $plants[$food->resource] ?? 0,
+            'prey' => $prey[$food->resource] ?? 0,
+            default => null,
+        };
+
+        $items = array_values(array_filter($accepts, fn (AcceptedFoodData $food): bool => $food->kind === CritterFeeding::STOCKABLE_KIND));
+        usort($items, fn (AcceptedFoodData $a, AcceptedFoodData $b): int => ($b->resource === $mainResource) <=> ($a->resource === $mainResource));
+        $grazed = array_values(array_filter($accepts, fn (AcceptedFoodData $food): bool => $food->kind !== CritterFeeding::STOCKABLE_KIND));
+        usort($grazed, fn (AcceptedFoodData $a, AcceptedFoodData $b): int => ($inZone($b) ?? -1) <=> ($inZone($a) ?? -1));
+
+        $shown = [...array_slice($items, 0, self::SHOWN_FOODS), ...array_slice($grazed, 0, self::SHOWN_FOODS)];
+
+        return [
+            array_map(fn (AcceptedFoodData $food): ZoneFeedingLineData => new ZoneFeedingLineData(
+                $food->resource,
+                $this->text->name($food->resource),
+                $food->kgPerCycle,
+                $food->kind,
+                $inZone($food),
+            ), $shown),
+            count($accepts) - count($shown),
+        ];
+    }
+
+    /**
+     * The dropping of the main item food (else the first item food, else the first food), then every
+     * produced flow: eggs counted, anything else in kg.
+     *
+     * @param  list<AcceptedFoodData>  $accepts
+     * @param  list<ResourceFlowData>  $flows
+     * @return list<ZoneFeedingLineData>
+     */
+    private function produces(array $accepts, ?string $mainResource, array $flows): array
+    {
+        $items = array_values(array_filter($accepts, fn (AcceptedFoodData $food): bool => $food->kind === CritterFeeding::STOCKABLE_KIND));
+        $eaten = array_values(array_filter($items, fn (AcceptedFoodData $food): bool => $food->resource === $mainResource))[0]
+            ?? $items[0]
+            ?? $accepts[0]
+            ?? null;
+
+        $lines = [];
+        if ($eaten?->produces !== null && $eaten->producedKgPerCycle !== null) {
+            $lines[] = new ZoneFeedingLineData($eaten->produces, $this->text->name($eaten->produces), $eaten->producedKgPerCycle, 'dropping');
+        }
+        foreach ($flows as $flow) {
+            if ($flow->direction === 'produced') {
+                $lines[] = new ZoneFeedingLineData($flow->resource, $this->text->name($flow->resource), $flow->perCycle, $flow->unit === 'count' ? 'egg' : 'dropping');
+            }
+        }
+
+        return $lines;
+    }
+
+    /** @return array<string, int>|null plants of the zone by prefab, null when the plants were not read */
+    private function plantCounts(Zone $zone): ?array
+    {
+        $plants = $zone->fast_state['plants'] ?? null;
+        if (! is_array($plants)) {
+            return null;
+        }
+
+        $counts = [];
+        foreach ($plants as $plant) {
+            if (is_array($plant) && is_string($plant['id'] ?? null)) {
+                $counts[$plant['id']] = ($counts[$plant['id']] ?? 0) + 1;
+            }
+        }
+
+        return $counts;
+    }
+}

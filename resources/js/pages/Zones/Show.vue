@@ -37,6 +37,7 @@ const props = defineProps<{
     captureRequest: ZoneShowData['captureRequest'];
     linkSeenAt: ZoneShowData['linkSeenAt'];
     population: ZoneShowData['population'];
+    feeding: ZoneShowData['feeding'];
     critters: ZoneShowData['critters'];
     eggs: ZoneShowData['eggs'];
     crittersAt: ZoneShowData['crittersAt'];
@@ -443,6 +444,7 @@ function showOnMap(instanceId: string): void {
                     :building-states-known="buildingStatesKnown"
                     :critters="critters"
                     :eggs="eggs"
+                    :feeding="feeding"
                     :population="population"
                     :selected-id="selectedId"
                     @select="showOnMap"
