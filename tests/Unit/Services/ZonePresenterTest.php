@@ -50,9 +50,9 @@ it('places the 13 sodicanes of the farm from their cells', function (): void {
         ->and($plants[1]->growth)->toBe(0.75)
         ->and($plants[1]->secondsUntilHarvest)->toBe(1500.0)
         ->and($plants[1]->autoHarvest)->toBeTrue()
-        ->and($shown->map?->plants)->toHaveCount(13)
-        ->and($shown->map?->plants[0]->x)->toBe(100)
-        ->and($shown->map?->plants[0]->y)->toBe(201)
+        ->and($shown->mapPlants)->toHaveCount(13)
+        ->and($shown->mapPlants[0]->x)->toBe(100)
+        ->and($shown->mapPlants[0]->y)->toBe(201)
         ->and($shown->map?->zoneCells)->toHaveCount(40)
         ->and($shown->map?->zoneCells[0])->toBe([100, 201]);
 });
@@ -100,7 +100,7 @@ it('colours the terrain of the box with the element ui colours', function (): vo
     Element::factory()->solid()->create(['element_id' => 'Dirt', 'ui_color' => 0x8A5A2B, 'name' => ['en' => 'Dirt']]);
     Element::factory()->gas()->create(['element_id' => 'Oxygen', 'ui_color' => null, 'name' => ['en' => 'Oxygen']]);
 
-    $terrain = presentZone()->map?->terrain;
+    $terrain = presentZone()->mapTerrain;
 
     expect([$terrain?->box->x, $terrain?->box->y, $terrain?->box->width, $terrain?->box->height])->toBe([99, 200, 22, 4])
         ->and(array_map(fn (ZoneTerrainElementData $entry): array => [$entry->elementId, $entry->colour], $terrain->palette ?? []))
@@ -159,11 +159,11 @@ it('keeps sections the game could not read unknown', function (): void {
 
     expect($shown->map?->tiles)->toBeNull()
         ->and($shown->map?->buildings)->toBeNull()
-        ->and($shown->map?->plants)->toBeNull()
-        ->and($shown->map?->terrain?->palette)->toBe([])
-        ->and($shown->map?->terrain?->element)->toBeNull()
-        ->and($shown->map?->terrain?->mass)->toHaveCount(88)
-        ->and($shown->map?->terrain?->mass[0])->toBe(1.5)
+        ->and($shown->mapPlants)->toBeNull()
+        ->and($shown->mapTerrain?->palette)->toBe([])
+        ->and($shown->mapTerrain?->element)->toBeNull()
+        ->and($shown->mapTerrain?->mass)->toHaveCount(88)
+        ->and($shown->mapTerrain?->mass[0])->toBe(1.5)
         ->and($shown->entities)->toBe([])
         ->and($shown->plantsKnown)->toBeFalse()
         ->and($shown->buildingStatesKnown)->toBeFalse()
@@ -174,7 +174,7 @@ it('has no terrain when no layer of the slow state was read', function (): void 
     $zone = Zone::factory()->sodicaneFarm()->create();
     $zone->update(['slow_state' => [...$zone->slow_state, 'palette' => null, 'element' => null, 'mass' => null, 'temperature' => null]]);
 
-    expect(app(ZonePresenter::class)->present($zone)->map?->terrain)->toBeNull();
+    expect(app(ZonePresenter::class)->present($zone)->mapTerrain)->toBeNull();
 });
 
 it('presents a zone known only from the zone list', function (): void {
@@ -235,7 +235,7 @@ it('links sprites only when the asset file exists', function (): void {
 
     $shown = presentZone();
 
-    expect($shown->map?->plants[0]->sprite)->toBe('/assets/game/plants/SaltySticksPlant.webp')
+    expect($shown->mapPlants[0]->sprite)->toBe('/assets/game/plants/SaltySticksPlant.webp')
         ->and($shown->map?->buildings[0]->sprite)->toBe('/assets/game/buildings/FarmStation.webp')
         ->and($shown->problems[0]->sprite)->toBe('/assets/game/buildings/FarmStation.webp');
 
@@ -280,7 +280,7 @@ it('reads unknown terrain cells as -1 and fits each layer to the box', function 
     $zone = Zone::factory()->sodicaneFarm()->create();
     $zone->update(['slow_state' => [...$zone->slow_state, 'palette' => ['', 'Dirt'], 'element' => [0, 7, 'x'], 'mass' => array_fill(0, 100, 2.0), 'temperature' => null]]);
 
-    $terrain = app(ZonePresenter::class)->present($zone)->map?->terrain;
+    $terrain = app(ZonePresenter::class)->present($zone)->mapTerrain;
 
     expect($terrain?->palette[0]->elementId)->toBeNull()
         ->and(array_slice($terrain->element ?? [], 0, 4))->toBe([0, -1, -1, -1])
@@ -299,11 +299,12 @@ it('skips layout entries it cannot place', function (): void {
         'fast_state' => [...$zone->fast_state, 'plants' => [['id' => 'SaltySticksPlant', 'instanceId' => '1']]],
     ]);
 
-    $map = app(ZonePresenter::class)->present($zone)->map;
+    $shown = app(ZonePresenter::class)->present($zone);
+    $map = $shown->map;
 
     expect(array_map(fn (ZoneTileData $tile): array => [$tile->x, $tile->y], $map->tiles ?? []))->toBe([[5, 5]])
         ->and($map?->buildings)->toBe([])
-        ->and($map?->plants)->toBe([]);
+        ->and($shown->mapPlants)->toBe([]);
 });
 
 it('gives each palette entry its render properties', function (): void {
@@ -318,7 +319,7 @@ it('gives each palette entry its render properties', function (): void {
     $zone = Zone::factory()->sodicaneFarm()->create();
     $zone->update(['slow_state' => [...$zone->slow_state, 'palette' => ['Water', 'SandStone', 'Nope']]]);
 
-    [$water, $stone, $unknown] = app(ZonePresenter::class)->present($zone)->map?->terrain?->palette;
+    [$water, $stone, $unknown] = app(ZonePresenter::class)->present($zone)->mapTerrain?->palette;
 
     expect($water->renderColour)->toBe('#55bed2ff')
         ->and($water->maxMass)->toBe(1000.0)
@@ -338,7 +339,7 @@ it('encodes the terrain texture name in its URL', function (): void {
     $zone = Zone::factory()->sodicaneFarm()->create();
     $zone->update(['slow_state' => [...$zone->slow_state, 'palette' => ['Granite']]]);
 
-    $granite = app(ZonePresenter::class)->present($zone)->map?->terrain?->palette[0];
+    $granite = app(ZonePresenter::class)->present($zone)->mapTerrain?->palette[0];
 
     expect($granite?->terrainTexture)->toBe('/assets/game/terrain/granite%20rough.webp');
 });
@@ -351,7 +352,7 @@ it('gives the previous temperatures and the seconds between readings', function 
         'previous_slow_temperature' => ['box' => $box, 'temperature' => array_fill(0, 88, 290.0), 'at' => now()->subSeconds(30)->toIso8601String()],
     ]);
 
-    $terrain = app(ZonePresenter::class)->present($zone->refresh())->map?->terrain;
+    $terrain = app(ZonePresenter::class)->present($zone->refresh())->mapTerrain;
 
     expect($terrain?->previousSeconds)->toBe(30.0)
         ->and($terrain?->previousTemperature)->toHaveCount(88)
@@ -363,13 +364,13 @@ it('drops the previous temperatures when the box changed', function (): void {
     $zone->update([
         'previous_slow_temperature' => ['box' => [...$zone->slow_state['box'], 'width' => 21], 'temperature' => array_fill(0, 84, 290.0), 'at' => now()->subSeconds(30)->toIso8601String()],
     ]);
-    $terrain = app(ZonePresenter::class)->present($zone->refresh())->map?->terrain;
+    $terrain = app(ZonePresenter::class)->present($zone->refresh())->mapTerrain;
 
     expect($terrain?->previousTemperature)->toBeNull()
         ->and($terrain?->previousSeconds)->toBeNull();
 
     $zone->update(['previous_slow_temperature' => ['box' => $zone->slow_state['box'], 'temperature' => [1.0], 'at' => now()->toIso8601String()]]);
-    expect(app(ZonePresenter::class)->present($zone->refresh())->map?->terrain?->previousTemperature)->toBeNull();
+    expect(app(ZonePresenter::class)->present($zone->refresh())->mapTerrain?->previousTemperature)->toBeNull();
 });
 
 it('names the eight temperature bands in the current locale', function (): void {
@@ -391,7 +392,7 @@ it('drops the previous temperatures when their time is unreadable', function ():
     $zone = Zone::factory()->sodicaneFarm()->create();
     $zone->update(['previous_slow_temperature' => ['box' => $zone->slow_state['box'], 'temperature' => array_fill(0, 88, 290.0), 'at' => 'not a date']]);
 
-    $terrain = app(ZonePresenter::class)->present($zone->refresh())->map?->terrain;
+    $terrain = app(ZonePresenter::class)->present($zone->refresh())->mapTerrain;
 
     expect($terrain?->previousTemperature)->toBeNull()
         ->and($terrain?->previousSeconds)->toBeNull();

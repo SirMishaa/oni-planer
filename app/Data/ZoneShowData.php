@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Data;
 
+use App\Services\Zones\ZonePresenter;
 use Spatie\LaravelData\Data;
 use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
 
-/** The zone page. */
+/**
+ * The zone page. The props are grouped by the stream that changes them
+ * ({@see ZonePresenter::PROPS_BY_KIND}): a live event reloads only its own.
+ */
 final class ZoneShowData extends Data
 {
     public function __construct(
@@ -41,6 +45,14 @@ final class ZoneShowData extends Data
         public ?array $critters = null,
         /** @var list<ZoneEggData>|null the eggs of the zone, each with its total incubation; null until the game sent them */
         public ?array $eggs = null,
+        /** Terrain of the slow state; null until the layout and a slow state with a readable layer arrived. */
+        public ?ZoneTerrainData $mapTerrain = null,
+        /** @var list<ZonePlantData>|null the plants of the fast state placed on the map; null until the layout and the plants arrived */
+        public ?array $mapPlants = null,
+        /** ISO-8601 time of the fast state the critters came from (their age label); null with no critters. */
+        public ?string $crittersAt = null,
+        /** @var array<string, list<string>> the props each `ZoneUpdated` kind changes, {@see ZonePresenter::PROPS_BY_KIND} */
+        public array $liveProps = [],
         /** @var array{channel: 'uplink', event: '.zone.updated'} Echo subscription of the live updates */
         #[LiteralTypeScriptType("{ channel: 'uplink'; event: '.zone.updated' }")]
         public array $echo = ['channel' => 'uplink', 'event' => '.zone.updated'],

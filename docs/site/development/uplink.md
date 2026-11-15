@@ -1,7 +1,7 @@
 ---
 title: Uplink
 description: Comment le mod Uplink parle au planner via Reverb, comment chaque message est traité en file et les règles d'ordre et de commande.
-sources: ["app/Listeners/RouteUplinkMessage.php", "app/Listeners/Uplink/**", "app/Enums/UplinkMessageType.php", "app/Jobs/Uplink/**", "app/Events/Uplink/**", "app/Services/Uplink/**", "app/Actions/Uplink/**", "app/Events/ZoneUpdated.php", "app/Models/UplinkCommand.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Console/Commands/UplinkResyncZoneCommand.php", "app/Console/Commands/UplinkCaptureCommand.php", "app/Http/Controllers/ZoneCaptureController.php", "app/Services/Zones/ZonePresenter.php", "app/Services/Zones/ZoneProblems.php", "app/Services/Zones/ZoneCritterState.php", "app/Services/Zones/ZoneCritters.php", "app/Services/Critters/CritterStatusText.php"]
+sources: ["app/Listeners/RouteUplinkMessage.php", "app/Listeners/Uplink/**", "app/Enums/UplinkMessageType.php", "app/Jobs/Uplink/**", "app/Events/Uplink/**", "app/Services/Uplink/**", "app/Actions/Uplink/**", "app/Events/ZoneUpdated.php", "app/Models/UplinkCommand.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Console/Commands/UplinkResyncZoneCommand.php", "app/Console/Commands/UplinkCaptureCommand.php", "app/Http/Controllers/ZoneCaptureController.php", "app/Services/Zones/ZonePresenter.php", "app/Services/Zones/ZoneProblems.php", "app/Services/Zones/ZoneCritterState.php", "app/Services/Zones/ZoneCritters.php", "app/Services/Critters/CritterStatusText.php", "resources/js/composables/useZoneLive.ts"]
 order: 4
 ---
 
@@ -52,6 +52,15 @@ Une zone n'est qu'un ensemble de cases. Le mod lit aussi un **anneau de bord** a
 - il ne lève **jamais d'exception**, sinon la boucle d'événements de Reverb meurt.
 
 Les jobs enregistrent puis lèvent un événement métier (`ZoneListSynced`, `ZoneLayoutStored`, `ZoneStateStored`). Les listeners de ces événements diffusent `ZoneUpdated` aux pages ouvertes (au plus une fois toutes les 2 s par zone pour les états rapides) et demandent un resync si besoin.
+
+La page d'une zone ne recharge que les props du flux nommé par le genre de `ZoneUpdated`. `ZonePresenter::PROPS_BY_KIND` les liste et la page les reçoit dans la prop `liveProps` :
+
+- `fast` : les créatures, la population, les entités, les problèmes, les compteurs et les plantes de la carte (`mapPlants`) ;
+- `slow` : le terrain (`mapTerrain`), les œufs et les compteurs ;
+- `capture` : les captures et la dernière demande de capture ;
+- `layout` et `list` : toutes les props.
+
+Le contrôleur rend chaque prop comme une closure, si bien qu'un rechargement partiel ne calcule que les props demandées : un état rapide toutes les 5 s ne relit jamais le terrain ni le plan. `useZoneLive` cumule les props de tous les événements reçus pendant son délai de 400 ms et lance un seul rechargement.
 
 Les messages sur `uplink` sont journalisés (voir l'inspecteur). Seules les colonies vues le plus récemment sont gardées, plus toute colonie qui possède des zones.
 

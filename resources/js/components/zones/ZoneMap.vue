@@ -16,6 +16,8 @@ import type {
     ZoneEggData,
     ZoneEntityData,
     ZoneMapData,
+    ZonePlantData,
+    ZoneTerrainData,
 } from '@/types/App/Data/data.d';
 import { critterEntities, type MapEntity } from './zoneCritterEntities';
 import {
@@ -56,7 +58,12 @@ import { entityProblemMark } from './zoneVerdict';
 // region Props
 
 const props = defineProps<{
+    /** The layers that change with the layout. */
     map: ZoneMapData;
+    /** Terrain of the slow state (its own prop, reloaded on the slow stream); null until read. */
+    terrain: ZoneTerrainData | null;
+    /** Plants of the fast state (their own prop, reloaded on the fast stream); null until read. */
+    plants: ZonePlantData[] | null;
     entities: ZoneEntityData[];
     /** Critters of the zone; null until the game sent them. */
     critters?: ZoneCritterData[] | null;
@@ -270,7 +277,7 @@ function paint(): void {
 
     paintMs.value = paintZoneMap(canvas.value, {
         box: props.map.box,
-        terrain: props.map.terrain,
+        terrain: props.terrain,
         tiles: props.map.tiles,
         cellPx: cellPx.value,
         dpr: window.devicePixelRatio || 1,
@@ -327,7 +334,7 @@ function syncAnimation(): void {
 
 function updateFluids(): void {
     const renderer = fluidRenderer.value;
-    const terrain = props.map.terrain;
+    const terrain = props.terrain;
 
     if (!renderer) {
         return;
@@ -390,7 +397,7 @@ watch(fluidCanvas, (element, previous) => {
     syncAnimation();
 });
 
-watch(() => [props.map.box, props.map.terrain, cellPx.value], updateFluids);
+watch(() => [props.map.box, props.terrain, cellPx.value], updateFluids);
 
 function onVisibilityChange(): void {
     motion.hidden = document.hidden;
@@ -413,7 +420,7 @@ function onReducedMotionChange(event: MediaQueryListEvent): void {
 watch(
     () => [
         props.map.box,
-        props.map.terrain,
+        props.terrain,
         props.map.tiles,
         props.layer,
         cellPx.value,
@@ -548,7 +555,7 @@ const mapEntities = computed<MapEntity[]>(() => {
         },
     );
 
-    const plants = (props.map.plants ?? []).map((plant, index): MapEntity => {
+    const plants = (props.plants ?? []).map((plant, index): MapEntity => {
         const entity = stateOf(plant.instanceId);
 
         return {
@@ -716,12 +723,12 @@ const hoveredEntity = computed(() =>
 const NO_PALETTE: OverlayPalette = { temperature: [], heatFlow: [] };
 
 const temperatureSpan = computed(() =>
-    temperatureRange(props.map.terrain?.temperature ?? null),
+    temperatureRange(props.terrain?.temperature ?? null),
 );
 
 /** The band name (absolute only: band names are absolute ranges) or signed rate (heat flow) of a cell; null when unknown. */
 function temperatureDetail(index: number, kelvin: number): string | null {
-    const terrain = props.map.terrain;
+    const terrain = props.terrain;
     const palette = overlayPalette.value ?? NO_PALETTE;
 
     switch (temperatureMode.value) {
@@ -751,7 +758,7 @@ const hoveredCell = computed(() => {
         return null;
     }
 
-    const terrain = props.map.terrain;
+    const terrain = props.terrain;
     const index = terrain
         ? layerIndex(hover.value.x, hover.value.y, terrain.box)
         : null;
@@ -802,7 +809,7 @@ const hoveredBlock = computed<{ x: number; y: number } | null>(() => {
         return null;
     }
 
-    const terrain = props.map.terrain;
+    const terrain = props.terrain;
     const index = terrain
         ? layerIndex(current.x, current.y, terrain.box)
         : null;
@@ -940,7 +947,7 @@ const TEMPERATURE_MODES: { key: TemperatureMode; label: string }[] = [
 
 /** Heat flow needs two slow states; until the second arrives it paints nothing. */
 const heatFlowWaiting = computed(() => {
-    const terrain = props.map.terrain;
+    const terrain = props.terrain;
 
     return (
         temperatureMode.value === 'heatFlow' &&
@@ -1340,7 +1347,7 @@ const temperatureLegend = computed(() => {
                 </li>
             </ol>
         </div>
-        <p v-if="!map.terrain" class="zone-map__note">
+        <p v-if="!terrain" class="zone-map__note">
             {{ t('zones.layers.no_terrain') }}
         </p>
         <!-- endregion -->

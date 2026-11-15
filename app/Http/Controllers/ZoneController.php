@@ -50,11 +50,14 @@ final readonly class ZoneController
         ]);
     }
 
-    /** One zone; an archived zone (gone from its save) is not found. */
+    /**
+     * One zone; an archived zone (gone from its save) is not found. Each prop is a closure, so a
+     * live partial reload computes only the props of its stream.
+     */
     public function show(Zone $zone): Response
     {
         abort_if($zone->archived_at !== null, 404);
 
-        return Inertia::render('Zones/Show', $this->presenter->present($zone));
+        return Inertia::render('Zones/Show', $this->presenter->props($zone));
     }
 }

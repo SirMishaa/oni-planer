@@ -19,11 +19,14 @@ const RELOAD_DEBOUNCE_MS = 400;
 const LIVE_WINDOW_MS = 20_000;
 const CLOCK_TICK_MS = 1_000;
 
+/** The stream a `ZoneUpdated` event is about. */
+export type ZoneUpdateKind = 'list' | 'layout' | 'slow' | 'fast' | 'capture';
+
 /** Payload of `App\Events\ZoneUpdated`. */
 type ZoneUpdatedPayload = {
     zoneGuid: string;
     colonyGuid: string;
-    kind: 'list' | 'layout' | 'slow' | 'fast' | 'capture';
+    kind: ZoneUpdateKind;
 };
 
 /** Options of `router.reload`, typed through `@inertiajs/vue3` (core is not a direct dependency). */
@@ -61,7 +64,9 @@ export function liveReloadOptions(
 /**
  * Listens to the zone event of `echo` and reloads the given props
  * (debounced) when the event is about `zoneGuid`, or about any zone when it
- * is null (the zones list). `updatedAt` is the latest time the page's data
+ * is null (the zones list). `only` is a fixed list, or the props the event's
+ * kind changes; the reload after several events of the debounce window
+ * carries the props of all of them. `updatedAt` is the latest time the page's data
  * was received; it drives the live dot and the age label. When a reload
  * finds the page gone, `gone` turns true, `onGone` runs and the events are
  * ignored from then on.
@@ -69,7 +74,7 @@ export function liveReloadOptions(
 export function useZoneLive(options: {
     echo: MaybeRefOrGetter<ZoneEcho>;
     zoneGuid: MaybeRefOrGetter<string | null>;
-    only: string[];
+    only: string[] | ((kind: ZoneUpdateKind) => string[]);
     updatedAt: MaybeRefOrGetter<string | null>;
     onGone?: () => void;
 }): {
@@ -84,11 +89,15 @@ export function useZoneLive(options: {
 
     // region Reload on events
     let pendingReload: ReturnType<typeof setTimeout> | undefined;
+    /** Props of the events received since the last reload. */
+    const pendingProps = new Set<string>();
     const gone = ref(false);
-    const reloadOptions = liveReloadOptions(only, () => {
+    const markGone = () => {
         gone.value = true;
         options.onGone?.();
-    });
+    };
+    const propsOf = (kind: ZoneUpdateKind): string[] =>
+        typeof only === 'function' ? only(kind) : only;
     const { channel, event } = toValue(options.echo);
 
     useEchoPublic<ZoneUpdatedPayload>(channel, event, (payload) => {
@@ -98,11 +107,13 @@ export function useZoneLive(options: {
             return;
         }
 
+        propsOf(payload.kind).forEach((prop) => pendingProps.add(prop));
         clearTimeout(pendingReload);
-        pendingReload = setTimeout(
-            () => router.reload(reloadOptions),
-            RELOAD_DEBOUNCE_MS,
-        );
+        pendingReload = setTimeout(() => {
+            const props = [...pendingProps];
+            pendingProps.clear();
+            router.reload(liveReloadOptions(props, markGone));
+        }, RELOAD_DEBOUNCE_MS);
     });
     // endregion
 

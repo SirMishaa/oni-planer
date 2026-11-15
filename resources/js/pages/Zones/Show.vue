@@ -25,6 +25,8 @@ defineOptions({ layout: AppLayout });
 const props = defineProps<{
     zone: ZoneShowData['zone'];
     map: ZoneShowData['map'];
+    mapTerrain: ZoneShowData['mapTerrain'];
+    mapPlants: ZoneShowData['mapPlants'];
     entities: ZoneShowData['entities'];
     problems: ZoneShowData['problems'];
     borderEntities: ZoneShowData['borderEntities'];
@@ -37,6 +39,8 @@ const props = defineProps<{
     population: ZoneShowData['population'];
     critters: ZoneShowData['critters'];
     eggs: ZoneShowData['eggs'];
+    crittersAt: ZoneShowData['crittersAt'];
+    liveProps: ZoneShowData['liveProps'];
     echo: ZoneShowData['echo'];
 }>();
 
@@ -48,21 +52,8 @@ const props = defineProps<{
 const { live, ageLabel, gone } = useZoneLive({
     echo: () => props.echo,
     zoneGuid: () => props.zone.guid,
-    only: [
-        'zone',
-        'map',
-        'entities',
-        'problems',
-        'borderEntities',
-        'counts',
-        'plantsKnown',
-        'buildingStatesKnown',
-        'captures',
-        'captureRequest',
-        'population',
-        'critters',
-        'eggs',
-    ],
+    /** Each event reloads the props of its stream only: a fast state every 5 s never refetches the terrain. */
+    only: (kind) => props.liveProps[kind] ?? props.liveProps.layout ?? [],
     updatedAt: () =>
         latestTime([
             props.zone.layoutAt,
@@ -137,7 +128,7 @@ type Tab = 'map' | 'entities' | 'captures';
 
 const tab = ref<Tab>('map');
 const layer = ref<ZoneMapLayer>(
-    (props.map?.plants?.length ?? 0) > 0 ? 'growth' : 'materials',
+    (props.mapPlants?.length ?? 0) > 0 ? 'growth' : 'materials',
 );
 const selectedId = ref<string | null>(null);
 /** The flock band a critter problem asked the Entities tab to open. */
@@ -382,6 +373,8 @@ function showOnMap(instanceId: string): void {
                     >
                         <ZoneMap
                             :map="map"
+                            :terrain="mapTerrain"
+                            :plants="mapPlants"
                             :entities="knownEntities"
                             :critters="critters"
                             :eggs="eggs"

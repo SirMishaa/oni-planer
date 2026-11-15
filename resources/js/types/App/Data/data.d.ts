@@ -353,10 +353,8 @@ export type ZoneMapData = {
     gridWidth: number;
     box: ZoneBoxData;
     zoneCells: Array<[number, number]>;
-    terrain: ZoneTerrainData | null;
     tiles: ZoneTileData[] | null;
     buildings: ZoneBuildingData[] | null;
-    plants: ZonePlantData[] | null;
     temperatureBands: string[];
 };
 export type ZonePlantData = {
@@ -403,6 +401,10 @@ export type ZoneShowData = {
     population: ZonePopulationData[] | null;
     critters: ZoneCritterData[] | null;
     eggs: ZoneEggData[] | null;
+    mapTerrain: ZoneTerrainData | null;
+    mapPlants: ZonePlantData[] | null;
+    crittersAt: string | null;
+    liveProps: Record<string, string[]>;
     echo: { channel: 'uplink'; event: '.zone.updated' };
 };
 export type ZoneSpriteRectData = {

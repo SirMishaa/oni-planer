@@ -46,6 +46,34 @@ use Illuminate\Support\Str;
 final class ZonePresenter
 {
     /**
+     * The page props each `ZoneUpdated` kind changes: the page reloads only these on a live event
+     * (shared with it as `liveProps`). A layout or list change reloads everything.
+     *
+     * @var array<string, list<string>>
+     */
+    public const array PROPS_BY_KIND = [
+        'list' => self::ALL_LIVE_PROPS,
+        'layout' => self::ALL_LIVE_PROPS,
+        'slow' => ['zone', 'mapTerrain', 'eggs', 'counts'],
+        'fast' => [
+            'zone', 'mapPlants', 'entities', 'problems', 'borderEntities', 'counts', 'plantsKnown',
+            'buildingStatesKnown', 'population', 'critters', 'crittersAt',
+        ],
+        'capture' => ['captures', 'captureRequest'],
+    ];
+
+    /**
+     * Every page prop a live event can change; the link time has its own heartbeat, the Echo
+     * subscription and `liveProps` never change.
+     *
+     * @var list<string>
+     */
+    private const array ALL_LIVE_PROPS = [
+        'zone', 'map', 'mapTerrain', 'mapPlants', 'entities', 'problems', 'borderEntities', 'counts',
+        'plantsKnown', 'buildingStatesKnown', 'captures', 'captureRequest', 'population', 'critters', 'crittersAt', 'eggs',
+    ];
+
+    /**
      * Keys of the game's temperature overlay bands, coldest first.
      *
      * @var list<string>
@@ -61,24 +89,37 @@ final class ZonePresenter
 
     private const int DOWN = 8;
 
-    /** @var array<string, string|null> sprite URL by "category/prefab", for one present() call */
+    /** @var array<string, string|null> sprite URL by "category/prefab", for one props() call */
     private array $sprites = [];
 
-    /** @var array<string, string>|null element id by lower-cased name in any locale, for one present() call */
+    /** @var array<string, string>|null element id by lower-cased name in any locale, for one props() call */
     private ?array $elementsByName = null;
 
-    /** @var array<string, array{height: int, onCeiling: bool, solid: bool}> game definition of each layout prefab, for one present() call */
+    /** @var array<string, array{height: int, onCeiling: bool, solid: bool}> game definition of each layout prefab, for one layoutMap() call */
     private array $buildingDefinitions = [];
 
-    /** @var array<string, array<string, array{x: float, y: float, w: float, h: float}>> Stairs mod cap variants: prefab => mask => placement, for one present() call */
+    /** @var array<string, array<string, array{x: float, y: float, w: float, h: float}>> Stairs mod cap variants: prefab => mask => placement, for one layoutMap() call */
     private array $stairCaps = [];
 
-    /** @var array<int, array{stair: bool, facingLeft: bool, solid: bool}> what stands on each cell of the layout's building layer, for one present() call */
+    /** @var array<int, array{stair: bool, facingLeft: bool, solid: bool}> what stands on each cell of the layout's building layer, for one layoutMap() call */
     private array $occupants = [];
 
     public function __construct(private readonly GameText $text, private readonly ZonePopulation $population) {}
 
+    /** @see self::props() */
     public function present(Zone $zone): ZoneShowData
+    {
+        return new ZoneShowData(...array_map(fn (Closure $prop): mixed => $prop(), $this->props($zone)));
+    }
+
+    /**
+     * The zone page's props, keyed by the {@see ZoneShowData} fields, each computed only when
+     * called: a partial reload of the fast props never reads the terrain or the layout. The
+     * values the props share (fast plants, entities, critters…) are computed once per call.
+     *
+     * @return array<string, Closure(): mixed>
+     */
+    public function props(Zone $zone): array
     {
         $this->sprites = [];
         $this->elementsByName = null;
@@ -89,38 +130,44 @@ final class ZonePresenter
             ? [(int) $cell % $gridWidth, intdiv((int) $cell, $gridWidth)]
             : null;
 
-        $fastPlants = self::listOrNull($zone->fast_state['plants'] ?? null);
-        [$fastBuildings, $borderBuildings] = ZoneProblems::splitPassages(self::listOrNull($zone->fast_state['buildings'] ?? null));
-        $layoutBuildings = self::listOrNull($layout['buildings'] ?? null);
-        $layoutTiles = self::listOrNull($layout['tiles'] ?? null);
-        $this->buildingDefinitions = self::buildingDefinitions(array_values(array_filter([...$layoutBuildings ?? [], ...$layoutTiles ?? []], is_array(...))));
-        $this->stairCaps = self::stairCaps();
-        $this->occupants = $placed ? $this->occupants($layoutBuildings ?? [], $layoutTiles ?? [], $gridWidth) : [];
-        $anchorsByInstance = [];
-        foreach ($layoutBuildings ?? [] as $building) {
-            $instanceId = self::stringOrNull($building['instanceId'] ?? null);
-            if ($instanceId !== null) {
-                $anchorsByInstance[$instanceId] = $building['anchorCell'] ?? null;
+        $fastPlants = self::once(fn (): ?array => self::listOrNull($zone->fast_state['plants'] ?? null));
+        /** @var Closure(): array{0: list<array<mixed>>|null, 1: list<array<mixed>>} $fastBuildings content buildings, then border passages */
+        $fastBuildings = self::once(fn (): array => ZoneProblems::splitPassages(self::listOrNull($zone->fast_state['buildings'] ?? null)));
+        $anchorsByInstance = self::once(function () use ($layout): array {
+            $anchors = [];
+            foreach (self::listOrNull($layout['buildings'] ?? null) ?? [] as $building) {
+                $instanceId = self::stringOrNull($building['instanceId'] ?? null);
+                if ($instanceId !== null) {
+                    $anchors[$instanceId] = $building['anchorCell'] ?? null;
+                }
             }
-        }
 
-        $entities = [
-            ...array_map(fn (array $plant): ZoneEntityData => $this->plantEntity($plant, $position($plant['cell'] ?? null)), $fastPlants ?? []),
-            ...array_map(fn (array $building): ZoneEntityData => $this->buildingEntity($building, $anchorsByInstance, $position), $fastBuildings ?? []),
-        ];
-        $borderEntities = array_map(fn (array $building): ZoneEntityData => $this->buildingEntity($building, $anchorsByInstance, $position, passage: true), $borderBuildings);
-        usort($entities, fn (ZoneEntityData $a, ZoneEntityData $b): int => [$a->problems === [], $a->secondsUntilHarvest ?? INF] <=> [$b->problems === [], $b->secondsUntilHarvest ?? INF]);
-        $critters = ZoneCritterState::critters($zone);
-        $population = $this->population->forZone($zone);
-        $problems = [
-            ...array_filter($entities, fn (ZoneEntityData $entity): bool => $entity->problems !== []),
-            ...CritterProblems::of($critters ?? [], $population ?? []),
-        ];
-        $eggs = ZoneCritterState::eggs($zone);
-        $this->withIncubation($eggs ?? []);
+            return $anchors;
+        });
+        $entities = self::once(function () use ($fastPlants, $fastBuildings, $anchorsByInstance, $position): array {
+            $entities = [
+                ...array_map(fn (array $plant): ZoneEntityData => $this->plantEntity($plant, $position($plant['cell'] ?? null)), $fastPlants() ?? []),
+                ...array_map(fn (array $building): ZoneEntityData => $this->buildingEntity($building, $anchorsByInstance(), $position), $fastBuildings()[0] ?? []),
+            ];
+            usort($entities, fn (ZoneEntityData $a, ZoneEntityData $b): int => [$a->problems === [], $a->secondsUntilHarvest ?? INF] <=> [$b->problems === [], $b->secondsUntilHarvest ?? INF]);
 
-        return new ZoneShowData(
-            zone: new ZoneData(
+            return $entities;
+        });
+        $critters = self::once(fn (): ?array => ZoneCritterState::critters($zone));
+        $population = self::once(fn (): ?array => $this->population->forZone($zone));
+        $problems = self::once(fn (): array => [
+            ...array_filter($entities(), fn (ZoneEntityData $entity): bool => $entity->problems !== []),
+            ...CritterProblems::of($critters() ?? [], $population() ?? []),
+        ]);
+        $eggs = self::once(function () use ($zone): ?array {
+            $eggs = ZoneCritterState::eggs($zone);
+            $this->withIncubation($eggs ?? []);
+
+            return $eggs;
+        });
+
+        return [
+            'zone' => fn (): ZoneData => new ZoneData(
                 id: $zone->id,
                 guid: $zone->zone_guid,
                 name: $zone->name,
@@ -132,44 +179,34 @@ final class ZonePresenter
                 slowStateAt: $zone->slow_state_at?->toIso8601String(),
                 fastStateAt: $zone->fast_state_at?->toIso8601String(),
             ),
-            map: $placed ? new ZoneMapData(
-                gridWidth: $gridWidth,
-                box: self::box($layout['box'] ?? null),
-                zoneCells: array_values(array_filter(array_map($position, (array) ($layout['cells'] ?? [])))),
-                terrain: $this->terrain($zone->slow_state, $zone->previous_slow_temperature, $zone->slow_state_at),
-                tiles: self::tiles(self::listOrNull($layout['tiles'] ?? null), $gridWidth),
-                buildings: $layoutBuildings === null ? null : array_map(
-                    fn (array $building): ZoneBuildingData => $this->layoutBuilding($building, $gridWidth),
-                    array_values(array_filter($layoutBuildings, fn (array $building): bool => is_numeric($building['anchorCell'] ?? null))),
-                ),
-                plants: $fastPlants === null ? null : array_map(
-                    fn (array $plant): ZonePlantData => $this->plant($plant, $gridWidth),
-                    array_values(array_filter($fastPlants, fn (array $plant): bool => is_numeric($plant['cell'] ?? null))),
-                ),
-                temperatureBands: array_map(
-                    fn (string $band): string => $this->text->translate('STRINGS.UI.OVERLAYS.TEMPERATURE.'.$band) ?? $band,
-                    self::TEMPERATURE_BANDS,
-                ),
-            ) : null,
-            entities: $entities,
-            problems: $problems,
-            borderEntities: $borderEntities,
-            counts: new ZoneCountsData(
-                plants: count($fastPlants ?? []),
-                buildings: count($fastBuildings ?? []),
-                problems: count($problems),
-                critters: count($critters ?? []),
-                eggs: count($eggs ?? []),
+            'map' => fn (): ?ZoneMapData => $placed ? $this->layoutMap($layout, $gridWidth, $position) : null,
+            'entities' => $entities,
+            'problems' => $problems,
+            'borderEntities' => fn (): array => array_map(fn (array $building): ZoneEntityData => $this->buildingEntity($building, $anchorsByInstance(), $position, passage: true), $fastBuildings()[1]),
+            'counts' => fn (): ZoneCountsData => new ZoneCountsData(
+                plants: count($fastPlants() ?? []),
+                buildings: count($fastBuildings()[0] ?? []),
+                problems: count($problems()),
+                critters: count($critters() ?? []),
+                eggs: count($eggs() ?? []),
             ),
-            plantsKnown: $fastPlants !== null,
-            buildingStatesKnown: $fastBuildings !== null,
-            captures: $this->captures($zone),
-            captureRequest: self::captureRequest($zone),
-            linkSeenAt: Colony::query()->where('guid', $zone->colony_guid)->first(['last_seen_at'])?->last_seen_at?->toIso8601String(),
-            population: $population,
-            critters: $critters,
-            eggs: $eggs,
-        );
+            'plantsKnown' => fn (): bool => $fastPlants() !== null,
+            'buildingStatesKnown' => fn (): bool => $fastBuildings()[0] !== null,
+            'captures' => fn (): array => $this->captures($zone),
+            'captureRequest' => fn (): ?ZoneCaptureRequestData => self::captureRequest($zone),
+            'linkSeenAt' => fn (): ?string => Colony::query()->where('guid', $zone->colony_guid)->first(['last_seen_at'])?->last_seen_at?->toIso8601String(),
+            'population' => $population,
+            'critters' => $critters,
+            'eggs' => $eggs,
+            'mapTerrain' => fn (): ?ZoneTerrainData => $placed ? $this->terrain($zone->slow_state, $zone->previous_slow_temperature, $zone->slow_state_at) : null,
+            'mapPlants' => fn (): ?array => $placed && $fastPlants() !== null ? array_map(
+                fn (array $plant): ZonePlantData => $this->plant($plant, $gridWidth),
+                array_values(array_filter($fastPlants(), fn (array $plant): bool => is_numeric($plant['cell'] ?? null))),
+            ) : null,
+            'crittersAt' => fn (): ?string => $critters() === null ? null : $zone->fast_state_at?->toIso8601String(),
+            'liveProps' => fn (): array => self::PROPS_BY_KIND,
+            'echo' => fn (): array => ['channel' => 'uplink', 'event' => '.zone.updated'],
+        ];
     }
 
     /**
@@ -180,6 +217,29 @@ final class ZonePresenter
     public function problemSummary(Zone $zone): array
     {
         return ZoneProblems::summary($zone);
+    }
+
+    /**
+     * A closure that computes its value on the first call and returns it on the next ones.
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $compute
+     * @return Closure(): T
+     */
+    private static function once(Closure $compute): Closure
+    {
+        $computed = false;
+        $value = null;
+
+        return function () use ($compute, &$computed, &$value): mixed {
+            if (! $computed) {
+                $value = $compute();
+                $computed = true;
+            }
+
+            return $value;
+        };
     }
 
     private static function captureRequest(Zone $zone): ?ZoneCaptureRequestData
@@ -337,6 +397,36 @@ final class ZonePresenter
         }
 
         return $caps;
+    }
+
+    /**
+     * The map layers that only change with the layout: the box, the zone cells, the tiles and buildings.
+     *
+     * @param  array<mixed>  $layout
+     * @param  Closure(mixed): (array{0: int, 1: int}|null)  $position
+     */
+    private function layoutMap(array $layout, int $gridWidth, Closure $position): ZoneMapData
+    {
+        $layoutBuildings = self::listOrNull($layout['buildings'] ?? null);
+        $layoutTiles = self::listOrNull($layout['tiles'] ?? null);
+        $this->buildingDefinitions = self::buildingDefinitions(array_values(array_filter([...$layoutBuildings ?? [], ...$layoutTiles ?? []], is_array(...))));
+        $this->stairCaps = self::stairCaps();
+        $this->occupants = $this->occupants($layoutBuildings ?? [], $layoutTiles ?? [], $gridWidth);
+
+        return new ZoneMapData(
+            gridWidth: $gridWidth,
+            box: self::box($layout['box'] ?? null),
+            zoneCells: array_values(array_filter(array_map($position, (array) ($layout['cells'] ?? [])))),
+            tiles: self::tiles($layoutTiles, $gridWidth),
+            buildings: $layoutBuildings === null ? null : array_map(
+                fn (array $building): ZoneBuildingData => $this->layoutBuilding($building, $gridWidth),
+                array_values(array_filter($layoutBuildings, fn (array $building): bool => is_numeric($building['anchorCell'] ?? null))),
+            ),
+            temperatureBands: array_map(
+                fn (string $band): string => $this->text->translate('STRINGS.UI.OVERLAYS.TEMPERATURE.'.$band) ?? $band,
+                self::TEMPERATURE_BANDS,
+            ),
+        );
     }
 
     /** @return list<ZoneCaptureData> */

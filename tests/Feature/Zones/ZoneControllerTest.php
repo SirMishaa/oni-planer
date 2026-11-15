@@ -2,8 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Data\ZoneShowData;
 use App\Models\Colony;
 use App\Models\Zone;
+use App\Services\Zones\ZonePresenter;
+use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 use Inertia\Testing\AssertableInertia;
 
 it('lists the active zones of the most recently seen colony', function (): void {
@@ -55,9 +59,51 @@ it('renders a zone page', function (): void {
             ->where('zone.guid', $zone->zone_guid)
             ->where('zone.orphaned', true)
             ->where('map.gridWidth', 606)
+            ->where('mapTerrain.box.width', 22)
+            ->has('mapPlants', 13)
+            ->where('liveProps', ZonePresenter::PROPS_BY_KIND)
             ->has('entities', 14)
             ->has('problems', 1)
             ->where('echo', ['channel' => 'uplink', 'event' => '.zone.updated']));
+});
+
+it('computes only the requested props on a partial reload', function (): void {
+    $zone = Zone::factory()->sodicaneFarm()->create();
+    $zone->update(['fast_state' => [...$zone->fast_state, 'critters' => [[
+        'instanceId' => '1201', 'prefabId' => 'Pacu', 'cell' => 100, 'x' => 1.0, 'y' => 1.0, 'aquatic' => true, 'regionId' => 'pond:1201',
+    ]]]]);
+    $tables = [];
+    DB::listen(function ($query) use (&$tables): void {
+        preg_match_all('/(?:from|join) "([a-z_]+)"/i', $query->sql, $matches);
+        array_push($tables, ...$matches[1]);
+    });
+
+    $this->get(route('zones.show', $zone))->assertOk();
+    expect($tables)->toContain('elements');
+
+    $tables = [];
+    $partial = $this->withHeaders([
+        'X-Inertia' => 'true',
+        'X-Inertia-Version' => (string) Inertia::getVersion(),
+        'X-Inertia-Partial-Component' => 'Zones/Show',
+        'X-Inertia-Partial-Data' => 'critters',
+    ])->get(route('zones.show', $zone));
+
+    $partial->assertOk();
+    expect(array_keys($partial->json('props')))->not->toContain('mapTerrain', 'map', 'entities')
+        ->and($partial->json('props.critters.0.instanceId'))->toBe('1201')
+        ->and($tables)->not->toContain('elements')
+        ->and($tables)->not->toContain('buildings')
+        ->and($tables)->not->toContain('zone_captures');
+});
+
+it('groups the live props by stream, each a prop of the page', function (): void {
+    $properties = array_map(fn (ReflectionParameter $parameter): string => $parameter->getName(), (new ReflectionMethod(ZoneShowData::class, '__construct'))->getParameters());
+
+    expect(array_keys(ZonePresenter::PROPS_BY_KIND))->toBe(['list', 'layout', 'slow', 'fast', 'capture'])
+        ->and(array_diff(array_merge(...array_values(ZonePresenter::PROPS_BY_KIND)), $properties))->toBe([])
+        ->and(ZonePresenter::PROPS_BY_KIND['fast'])->toContain('critters', 'mapPlants', 'zone')->not->toContain('mapTerrain', 'map')
+        ->and(ZonePresenter::PROPS_BY_KIND['slow'])->toContain('mapTerrain', 'eggs', 'zone')->not->toContain('critters', 'map');
 });
 
 it('does not find an archived zone', function (): void {
