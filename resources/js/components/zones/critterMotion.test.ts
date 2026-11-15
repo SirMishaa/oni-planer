@@ -185,6 +185,26 @@ describe('critter motion', () => {
         );
     });
 
+    it('keeps facing on a vertical step', () => {
+        const track = trackFrom(
+            critter({
+                facing: 'left',
+                navType: 'Swim',
+                x: 176.42,
+                path: [
+                    { cell: cell(176, 222), navType: 'Swim' },
+                    { cell: cell(176, 223), navType: 'Swim' },
+                ],
+            }),
+            RECEIVED_AT,
+            gridWidth,
+            box,
+        );
+
+        expect(track.path.map((step) => step.facing)).toEqual(['left', 'left']);
+        expect(positionAt(track, at(0.5)).facing).toBe('left');
+    });
+
     it('turns facing with the direction of travel', () => {
         const track = trackFrom(
             critter({
@@ -271,7 +291,10 @@ describe('useCritterMotion', () => {
         scope.stop();
     });
 
-    it('resets when every instance id changed', async () => {
+    // No reset branch is needed: each state builds its tracks from its own critters only. This
+    // checks the outcome: 9001 stands 0.5 cell from where 1234 was drawn (177.5), yet starts
+    // where the game saw it, and nothing of the previous session is kept.
+    it('starts a new session from the positions the game sent', async () => {
         const scope = effectScope();
         const critters = ref<ZoneCritterData[] | null>([
             critter(),

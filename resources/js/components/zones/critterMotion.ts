@@ -151,7 +151,10 @@ export function trackFrom(
         )
             ? Math.hypot(dx, target.y - previous.y) / critter.speed
             : NON_LOOPING_SECONDS;
-        facing = dx > EPSILON ? 'right' : dx < -EPSILON ? 'left' : facing;
+        // From the cell columns, not the float x: the sub-cell offset of the sent position must not turn a vertical step.
+        const columnStep =
+            (node.cell % gridWidth) - (previous.cell % gridWidth);
+        facing = columnStep > 0 ? 'right' : columnStep < 0 ? 'left' : facing;
         track.path.push({
             ...target,
             navType: node.navType,

@@ -21,7 +21,7 @@ import type {
     ZonePlantData,
     ZoneTerrainData,
 } from '@/types/App/Data/data.d';
-import { isReplayable } from './critterMotion';
+import { isReplayable, trackFrom } from './critterMotion';
 import { critterEntities, type MapEntity } from './zoneCritterEntities';
 import {
     createFluidRenderer,
@@ -730,26 +730,26 @@ watch(critterPoses, applyCritterPoses, { flush: 'sync' });
 onMounted(collectCritterElements);
 onUpdated(collectCritterElements);
 
-/** The path the selected critter is walking, as dots in the box's local cells. */
+/**
+ * The path the selected critter is walking, as dots in the box's local cells:
+ * the steps of its replay track, so the dots stop where the replay stops (the
+ * first cell out of the box). They show the whole path of the message, walked
+ * steps included: dropping those would re-render the map at every step.
+ */
 const selectedPath = computed<{ column: number; row: number }[]>(() => {
     const critter = props.selectedId
         ? crittersById.value.get(props.selectedId)
         : undefined;
 
-    if (!critter?.moving) {
+    if (!critter) {
         return [];
     }
 
     const box = props.map.box;
-    const gridWidth = props.map.gridWidth;
 
-    return critter.path
-        .map((node) => ({
-            x: node.cell % gridWidth,
-            y: Math.floor(node.cell / gridWidth),
-        }))
-        .filter(({ x, y }) => layerIndex(x, y, box) !== null)
-        .map(({ x, y }) => cellToLocal(x, y, box));
+    return trackFrom(critter, 0, props.map.gridWidth, box).path.map((step) =>
+        cellToLocal(Math.floor(step.x), step.y, box),
+    );
 });
 
 // endregion
