@@ -104,7 +104,7 @@ final class CheckCrowdingConsistency
     private function logSkip(string $zoneGuid, string $regionId, array $prefabs): void
     {
         sort($prefabs);
-        $key = 'crowding-skip:'.$zoneGuid.':'.$regionId.':'.md5(implode(',', $prefabs));
+        $key = 'crowding-skip:'.$zoneGuid.':'.$regionId.':'.hash('xxh3', implode(',', $prefabs));
         if (! Cache::add($key, true, self::SKIP_LOG_TTL_SECONDS)) {
             return;
         }
