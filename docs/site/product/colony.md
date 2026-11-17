@@ -1,7 +1,7 @@
 ---
 title: Ma colonie
 description: Relier le jeu au planner avec le mod Uplink, puis suivre la viabilité alimentaire de ta colonie, la carte de tes zones et voir ce que le jeu envoie.
-sources: ["app/Http/Controllers/ColonyController.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Services/Viability/**", "resources/js/pages/Colony/**", "lang/fr/colony.php", "app/Http/Controllers/ZoneController.php", "app/Services/Zones/ZonePresenter.php", "resources/js/components/zones/**", "lang/fr/zones.php", "app/Services/Zones/ZonePopulation.php", "app/Services/Zones/CritterProblems.php", "app/Services/Zones/ZoneFeeding.php", "app/Services/Zones/ZoneInventory.php"]
+sources: ["app/Http/Controllers/ColonyController.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Services/Viability/**", "resources/js/pages/Colony/**", "lang/fr/colony.php", "app/Http/Controllers/ZoneController.php", "app/Services/Zones/ZonePresenter.php", "resources/js/components/zones/**", "lang/fr/zones.php", "app/Services/Zones/ZonePopulation.php", "app/Services/Zones/CritterProblems.php", "app/Services/Zones/ZoneFeeding.php", "app/Services/Zones/ZoneInventory.php", "app/Services/Zones/RanchProblems.php", "app/Services/Zones/ZoneBuildingSettings.php"]
 order: 6
 ---
 
@@ -59,6 +59,8 @@ L'onglet **Entités** liste les plantes et les bâtiments de la zone, ceux qui o
 
 Les alertes des créatures comptent aussi parmi les problèmes, sans les noyer : un statut partagé par tout un groupe (38 pacus à l'étroit) donne **un seul** problème, une alerte propre à une créature donne un problème pour elle, et chaque pièce ou bassin surpeuplé, à l'étroit ou confiné donne un problème qui indique combien de critters retirer, une espèce au choix (« retirer 2 Pacu ou 2 Blowter »). Un clic sur un problème de créature ouvre l'onglet Entités sur la bonne bande du troupeau, et la carte épingle d'un « ! » les créatures concernées.
 
+Les mangeoires et les points de dépôt montrent leurs réglages sous leur nom : « Filtre : Algues, Varech · 340 / 500 kg » pour une mangeoire (« Rien de coché » si rien n'est coché), « 12 / 20 critters · Pacu » pour un point de dépôt. Trois alertes viennent de ces réglages, toutes marquées « dérivé » : le stock bas ou épuisé d'un groupe, un groupe dont aucune mangeoire n'accepte la nourriture (voir [Alimentation](./rules/feeding.md)), et un point de dépôt dont la limite dépasse ce que la pièce peut accueillir : « Le point de dépôt amène jusqu'à 20 critters, la pièce en supporte 12 ». Cette dernière ne se calcule que si la zone contient une seule pièce (ou un seul bassin, pour un point de dépôt de poissons).
+
 Les portes, échelles, poteaux de pompier et escaliers sur ce bord sont rangés à part, dans le groupe **Bord** : ils restent sur la carte, mais ne comptent ni dans les bâtiments ni dans les problèmes.
 
 ### Troupeau et œufs
@@ -71,7 +73,7 @@ Les filtres **Critters** et **Œufs** de l'onglet **Entités** montrent les anim
 
 Sous les vignettes, une ligne résume le groupe : l'humeur, l'estomac médian et les âges.
 
-Une seconde ligne dit ce que le groupe mange et produit, et combien de temps le stock de la zone tient. Par exemple pour 38 pacus au bonheur nul : « Mange : Algues 285 kg/cycle (ou Varech) · Produit : Sable pollué 143 kg/cycle, Œuf de Pacu 1,9 œuf/cycle » et la puce **Stock pour 1,6 cycle**. La puce est verte à partir de 3 cycles, orange en dessous, rouge sous 1 cycle ; sans aucun aliment accepté en stock, elle devient **Il manque 285 kg/cycle**. Elle est marquée « dérivé » : voir [Alimentation](./rules/feeding.md) pour le calcul.
+Une seconde ligne dit ce que le groupe mange et produit, et combien de temps le stock de la zone tient. Par exemple pour 38 pacus au bonheur nul : « Mange : Algues 285 kg/cycle (ou Varech) · Produit : Sable pollué 143 kg/cycle, Œuf de Pacu 1,9 œuf/cycle » et la puce **Stock pour 1,6 cycle**. Si des aliments du régime ne sont cochés dans aucune mangeoire, une ligne « À cocher dans le distributeur : … » les liste. La puce est verte à partir de 3 cycles, orange en dessous, rouge sous 1 cycle ; sans aucun aliment accepté en stock, elle devient **Il manque 285 kg/cycle**. Elle est marquée « dérivé » : voir [Alimentation](./rules/feeding.md) pour le calcul.
 
 Un groupe qui mange des plantes sur pied ou des proies n'a pas de puce : la ligne dit ce qu'il broute ou chasse, avec le nombre de ces plantes ou proies dans la zone (« Broute : Épicier (12 dans la zone) »). Un groupe qui mange les deux montre le bilan de ses objets, puis ses plantes comme alternative (« ou broute : … »).
 

@@ -1,7 +1,7 @@
 ---
 title: Uplink
 description: Comment le mod Uplink parle au planner via Reverb, comment chaque message est traité en file et les règles d'ordre et de commande.
-sources: ["app/Listeners/RouteUplinkMessage.php", "app/Listeners/Uplink/**", "app/Enums/UplinkMessageType.php", "app/Jobs/Uplink/**", "app/Events/Uplink/**", "app/Services/Uplink/**", "app/Actions/Uplink/**", "app/Events/ZoneUpdated.php", "app/Models/UplinkCommand.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Console/Commands/UplinkResyncZoneCommand.php", "app/Console/Commands/UplinkCaptureCommand.php", "app/Http/Controllers/ZoneCaptureController.php", "app/Services/Zones/ZonePresenter.php", "app/Services/Zones/ZoneProblems.php", "app/Services/Zones/ZoneCritterState.php", "app/Services/Zones/ZoneCritters.php", "app/Services/Critters/CritterStatusText.php", "resources/js/composables/useZoneLive.ts", "resources/js/composables/useCritterMotion.ts", "resources/js/components/zones/critterMotion.ts", "resources/js/composables/useUplinkFastRelay.ts", "resources/js/components/zones/critterRelay.ts"]
+sources: ["app/Listeners/RouteUplinkMessage.php", "app/Listeners/Uplink/**", "app/Enums/UplinkMessageType.php", "app/Jobs/Uplink/**", "app/Events/Uplink/**", "app/Services/Uplink/**", "app/Actions/Uplink/**", "app/Events/ZoneUpdated.php", "app/Models/UplinkCommand.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Console/Commands/UplinkResyncZoneCommand.php", "app/Console/Commands/UplinkCaptureCommand.php", "app/Http/Controllers/ZoneCaptureController.php", "app/Services/Zones/ZonePresenter.php", "app/Services/Zones/ZoneProblems.php", "app/Services/Zones/ZoneCritterState.php", "app/Services/Zones/ZoneCritters.php", "app/Services/Critters/CritterStatusText.php", "resources/js/composables/useZoneLive.ts", "resources/js/composables/useCritterMotion.ts", "resources/js/components/zones/critterMotion.ts", "resources/js/composables/useUplinkFastRelay.ts", "resources/js/components/zones/critterRelay.ts", "app/Services/Zones/ZoneBuildingSettings.php"]
 order: 4
 ---
 
@@ -41,6 +41,7 @@ Sur `uplink-data`, le `data` de l'événement vaut `{"payload": "<base64 du gzip
 Une zone n'est qu'un ensemble de cases. Le mod lit aussi un **anneau de bord** autour d'elle : les cases à quelques cases d'une case de la zone, diagonales comprises (`ZoneBorder`). Sa largeur se règle avec `zoneBorderCells` dans `uplink.json` et le layout la renvoie dans `borderCells`.
 
 - L'état rapide (`buildings`) liste les bâtiments qui touchent la zone **ou** l'anneau, sur le même monde que la zone. Le cadre du layout s'élargit pour les dessiner.
+- Chaque bâtiment réglable porte un objet `settings` : `filter` (ce qui est coché, `null` sans filtre, `[]` si rien n'est coché) et `capacity` (`limit`, `max`, `stored`, `unit` en `kg` ou `critters`). Le site le lit avec `ZoneBuildingSettings` ; un mod plus ancien ne l'envoie pas, et le site traite alors les filtres comme inconnus.
 - Le terrain, les températures et les plantes restent ceux des cases de la zone : les murs ne faussent pas les moyennes.
 - Côté site, `ZonePresenter` sépare les passages (`ZoneProblems::PASSAGE_PREFABS` : portes, échelles, poteaux, escaliers) dans `borderEntities`. Ils ne comptent ni dans les entités, ni dans les problèmes, ni dans le résumé des zones. Tout autre bâtiment, de mod ou inconnu, compte comme contenu.
 

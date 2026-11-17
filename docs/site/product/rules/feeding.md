@@ -13,6 +13,8 @@ sources:
   - app/Services/Zones/ZoneInventory.php
   - app/Services/Zones/ZoneFeeding.php
   - app/Data/ZoneFeedingData.php
+  - app/Services/Zones/ZoneBuildingSettings.php
+  - app/Services/Zones/RanchProblems.php
 ---
 
 # Alimentation
@@ -48,6 +50,22 @@ Un groupe qui ne mange que des plantes sur pied ou des proies n'a ni autonomie n
 Dans une zone, le stock est ce que contiennent ses **mangeoires** (mangeoire à critters et mangeoire à poissons) : un critter ne mange jamais dans un casier de stockage, ni dans un bâtiment qui consomme lui-même ce qu'il contient, comme un terrarium à algues. Les récoltes mûres, pas encore ramassées, ne comptent pas : une plante sur pied n'est pas un objet à ramasser. Le jeu laisse aussi les critters manger les objets posés au sol, mais Uplink ne les envoie pas : le stock peut donc être sous-estimé. Le bilan se calcule pour chaque bande du troupeau, une espèce à un stade : voir [Ma colonie](../colony.md). Tant que le jeu n'a pas envoyé l'état des bâtiments, le stock est inconnu : pas d'autonomie ni de déficit plutôt qu'un faux manque.
 
 Pour un groupe qui broute ou chasse, le planner compte à la place les plantes ou les critters de cette espèce présents dans la zone.
+
+## Filtres des mangeoires
+
+Le planner lit aussi ce que tu as coché dans chaque mangeoire de la zone :
+
+- **Bloqué** : si aucune mangeoire n'accepte un seul des objets que le groupe mange, le groupe affiche « Aucun distributeur n'accepte sa nourriture » et la zone compte un problème. Il suffit qu'une mangeoire accepte un de ses aliments pour lever le blocage. Une mangeoire sans rien de coché refuse tout.
+- **À cocher** : les objets du régime qu'aucune mangeoire n'accepte sont listés sous le groupe, par exemple « À cocher dans le distributeur : Varech ». C'est une piste pour une nourriture de rechange, pas un problème.
+
+Seuls les objets ramassés comptent : un groupe qui broute ou chasse n'est jamais bloqué par un filtre. Avec une ancienne version d'Uplink qui n'envoie pas les filtres, le planner ne signale ni blocage ni aliment à cocher.
+
+## Alertes de stock
+
+- **Stock bas** : moins de 3 cycles d'autonomie, par exemple « Stock bas : Algues pour 1,3 cycle (dérivé) ».
+- **Plus de stock** : aucun aliment accepté dans les mangeoires, « Plus de stock : Algues (dérivé) ».
+
+Ces alertes comptent parmi les problèmes de la zone. Un groupe bloqué par les filtres n'affiche que l'alerte de blocage.
 
 <Accordion title="Comment les chiffres sont calculés">
 
