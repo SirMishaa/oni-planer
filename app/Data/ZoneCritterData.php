@@ -20,7 +20,10 @@ final class ZoneCritterData extends Data
         public string $instanceId,
         public string $prefabId,
         public string $name,
+        /** The portrait (`critters/{prefab}.webp`): the codex, flock and sheet image, facing any way. */
         public ?string $sprite,
+        /** The map sprite (`critters/{prefab}_world.webp`): frame 0 of the anim the game draws, facing right like the game's art. */
+        public ?string $worldSprite,
         public int $cell,
         public float $x,
         public float $y,

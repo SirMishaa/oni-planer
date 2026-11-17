@@ -1,7 +1,10 @@
 """Render looping idle animations for worklist entities into public/assets/game/.
 
 Usage:
-    uv run --with UnityPy --with Pillow python -m scripts.kanim.extract [--key Hatch] [--missing] [--verbose]
+    uv run --with UnityPy --with Pillow python -m scripts.kanim.extract [--key Hatch] [--missing] [--world] [--verbose]
+
+--world renders only the critters' map sprites (<key>_world.webp, one frame each),
+without touching the portraits and idle loops.
 """
 import re
 import sys
@@ -10,7 +13,7 @@ from pathlib import Path
 import UnityPy
 from PIL import Image
 
-from scripts.kanim.anim import AnimData, parse_anim
+from scripts.kanim.anim import Anim, AnimData, parse_anim
 from scripts.kanim.build import parse_build
 from scripts.kanim.mapping import EXTRA_BUILD_BASES, MORPH_SYMBOL_PREFIX, MORPH_UI_ANIM, OVERRIDES, load_worklist, morph_symbol_prefix
 from scripts.kanim.render import encode_webp, render_anim
@@ -33,10 +36,55 @@ IDLE_PREFERENCES = ("idle_loop", "idle_default", "idle")
 PLANT_IDLE_PREFERENCES = ("idle_full", *IDLE_PREFERENCES)
 # Categories rendered as a static ui portrait plus an animated <key>_idle.webp.
 PORTRAIT_CATEGORIES = ("critters", "plants")
-DENY_NAMES = ("pivot", "snapto")
+DENY_NAMES = ("pivot", "snapto", "segmenttracker")
+# Anchor symbols the game never draws. Some anims reference them without their build
+# naming them (LightBug, ParrotFish, Squid), so they are skipped by hash too.
+ANCHOR_SYMBOLS = ("snapto_pivot", "snapto_tag")
 # anim bases that are accessory/variant assets, not a creature/plant's main kanim
 PREFIX_SKIP = ("baby_", "egg_", "creature_interacts_", "elegantbed_", "flowervase_", "jet_", "jetsuit_", "balloon_", "sticker_", "dehydrated_", "anim_", "meteor_", "seed_")
 SUFFIX_SKIP = ("_build", "_emotes")
+# The anim the game draws a critter standing still with: its nav grid's idle anim
+# (NavGrid.GetIdleAnim). Every critter grid of GameNavGrids uses idle_loop, except
+# the floaters' swim (swim_idle_loop) and the diggers inside a solid (idle1).
+WORLD_ANIM = "idle_loop"
+
+
+class WorldSpriteError(RuntimeError):
+    """A still (map sprite or portrait) that would not be a single frame."""
+
+
+def klei_hash(name: str) -> int:
+    """The game's symbol hash (Hash.SDBMLower), as a signed 32-bit int like the kanim files."""
+    value = 0
+    for char in name.lower():
+        value = (ord(char) + (value << 6) + (value << 16) - value) & 0xFFFFFFFF
+    return value - (1 << 32) if value >= 1 << 31 else value
+
+
+def skipped_symbols(names: dict[int, str]) -> frozenset[int]:
+    """Symbols never drawn: anchors and pivots, named by the build or not."""
+    named = {h for h, nm in names.items() if any(d in nm.lower() for d in DENY_NAMES)}
+    return frozenset(named | {klei_hash(anchor) for anchor in ANCHOR_SYMBOLS})
+
+
+def pick_world_anim(data: AnimData) -> Anim | None:
+    """The in-world idle anim, or None: never another anim, whose pose would not be the game's."""
+    return next((a for a in data.anims if a.name == WORLD_ANIM and a.frames), None)
+
+
+def first_frame(anim: Anim) -> Anim:
+    """The anim cut to its frame 0, for a still image."""
+    return Anim(name=anim.name, rate=anim.rate, frames=anim.frames[:1])
+
+
+def encode_still(frames: list[Image.Image], out_path: Path) -> None:
+    """Writes a one-frame webp; anything else is an error, never a silent animation."""
+    if len(frames) != 1:
+        raise WorldSpriteError(f"{out_path.name}: a still needs exactly one frame, got {len(frames)}")
+    encode_webp(frames, 1.0, out_path)
+    with Image.open(out_path) as written:
+        if getattr(written, "n_frames", 1) != 1:
+            raise WorldSpriteError(f"{out_path.name}: written with {written.n_frames} frames")
 
 
 def _norm(s: str) -> str:
@@ -104,6 +152,26 @@ def _pick_critter_anim(data: AnimData, key: str):
     return _pick_idle(data)
 
 
+def _render_world(key: str, data: AnimData, symbols: dict, names: dict[int, str], skip: frozenset[int], out_dir: Path, verbose: bool) -> str | None:
+    """Renders <key>_world.webp; returns why it could not, or None."""
+    anim = pick_world_anim(data)
+    if anim is None:
+        return f"no {WORLD_ANIM} anim"
+    prefix = morph_symbol_prefix(key)
+    world_symbols = _apply_symbol_prefix(symbols, names, prefix) if prefix else symbols
+    still = first_frame(anim)
+    referenced = {e.symbol_hash for e in still.frames[0].elements if e.symbol_hash not in skip}
+    unresolved = sorted(names.get(h, str(h)) for h in referenced if h not in world_symbols)
+    if unresolved:
+        return f"unresolved symbols: {', '.join(unresolved)}"
+    encode_still(render_anim(world_symbols, still, skip), out_dir / f"{key}_world.webp")
+    print(f"  OK    world/{key} ({anim.name} frame 0{', ' + prefix + '_ symbols' if prefix else ''})")
+    if verbose:
+        drawn = [names.get(e.symbol_hash, str(e.symbol_hash)) for e in sorted(still.frames[0].elements, key=lambda e: e.order)]
+        print(f"        symbols: {', '.join(drawn)}")
+    return None
+
+
 def main() -> None:
     args = sys.argv[1:]
     only_key = args[args.index("--key") + 1] if "--key" in args else None
@@ -111,6 +179,8 @@ def main() -> None:
     # --missing: render only entities whose sprite (and, for critters, idle loop)
     # does not exist yet. Rendering everything takes ~40 min; never redo it casually.
     only_missing = "--missing" in args
+    # --world: only the critters' map sprites, a few minutes (bundle loading).
+    world_only = "--world" in args
 
     builds: dict[str, bytes] = {}
     anims: dict[str, bytes] = {}
@@ -152,10 +222,13 @@ def main() -> None:
     worklist = load_worklist()
     if only_key:
         worklist = [r for r in worklist if r["key"] == only_key]
-    if only_missing:
+    if world_only:
+        worklist = [r for r in worklist if r["category"] == "critters"]
+    elif only_missing:
         worklist = [r for r in worklist if not _is_rendered(r)]
         print(f"  {len(worklist)} entities missing a sprite")
     ok = miss = 0
+    world_misses: list[str] = []
     for row in worklist:
         # Decoded RGBA atlases are ~16-64 MB each; keeping every one ever used grew
         # the process to ~30 GB and OOM-killed the whole WSL VM. Atlases are
@@ -191,6 +264,23 @@ def main() -> None:
                 symbols[sym.hash] = (sym.frames, pages)
 
         data = parse_anim(anim_bytes)
+        skip = skipped_symbols(names)
+        out_dir = REPO / "public/assets/game" / row["category"]
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        # The map sprite: frame 0 of the anim the game draws the critter with, in its
+        # morph colours. Facing.SetFacing mirrors it (KAnimControllerBase.FlipX) when
+        # the critter faces left, so it is authored facing right like every world anim.
+        if row["category"] == "critters":
+            reason = _render_world(row["key"], data, symbols, names, skip, out_dir, verbose)
+            if reason is None:
+                ok += world_only
+            else:
+                print(f"  MISS  world/{row['key']} ({reason})")
+                world_misses.append(row["key"])
+        if world_only:
+            continue
+
         anim = _pick_critter_anim(data, row["key"]) if row["category"] in PORTRAIT_CATEGORIES else _pick_idle(data)
         if anim is None:
             print(f"  MISS  {row['category']}/{row['key']} (no usable anim)")
@@ -198,28 +288,30 @@ def main() -> None:
             continue
 
         prefix = MORPH_SYMBOL_PREFIX.get(row["key"])
-        if prefix:
-            symbols = _apply_symbol_prefix(symbols, names, prefix)
+        portrait_symbols = _apply_symbol_prefix(symbols, names, prefix) if prefix else symbols
+
+        # A portrait is a still: frame 0 only, even when it fell back to an idle loop
+        # (ParrotFish has no ui anim; its portrait used to be the whole 49-frame loop).
+        if row["category"] in PORTRAIT_CATEGORIES:
+            anim = first_frame(anim)
 
         referenced = {e.symbol_hash for fr in anim.frames for e in fr.elements}
-        unresolved = sum(1 for h in referenced if h not in symbols)
-        skip = frozenset(h for h, nm in names.items() if any(d in nm.lower() for d in DENY_NAMES))
+        unresolved = sum(1 for h in referenced if h not in portrait_symbols)
         if verbose:
             print(f"  {row['key']}: anim='{anim.name}' frames={len(anim.frames)} refs={len(referenced)} unresolved={unresolved} skip={len(skip)}")
 
-        frames = render_anim(symbols, anim, skip)
-        out_dir = REPO / "public/assets/game" / row["category"]
-        out_dir.mkdir(parents=True, exist_ok=True)
-        encode_webp(frames, anim.rate, out_dir / f"{row['key']}.webp")
+        frames = render_anim(portrait_symbols, anim, skip)
+        if row["category"] in PORTRAIT_CATEGORIES:
+            encode_still(frames, out_dir / f"{row['key']}.webp")
+        else:
+            encode_webp(frames, anim.rate, out_dir / f"{row['key']}.webp")
         flag = "" if unresolved == 0 else f" (!{unresolved} unresolved)"
         print(f"  OK    {row['category']}/{row['key']} <- {base} ({anim.name}, {len(frames)}f){flag}")
         ok += 1
 
-        # The ui portrait is a single static frame; also render the animated
-        # side-view idle as <key>_idle.webp (shown on the critter grid). Morph
-        # colors come from the game's symbol-prefix override (trp_, glp_, ...).
-        # Always written, even when the portrait already fell back to the idle
-        # (e.g. ParrotFish has no ui anim), so every critter has one.
+        # Also render the animated side-view idle as <key>_idle.webp (shown on the
+        # critter grid). Morph colors come from the game's symbol-prefix override
+        # (trp_, glp_, ...).
         if row["category"] in PORTRAIT_CATEGORIES:
             prefs = PLANT_IDLE_PREFERENCES if row["category"] == "plants" else IDLE_PREFERENCES
             idle = _pick_idle(data, prefs)
@@ -232,6 +324,9 @@ def main() -> None:
                     print(f"        idle: {idle.name} {len(idle_frames)}f")
 
     print(f"\nDone: {ok} rendered, {miss} missing.")
+    if world_misses:
+        print(f"World sprites missing: {', '.join(world_misses)}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

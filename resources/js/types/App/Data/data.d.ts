@@ -240,6 +240,7 @@ export type ZoneCritterData = {
     prefabId: string;
     name: string;
     sprite: string | null;
+    worldSprite: string | null;
     cell: number;
     x: number;
     y: number;

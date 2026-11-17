@@ -11,6 +11,7 @@ function critter(overrides: Partial<ZoneCritterData> = {}): ZoneCritterData {
         prefabId: 'Pacu',
         name: 'Pacu',
         sprite: '/assets/game/critters/Pacu.webp',
+        worldSprite: '/assets/game/critters/Pacu_world.webp',
         cell: 221 * gridWidth + 176,
         x: 176.42,
         y: 221.0,
@@ -89,6 +90,23 @@ describe('critterEntities', () => {
 
         expect(left?.flipped).toBe(true);
         expect(right?.flipped).toBe(false);
+    });
+
+    it('draws a critter with its in-world sprite, not its portrait', () => {
+        const [entity] = critterEntities([critter()], [], box, gridWidth);
+
+        expect(entity?.sprite).toBe('/assets/game/critters/Pacu_world.webp');
+    });
+
+    it('falls back to the portrait when there is no in-world sprite', () => {
+        const [entity] = critterEntities(
+            [critter({ prefabId: 'PacuBaby', worldSprite: null })],
+            [],
+            box,
+            gridWidth,
+        );
+
+        expect(entity?.sprite).toBe('/assets/game/critters/Pacu.webp');
     });
 
     it('drops critters and eggs outside the box', () => {

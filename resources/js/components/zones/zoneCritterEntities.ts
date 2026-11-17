@@ -45,8 +45,10 @@ const HIDDEN_EGG_LOCATIONS = new Set(['storage', 'incubator']);
 /**
  * Critters and eggs of the box as map entities. A critter's `x, y` is the
  * game position (centre of its body, its feet), so its one-cell render is
- * centred on `x` and stands on `y`. The static images face right: a critter
- * facing left is flipped. An egg lies on the floor of its cell.
+ * centred on `x` and stands on `y`. It is drawn with its in-world sprite (frame 0 of
+ * the anim the game draws it with), else its portrait. The game authors that art
+ * facing right and mirrors it for a critter facing left (Facing → FlipX), so a
+ * critter facing left is flipped. An egg lies on the floor of its cell.
  */
 export function critterEntities(
     critters: readonly ZoneCritterData[],
@@ -70,7 +72,7 @@ export function critterEntities(
         instanceId: critter.instanceId,
         kind: 'critter',
         name: critter.name,
-        sprite: critter.sprite,
+        sprite: critter.worldSprite ?? critter.sprite,
         x: Math.floor(critter.x),
         y: Math.floor(critter.y),
         flipped: critter.facing === 'left',

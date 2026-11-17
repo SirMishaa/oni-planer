@@ -1717,7 +1717,7 @@ const temperatureLegend = computed(() => {
     object-position: center bottom;
 }
 
-/* Mirrored with `scale`, which composes with the hover and selection `transform`. A critter's facing follows its walk (`data-facing`, set by the replay). */
+/* Mirrored with `scale`, which composes with the hover and selection `transform`. A critter's facing follows its walk (`data-facing`, set by the replay); its in-world sprite faces right, as the game authors it, so facing left mirrors it. */
 .zone-entity__sprite--flipped,
 .zone-entity[data-facing='left'] .zone-entity__sprite {
     scale: -1 1;

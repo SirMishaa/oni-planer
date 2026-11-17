@@ -88,7 +88,9 @@ def render_anim(symbols: SymbolTable, anim: Anim, skip_hashes: frozenset[int] = 
     pieces: list[tuple[Image.Image, tuple[int, int, int, int]] | None] = []
     for fr in frames:
         canvas = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
-        for el in sorted(fr.elements, key=lambda e: e.order, reverse=True):
+        # Elements are listed front to back (a Pacu's idle_loop: eye, mouth, body,
+        # fins) and their order is 0 in every ONI anim: paint the list backwards.
+        for el in sorted(reversed(fr.elements), key=lambda e: e.order, reverse=True):
             if el.symbol_hash in skip_hashes or el.color[3] <= 0.01:
                 continue
             entry = symbols.get(el.symbol_hash)

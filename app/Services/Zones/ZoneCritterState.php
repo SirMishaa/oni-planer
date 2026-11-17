@@ -84,6 +84,7 @@ final class ZoneCritterState
             prefabId: $prefabId,
             name: app(GameText::class)->name($prefabId),
             sprite: self::sprite('critters', $prefabId),
+            worldSprite: self::sprite('critters', $prefabId.'_world'),
             cell: $row['cell'],
             x: (float) $row['x'],
             y: (float) $row['y'],

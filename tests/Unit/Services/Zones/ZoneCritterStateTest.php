@@ -103,6 +103,26 @@ it('parses critters, eggs and regions from the zone states', function (): void {
     File::deleteDirectory($assets);
 });
 
+it('gives the map the in-world sprite next to the portrait', function (): void {
+    $assets = sys_get_temp_dir().'/critter-assets-'.uniqid();
+    File::ensureDirectoryExists("{$assets}/critters");
+    File::put("{$assets}/critters/Pacu.webp", '');
+    File::put("{$assets}/critters/Pacu_world.webp", '');
+    File::put("{$assets}/critters/Hatch.webp", '');
+    config(['game.assets_path' => $assets]);
+
+    [$pacu, $hatch] = ZoneCritterState::critters(zoneWithCritterStates([
+        'critters' => [pacuRow(), pacuRow(['instanceId' => '99', 'prefabId' => 'Hatch'])],
+    ]));
+
+    expect($pacu->sprite)->toBe('/assets/game/critters/Pacu.webp')
+        ->and($pacu->worldSprite)->toBe('/assets/game/critters/Pacu_world.webp')
+        ->and($hatch->sprite)->toBe('/assets/game/critters/Hatch.webp')
+        ->and($hatch->worldSprite)->toBeNull();
+
+    File::deleteDirectory($assets);
+});
+
 it('returns null when the section is absent and an empty list when it is empty', function (): void {
     $absent = zoneWithCritterStates();
     $empty = zoneWithCritterStates(['critters' => [], 'crowding' => []], ['eggs' => []]);
