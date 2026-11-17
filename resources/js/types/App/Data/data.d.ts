@@ -1,5 +1,11 @@
-import { SubstanceTexture } from '../Enums/data.d';
 import { CritterOverOccupancyData } from './GameRules/data.d';
+import { SubstanceTexture } from '../Enums/data.d';
+export type BuildingCapacityData = {
+    limit: number | null;
+    max: number | null;
+    stored: number | null;
+    unit: 'kg' | 'critters';
+};
 export type BuildingData = {
     building_id: string;
     name: string;
@@ -16,6 +22,10 @@ export type BuildingMaterialData = {
     element_id: string | null;
     material_category: string | null;
     amount: number;
+};
+export type BuildingSettingsData = {
+    filter: string[] | null;
+    capacity: BuildingCapacityData | null;
 };
 export type BuildingShowData = {
     building_id: string;
