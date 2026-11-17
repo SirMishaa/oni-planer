@@ -8,6 +8,7 @@ use App\Data\ZonePopulationData;
 use App\Models\CritterMorph;
 use App\Models\Zone;
 use App\Services\Zones\RanchProblems;
+use Illuminate\Support\Facades\File;
 
 beforeEach(fn () => app()->setLocale('fr'));
 
@@ -19,6 +20,16 @@ function ranchFlock(?float $autonomy, ?float $deficit, ?bool $blocked = null): Z
         otherFoods: 0, produces: [], availableKg: 5.0,
         deficitKgPerCycle: $deficit, autonomyCycles: $autonomy, blockedByFilter: $blocked,
     );
+}
+
+/**
+ * @param  list<ZoneFeedingData>  $feeding
+ * @param  list<ZonePopulationData>  $population
+ * @return list<App\Data\ZoneEntityData>
+ */
+function ranchProblems(Zone $zone, array $feeding, array $population): array
+{
+    return RanchProblems::of($zone, $feeding, $population, []);
 }
 
 /** @param  list<array<string, mixed>>  $buildings */
@@ -44,21 +55,34 @@ function dropOff(?array $filter, ?float $limit = 20.0, string $prefab = 'Critter
     ];
 }
 
-it('flags stock under three cycles with a deficit', function (): void {
-    $problems = RanchProblems::of(ranchZone([]), [ranchFlock(1.25, 3.0)], []);
+it('warns of low stock while the feeder still holds food', function (): void {
+    $problems = ranchProblems(ranchZone([]), [ranchFlock(1.25, null)], []);
 
     expect($problems)->toHaveCount(1)
         ->and($problems[0]->kind)->toBe('critter_group')
         ->and($problems[0]->groupKey)->toBe('Hatch:adult')
-        ->and($problems[0]->problems)->toBe(['Stock bas : Algue pour 1.3 cycles (dérivé)']);
+        ->and($problems[0]->problems)->toBe(['Stock bas : Algue pour 1,3 cycle (dérivé)']);
 });
 
-it('ignores low stock without a deficit', function (): void {
-    expect(RanchProblems::of(ranchZone([]), [ranchFlock(1.0, null), ranchFlock(1.0, 0.0), ranchFlock(5.0, 3.0), ranchFlock(null, 3.0)], []))->toBe([]);
+it('agrees the cycles of low stock in number and decimal separator', function (): void {
+    expect(ranchProblems(ranchZone([]), [ranchFlock(1.0, null)], [])[0]->problems)->toBe(['Stock bas : Algue pour 1,0 cycle (dérivé)'])
+        ->and(ranchProblems(ranchZone([]), [ranchFlock(1.94, null)], [])[0]->problems)->toBe(['Stock bas : Algue pour 1,9 cycle (dérivé)']);
+
+    app()->setLocale('en');
+
+    expect(ranchProblems(ranchZone([]), [ranchFlock(1.25, null)], [])[0]->problems)->toBe(['Low stock: Algue for 1.3 cycles (derived)']);
+});
+
+it('says out of stock when nothing is left', function (): void {
+    expect(ranchProblems(ranchZone([]), [ranchFlock(0.0, 3.0)], [])[0]->problems)->toBe(['Plus de stock : Algue (dérivé)']);
+});
+
+it('ignores a stock of three cycles or more, or an unknown one', function (): void {
+    expect(ranchProblems(ranchZone([]), [ranchFlock(3.5, null), ranchFlock(3.0, null), ranchFlock(null, null)], []))->toBe([]);
 });
 
 it('flags a flock blocked by filters', function (): void {
-    $problems = RanchProblems::of(ranchZone([]), [ranchFlock(null, null, true), ranchFlock(null, null, false), ranchFlock(null, null, null)], []);
+    $problems = ranchProblems(ranchZone([]), [ranchFlock(null, null, true), ranchFlock(null, null, false), ranchFlock(null, null, null)], []);
 
     expect($problems)->toHaveCount(1)
         ->and($problems[0]->problems)->toBe(["Aucun distributeur n'accepte sa nourriture (dérivé)"]);
@@ -70,7 +94,7 @@ it('flags a drop-off over its room', function (): void {
     // 40 cells, 8 taken, 1 Puft in: room for floor(32 / 4) = 8 more, 4 accepted already there -> 12 supported.
     $region = ranchRegion(types: [['prefabId' => 'Puft', 'name' => 'Puft', 'count' => 1, 'personalSpace' => 4], ['prefabId' => 'Hatch', 'name' => 'Hatch', 'count' => 3, 'personalSpace' => 8]]);
 
-    $problems = RanchProblems::of(ranchZone([dropOff(['Hatch', 'Puft'])]), [], [$region]);
+    $problems = ranchProblems(ranchZone([dropOff(['Hatch', 'Puft'])]), [], [$region]);
 
     expect($problems)->toHaveCount(1)
         ->and($problems[0]->kind)->toBe('building')
@@ -81,31 +105,31 @@ it('flags a drop-off over its room', function (): void {
 it('keeps a drop-off the room can hold', function (): void {
     CritterMorph::factory()->create(['morph_id' => 'Hatch', 'overcrowding_threshold' => 8]);
 
-    expect(RanchProblems::of(ranchZone([dropOff(['Hatch'], 4.0)]), [], [ranchRegion()]))->toBe([]);
+    expect(ranchProblems(ranchZone([dropOff(['Hatch'], 4.0)]), [], [ranchRegion()]))->toBe([]);
 });
 
 it('skips a drop-off in a zone with two cavities', function (): void {
     CritterMorph::factory()->create(['morph_id' => 'Hatch', 'overcrowding_threshold' => 8]);
 
-    expect(RanchProblems::of(ranchZone([dropOff(['Hatch'])]), [], [ranchRegion(), ranchRegion('cavity:2')]))->toBe([]);
+    expect(ranchProblems(ranchZone([dropOff(['Hatch'])]), [], [ranchRegion(), ranchRegion('cavity:2')]))->toBe([]);
 });
 
 it('skips a drop-off with nothing ticked, no limit, no known space or no region', function (): void {
     CritterMorph::factory()->create(['morph_id' => 'Hatch', 'overcrowding_threshold' => 8]);
 
-    expect(RanchProblems::of(ranchZone([dropOff([])]), [], [ranchRegion()]))->toBe([])
-        ->and(RanchProblems::of(ranchZone([dropOff(['Hatch'], null)]), [], [ranchRegion()]))->toBe([])
-        ->and(RanchProblems::of(ranchZone([dropOff(['Ghost'])]), [], [ranchRegion()]))->toBe([])
-        ->and(RanchProblems::of(ranchZone([dropOff(['Hatch'])]), [], []))->toBe([])
-        ->and(RanchProblems::of(ranchZone([dropOff(['Hatch'])]), [], [ranchRegion('pond:1', 'pond')]))->toBe([])
-        ->and(RanchProblems::of(ranchZone([dropOff(null)]), [], [ranchRegion()]))->toBe([])
-        ->and(RanchProblems::of(ranchZone([dropOff(['Hatch'], 20.0, 'CritterPickUp')]), [], [ranchRegion()]))->toBe([]);
+    expect(ranchProblems(ranchZone([dropOff([])]), [], [ranchRegion()]))->toBe([])
+        ->and(ranchProblems(ranchZone([dropOff(['Hatch'], null)]), [], [ranchRegion()]))->toBe([])
+        ->and(ranchProblems(ranchZone([dropOff(['Ghost'])]), [], [ranchRegion()]))->toBe([])
+        ->and(ranchProblems(ranchZone([dropOff(['Hatch'])]), [], []))->toBe([])
+        ->and(ranchProblems(ranchZone([dropOff(['Hatch'])]), [], [ranchRegion('pond:1', 'pond')]))->toBe([])
+        ->and(ranchProblems(ranchZone([dropOff(null)]), [], [ranchRegion()]))->toBe([])
+        ->and(ranchProblems(ranchZone([dropOff(['Hatch'], 20.0, 'CritterPickUp')]), [], [ranchRegion()]))->toBe([]);
 });
 
 it('checks a fish delivery point against the pond', function (): void {
     CritterMorph::factory()->create(['morph_id' => 'Pacu', 'overcrowding_threshold' => 8]);
 
-    $problems = RanchProblems::of(ranchZone([dropOff(['Pacu'], 20.0, 'FishDeliveryPoint')]), [], [ranchRegion('pond:1', 'pond')]);
+    $problems = ranchProblems(ranchZone([dropOff(['Pacu'], 20.0, 'FishDeliveryPoint')]), [], [ranchRegion('pond:1', 'pond')]);
 
     expect($problems)->toHaveCount(1)->and($problems[0]->problems[0])->toContain('la pièce en supporte 4');
 });
@@ -113,10 +137,36 @@ it('checks a fish delivery point against the pond', function (): void {
 it('marks every ranch problem derived', function (): void {
     CritterMorph::factory()->create(['morph_id' => 'Hatch', 'overcrowding_threshold' => 8]);
 
-    $problems = RanchProblems::of(ranchZone([dropOff(['Hatch'])]), [ranchFlock(1.0, 3.0), ranchFlock(null, null, true)], [ranchRegion()]);
+    $problems = ranchProblems(ranchZone([dropOff(['Hatch'])]), [ranchFlock(1.0, null), ranchFlock(null, null, true)], [ranchRegion()]);
 
     expect($problems)->toHaveCount(3);
     foreach ($problems as $problem) {
         expect($problem->problems[0])->toEndWith(' (dérivé)');
     }
+});
+
+it('shows a drop-off problem with the translated name and the sprite of its building', function (): void {
+    $assets = sys_get_temp_dir().'/ranch-assets-'.uniqid();
+    File::ensureDirectoryExists("{$assets}/buildings");
+    File::put("{$assets}/buildings/CritterDropOff.webp", '');
+    config(['game.assets_path' => $assets]);
+    App\Models\PrefabName::factory()->create(['prefab_id' => 'CritterDropOff', 'name_key' => 'STRINGS.ELEMENTS.ALGAE.NAME']);
+    CritterMorph::factory()->create(['morph_id' => 'Hatch', 'overcrowding_threshold' => 8]);
+
+    $problems = ranchProblems(ranchZone([dropOff(['Hatch'])]), [], [ranchRegion()]);
+
+    expect($problems[0]->name)->toBe(__('STRINGS.ELEMENTS.ALGAE.NAME'))
+        ->and($problems[0]->name)->not->toBe('CritterDropOff')
+        ->and($problems[0]->sprite)->toBe('/assets/game/buildings/CritterDropOff.webp');
+
+    File::deleteDirectory($assets);
+});
+
+it('leaves the sprite of a drop-off problem empty when the building has no render', function (): void {
+    config(['game.assets_path' => sys_get_temp_dir().'/ranch-assets-none-'.uniqid()]);
+    CritterMorph::factory()->create(['morph_id' => 'Hatch', 'overcrowding_threshold' => 8]);
+
+    $problems = ranchProblems(ranchZone([dropOff(['Hatch'])]), [], [ranchRegion()]);
+
+    expect($problems[0]->sprite)->toBeNull();
 });

@@ -18,6 +18,7 @@ use App\Services\Mcp\McpFormat;
 use App\Services\Mcp\McpHeader;
 use App\Services\Mcp\ZoneTerrainSummary;
 use App\Services\Zones\CritterProblems;
+use App\Services\Zones\RanchProblems;
 use App\Services\Zones\RemovalAdvice;
 use App\Services\Zones\ZoneCritters;
 use App\Services\Zones\ZoneCritterState;
@@ -26,8 +27,10 @@ use App\Services\Zones\ZoneGeometry;
 use App\Services\Zones\ZonePlants;
 use App\Services\Zones\ZonePopulation;
 use App\Services\Zones\ZoneProblems;
+use Closure;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
+use Illuminate\Support\Facades\App;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
@@ -69,7 +72,7 @@ final class ZoneOverviewTool extends Tool
             '',
             ...$this->elements($zone, $text),
             '',
-            ...$this->problems($zone, $regions),
+            ...$this->problems($zone, $feeding, $regions),
             '',
             sprintf('More: zone_map for positions · %d captures (zone_captures) · app page %s', $zone->captures()->count(), route('zones.show', $zone)),
         ];
@@ -149,6 +152,26 @@ final class ZoneOverviewTool extends Tool
     private static function label(ZoneFeedingLineData $line): string
     {
         return $line->name === $line->resource ? $line->resource : "{$line->name} ({$line->resource})";
+    }
+
+    /**
+     * Runs the callback with the app locale set to English, so derived texts read the same whatever the app locale.
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $callback
+     * @return T
+     */
+    private static function inEnglish(Closure $callback): mixed
+    {
+        $locale = App::getLocale();
+        App::setLocale('en');
+
+        try {
+            return $callback();
+        } finally {
+            App::setLocale($locale);
+        }
     }
 
     private function boxLine(Zone $zone): string
@@ -390,6 +413,8 @@ final class ZoneOverviewTool extends Tool
                 sprintf('%s ×%d', $group->groupKey, $group->count),
                 self::eats($group),
                 self::stock($group),
+                $group->blockedByFilter === true ? 'blocked by feeder filters (derived)' : null,
+                $group->untickedFoods === [] ? null : 'to tick: '.implode(', ', array_map(self::label(...), $group->untickedFoods)),
                 $group->produces === [] ? null : 'produces '.implode(', ', array_map(
                     fn (ZoneFeedingLineData $line): string => self::label($line).' '.($line->kind === 'egg' ? McpFormat::number($line->perCycle, 2).' eggs/cycle' : McpFormat::number($line->perCycle).' kg/cycle'),
                     $group->produces,
@@ -432,7 +457,7 @@ final class ZoneOverviewTool extends Tool
      * @param  list<ZonePopulationData>|null  $regions
      * @return list<string>
      */
-    private function problems(Zone $zone, ?array $regions): array
+    private function problems(Zone $zone, ZoneFeeding $feeding, ?array $regions): array
     {
         $summary = ZoneProblems::summary($zone);
         if ($summary['count'] === null) {
@@ -454,6 +479,11 @@ final class ZoneOverviewTool extends Tool
 
         $critters = ZoneCritterState::critters($zone);
         foreach ($critters === null ? [] : CritterProblems::of($critters, $regions ?? []) as $problem) {
+            $lines[] = sprintf(' %s %s: %s', str_replace('_', ' ', $problem->kind), $problem->name, implode('; ', $problem->problems));
+        }
+
+        $ranch = $critters === null ? [] : self::inEnglish(fn (): array => RanchProblems::of($zone, $feeding->of($zone, $critters, $regions), $regions ?? [], $critters));
+        foreach ($ranch as $problem) {
             $lines[] = sprintf(' %s %s: %s', str_replace('_', ' ', $problem->kind), $problem->name, implode('; ', $problem->problems));
         }
 

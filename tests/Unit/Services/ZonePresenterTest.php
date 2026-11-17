@@ -1057,3 +1057,21 @@ it('puts settings on building entities, with display names for the filter', func
         ->and($buildings['8002']->settings?->filter)->toBe([])
         ->and($buildings['8003']->settings)->toBeNull();
 });
+
+it('reports low stock in the page problems while the feeder still holds a little food', function (): void {
+    app()->setLocale('en');
+    $zone = feedingPond(['buildings' => [
+        ['instanceId' => '9001', 'prefabId' => 'CreatureFeeder', 'storage' => [['id' => 'Algae', 'mass' => 100.0]]],
+    ]]);
+
+    $shown = app(ZonePresenter::class)->present($zone);
+
+    expect($shown->feeding[0]->deficitKgPerCycle)->toBeNull()
+        ->and($shown->feeding[0]->autonomyCycles)->toBeGreaterThan(0.0)->toBeLessThan(3.0);
+
+    $low = collect($shown->problems)->firstWhere('groupKey', 'Pacu:adult');
+
+    expect($low)->not->toBeNull()
+        ->and($low->problems[0])->toStartWith('Low stock: Algae for ')
+        ->and($low->problems[0])->toEndWith(' (derived)');
+});

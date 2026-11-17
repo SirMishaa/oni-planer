@@ -118,6 +118,14 @@ final class ZonePresenter
         private readonly ZoneFeeding $feeding,
     ) {}
 
+    /** Root-relative URL of a game sprite, or null when it was not imported. */
+    public static function spriteUrl(string $category, string $id): ?string
+    {
+        $relative = sprintf('%s/%s.webp', $category, $id);
+
+        return $id !== '' && file_exists(config()->string('game.assets_path').'/'.$relative) ? '/assets/game/'.$relative : null;
+    }
+
     /** @see self::props() */
     public function present(Zone $zone): ZoneShowData
     {
@@ -171,7 +179,7 @@ final class ZonePresenter
         $problems = self::once(fn (): array => [
             ...array_filter($entities(), fn (ZoneEntityData $entity): bool => $entity->problems !== []),
             ...CritterProblems::of($critters() ?? [], $population() ?? []),
-            ...RanchProblems::of($zone, $feeding() ?? [], $population() ?? []),
+            ...RanchProblems::of($zone, $feeding() ?? [], $population() ?? [], $critters() ?? []),
         ]);
         $eggs = self::once(function () use ($zone): ?array {
             $eggs = ZoneCritterState::eggs($zone);
@@ -546,7 +554,7 @@ final class ZonePresenter
         $relative = sprintf('%s/%s.webp', $category, $id);
 
         if (! array_key_exists($relative, $this->sprites)) {
-            $this->sprites[$relative] = $id !== '' && file_exists(config()->string('game.assets_path').'/'.$relative) ? '/assets/game/'.$relative : null;
+            $this->sprites[$relative] = self::spriteUrl($category, $id);
         }
 
         return $this->sprites[$relative];

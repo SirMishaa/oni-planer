@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Zones;
 
+use App\Data\ZoneCritterData;
 use App\Data\ZoneEntityData;
 use App\Data\ZoneFeedingData;
 use App\Data\ZonePopulationData;
 use App\Models\CritterMorph;
 use App\Models\Zone;
+use App\Services\GameText;
 
 /**
  * The ranch problems the planner derives from the feeding of the flocks and the settings of the
@@ -17,7 +19,7 @@ use App\Models\Zone;
  */
 final class RanchProblems
 {
-    /** Cycles of stock under which a flock with a deficit is a problem. */
+    /** Cycles of stock under which a flock is a problem. */
     public const float LOW_AUTONOMY_CYCLES = 3.0;
 
     /**
@@ -31,12 +33,12 @@ final class RanchProblems
     /**
      * @param  list<ZoneFeedingData>  $feeding
      * @param  list<ZonePopulationData>  $population
+     * @param  list<ZoneCritterData>  $critters
      * @return list<ZoneEntityData>
      */
-    public static function of(Zone $zone, array $feeding, array $population): array
+    public static function of(Zone $zone, array $feeding, array $population, array $critters): array
     {
         $problems = [];
-        $critters = null;
 
         foreach ($feeding as $flock) {
             $text = self::flockText($flock);
@@ -44,7 +46,6 @@ final class RanchProblems
                 continue;
             }
 
-            $critters ??= ZoneCritterState::critters($zone) ?? [];
             $prefabId = explode(':', $flock->groupKey)[0];
             $first = array_find($critters, fn ($critter): bool => $critter->prefabId === $prefabId);
 
@@ -72,14 +73,20 @@ final class RanchProblems
             return __('zones.problems.blocked_by_filter');
         }
 
-        if (($flock->deficitKgPerCycle ?? 0.0) > 0.0 && $flock->autonomyCycles !== null && $flock->autonomyCycles < self::LOW_AUTONOMY_CYCLES) {
-            return __('zones.problems.low_stock', [
-                'food' => $flock->foods[0]->name ?? '',
-                'cycles' => number_format($flock->autonomyCycles, 1, '.', ''),
-            ]);
+        if ($flock->autonomyCycles === null || $flock->autonomyCycles >= self::LOW_AUTONOMY_CYCLES) {
+            return null;
         }
 
-        return null;
+        $food = $flock->foods[0]->name ?? '';
+        $cycles = round($flock->autonomyCycles, 1);
+
+        if ($flock->deficitKgPerCycle !== null || $cycles < 0.1) {
+            return __('zones.problems.no_stock', ['food' => $food]);
+        }
+
+        $formatted = number_format($cycles, 1, app()->getLocale() === 'fr' ? ',' : '.', '');
+
+        return trans_choice('zones.problems.low_stock', $cycles, ['food' => $food, 'cycles' => $formatted]);
     }
 
     /**
@@ -131,8 +138,8 @@ final class RanchProblems
                 kind: 'building',
                 instanceId: is_scalar($building['instanceId'] ?? null) ? (string) $building['instanceId'] : null,
                 prefabId: $prefabId,
-                name: is_string($building['name'] ?? null) ? $building['name'] : $prefabId,
-                sprite: null,
+                name: app(GameText::class)->name($prefabId),
+                sprite: ZonePresenter::spriteUrl('buildings', $prefabId),
                 x: null,
                 y: null,
                 state: 'not_operational',

@@ -236,3 +236,38 @@ it('prints the filter and capacity of each building', function (): void {
         ->assertSee('#9001 filter: Algae, Kelp; capacity 340/500 kg (max 2000)')
         ->assertSee('#9002 filter: nothing ticked');
 });
+
+it('lists the ranch problems in English whatever the app locale', function (): void {
+    app()->setLocale('fr');
+    $morph = CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => 'Pacu', 'overcrowding_threshold' => 8]);
+    App\Models\CritterMorphDiet::factory()->create(['critter_morph_id' => $morph->id, 'consumed_element_id' => 'Algae', 'amount_per_cycle' => 7.5, 'produced_element_id' => null, 'conversion_ratio' => null, 'food_kind' => 'item']);
+    $colony = Colony::factory()->create();
+    Zone::factory()->sodicaneFarm()->create(['colony_guid' => $colony->guid, 'name' => 'Pond', 'fast_state' => [
+        'schema' => 1,
+        'critters' => array_map(fn (int $index): array => [
+            'instanceId' => (string) (1200 + $index), 'prefabId' => 'Pacu', 'cell' => 100 + $index, 'x' => 1.0, 'y' => 1.0, 'tame' => true,
+        ], range(1, 38)),
+        'buildings' => [['instanceId' => '9001', 'prefabId' => 'CreatureFeeder', 'storage' => [['id' => 'Algae', 'mass' => 456.0]], 'settings' => ['filter' => ['Algae'], 'capacity' => null]]],
+    ]]);
+
+    OniServer::tool(ZoneOverviewTool::class, ['zone' => 'Pond'])
+        ->assertOk()
+        ->assertSee('Low stock: Algae for 1.6 cycles (derived)')
+        ->assertDontSee('Stock bas');
+});
+
+it('prints the feeder filter blocks and the foods to tick on the feeding line', function (): void {
+    $morph = CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => 'Pacu', 'overcrowding_threshold' => 8]);
+    App\Models\CritterMorphDiet::factory()->create(['critter_morph_id' => $morph->id, 'consumed_element_id' => 'Algae', 'amount_per_cycle' => 7.5, 'produced_element_id' => null, 'conversion_ratio' => null, 'food_kind' => 'item']);
+    $colony = Colony::factory()->create();
+    Zone::factory()->sodicaneFarm()->create(['colony_guid' => $colony->guid, 'name' => 'Pond', 'fast_state' => [
+        'schema' => 1,
+        'critters' => [['instanceId' => '1201', 'prefabId' => 'Pacu', 'cell' => 101, 'x' => 1.0, 'y' => 1.0, 'tame' => true]],
+        'buildings' => [['instanceId' => '9001', 'prefabId' => 'CreatureFeeder', 'storage' => [], 'settings' => ['filter' => [], 'capacity' => null]]],
+    ]]);
+
+    OniServer::tool(ZoneOverviewTool::class, ['zone' => 'Pond'])
+        ->assertOk()
+        ->assertSee('Pacu:adult ×1 · eats Algae 7.5 kg/cycle · stock 0 kg · missing 7.5 kg/cycle (derived) · blocked by feeder filters (derived) · to tick: Algae')
+        ->assertSee('No feeder accepts its food (derived)');
+});

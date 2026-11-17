@@ -93,7 +93,7 @@ final class ZoneProblems
 
         $population = self::population($zone);
         $critterProblems = $critters === null ? 0 : count(CritterProblems::of($critters, $population))
-            + count(RanchProblems::of($zone, app(ZoneFeeding::class)->of($zone, $critters, $population), $population));
+            + count(RanchProblems::of($zone, app(ZoneFeeding::class)->of($zone, $critters, $population), $population, $critters));
 
         $withProblems = count(array_filter($plants ?? [], fn (array $plant): bool => self::forPlant($plant) !== []))
             + count(array_filter($buildings ?? [], fn (array $building): bool => self::forBuilding($building) !== []));
