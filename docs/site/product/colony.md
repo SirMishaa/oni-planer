@@ -39,6 +39,8 @@ Si le jeu n'a pas pu lire quelque chose (duplicants, stock de nourriture ou plan
 
 Ouvre une zone (<Route name="zones.index" />) pour voir sa carte, dessinée comme dans le jeu : le terrain porte ses textures et ses bords de biome, les liquides coulent et les gaz ondulent. Passe la souris sur une case pour lire son élément, sa masse et sa température.
 
+L'indicateur **en direct**, en haut à droite, montre le nombre de messages reçus par minute. Clique-le pour voir le détail depuis l'ouverture de la page : l'état de la connexion WebSocket, les trajets et positions de critters relayés par le mod, les mises à jour enregistrées par le planner et la durée des rechargements.
+
 - Le sélecteur de **calque** choisit ce que la carte montre : croissance, matériaux, température, problèmes ou critters.
 - **Grille** affiche ou masque le quadrillage des cases.
 - La carte s'ajuste à ton écran (100 %). Les boutons **−** et **+** changent le zoom de 10 points, un clic sur le pourcentage revient à 100 %, et Ctrl (ou ⌘) avec la molette zoome sous le curseur. Glisse la carte pour la déplacer.
