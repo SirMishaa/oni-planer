@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Zones;
 
+use App\Data\BuildingSettingsData;
 use App\Data\ZoneBoxData;
 use App\Data\ZoneBuildingData;
 use App\Data\ZoneCaptureData;
@@ -607,7 +608,21 @@ final class ZonePresenter
             state: ($building['operational'] ?? null) === false ? 'not_operational' : 'operational',
             problems: $problems,
             neededItemSprite: $this->neededItemSprite($problems),
+            settings: $this->settingsNamed(ZoneBuildingSettings::of($building)),
         );
+    }
+
+    /** The settings with the filter in display names, sorted by name. */
+    private function settingsNamed(?BuildingSettingsData $settings): ?BuildingSettingsData
+    {
+        if ($settings?->filter === null) {
+            return $settings;
+        }
+
+        $names = array_map($this->text->name(...), $settings->filter);
+        sort($names, SORT_LOCALE_STRING);
+
+        return new BuildingSettingsData($names, $settings->capacity);
     }
 
     /**

@@ -11,6 +11,7 @@ use App\Mcp\Tools\Concerns\ResolvesColony;
 use App\Models\Colony;
 use App\Models\Zone;
 use App\Services\GameText;
+use App\Services\Mcp\McpBuildingSettings;
 use App\Services\Mcp\McpFormat;
 use App\Services\Mcp\McpHeader;
 use App\Services\Zones\ZoneCritterState;
@@ -97,7 +98,7 @@ final class EntityTool extends Tool
             $lines[] = sprintf('growth %s%s', $growth === null ? 'unavailable' : round($growth * 100).' %', ($entity['grown'] ?? false) !== true && is_numeric($entity['secondsUntilHarvest'] ?? null) ? ' · next harvest in '.round((float) $entity['secondsUntilHarvest']).' s' : '');
         }
 
-        foreach ($kind === 'plant' ? $entity : array_diff_key($entity, ['statusItems' => true, 'storage' => true]) as $key => $value) {
+        foreach ($kind === 'plant' ? $entity : array_diff_key($entity, ['statusItems' => true, 'storage' => true, 'settings' => true]) as $key => $value) {
             if (! in_array($key, ['id', 'prefabId', 'instanceId'], true)) {
                 $lines[] = sprintf('%s: %s', $key, self::scalar($value));
             }
@@ -108,6 +109,10 @@ final class EntityTool extends Tool
                 if (is_array($status)) {
                     $lines[] = sprintf('status %s: %s', $status['id'] ?? '?', $status['name'] ?? '');
                 }
+            }
+            $settings = McpBuildingSettings::line($entity, $text);
+            if ($settings !== null) {
+                $lines[] = $settings;
             }
             foreach ((array) ($entity['storage'] ?? []) as $item) {
                 if (is_array($item)) {

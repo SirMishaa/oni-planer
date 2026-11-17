@@ -13,6 +13,7 @@ use App\Models\Colony;
 use App\Models\Element;
 use App\Models\Zone;
 use App\Services\GameText;
+use App\Services\Mcp\McpBuildingSettings;
 use App\Services\Mcp\McpFormat;
 use App\Services\Mcp\McpHeader;
 use App\Services\Mcp\ZoneTerrainSummary;
@@ -190,6 +191,13 @@ final class ZoneOverviewTool extends Tool
                     }
                 }
             }
+            $settingLines = [];
+            foreach ($group as $building) {
+                $setting = McpBuildingSettings::line($building, $text);
+                if ($setting !== null) {
+                    $settingLines[] = sprintf('  #%s %s', $building['instanceId'] ?? '?', $setting);
+                }
+            }
             $lines[] = sprintf(
                 ' %s (%s) ×%d · operational %d/%d · active %d/%d%s%s',
                 $text->name($prefabId),
@@ -202,6 +210,7 @@ final class ZoneOverviewTool extends Tool
                 $statuses === [] ? '' : ' · status: '.implode('; ', array_unique($statuses)),
                 $storage === [] ? '' : ' · storage: '.implode(', ', array_map(fn (string $id, float $mass): string => $id.' '.McpFormat::kg($mass), array_keys($storage), $storage)),
             );
+            array_push($lines, ...$settingLines);
         }
         if ($groups === []) {
             $lines[] = ' none';

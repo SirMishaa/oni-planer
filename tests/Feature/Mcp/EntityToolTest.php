@@ -118,3 +118,28 @@ it('gives only the confined flag of a confined critter', function (): void {
         ->assertDontSee('overcrowded')
         ->assertDontSee('cramped');
 });
+
+it('prints a feeder filter and capacity', function (): void {
+    $fast = $this->zone->fast_state;
+    $fast['buildings'] = [['instanceId' => '9001', 'prefabId' => 'CreatureFeeder', 'operational' => true, 'settings' => [
+        'filter' => ['Algae', 'Kelp'],
+        'capacity' => ['limit' => 500.0, 'max' => 2000.0, 'stored' => 340.0, 'unit' => 'kg'],
+    ]]];
+    $this->zone->update(['fast_state' => $fast]);
+
+    OniServer::tool(EntityTool::class, ['instanceId' => '9001'])
+        ->assertOk()
+        ->assertSee('filter: Algae, Kelp; capacity 340/500 kg (max 2000)')
+        ->assertDontSee('settings:');
+});
+
+it('prints nothing ticked', function (): void {
+    $fast = $this->zone->fast_state;
+    $fast['buildings'] = [['instanceId' => '9001', 'prefabId' => 'CreatureFeeder', 'operational' => true, 'settings' => ['filter' => [], 'capacity' => null]]];
+    $this->zone->update(['fast_state' => $fast]);
+
+    OniServer::tool(EntityTool::class, ['instanceId' => '9001'])
+        ->assertOk()
+        ->assertSee('filter: nothing ticked')
+        ->assertDontSee('capacity');
+});

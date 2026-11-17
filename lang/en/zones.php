@@ -201,6 +201,14 @@ return [
         'eggs_unknown' => 'Eggs: the game has not sent their state yet.',
         'show_on_map' => 'Show :name on the map',
         'show_in_flock' => 'Show :name in the flock',
+        'settings' => [
+            'filter' => 'Filter: :names',
+            'nothing_ticked' => 'Nothing ticked',
+            'capacity_kg' => ':stored / :limit kg',
+            'capacity_critters' => ':stored / :limit critters',
+            'max_kg' => 'Maximum: :max kg',
+            'max_critters' => 'Maximum: :max critters',
+        ],
     ],
     'flock' => [
         'stage' => [

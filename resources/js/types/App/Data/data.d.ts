@@ -352,6 +352,7 @@ export type ZoneEntityData = {
     neededItemSprite: string | null;
     groupKey: string | null;
     count: number | null;
+    settings: BuildingSettingsData | null;
 };
 export type ZoneFeedingData = {
     groupKey: string;

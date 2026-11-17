@@ -201,6 +201,14 @@ return [
         'eggs_unknown' => "Œufs : le jeu n'a pas encore envoyé leur état.",
         'show_on_map' => 'Voir :name sur la carte',
         'show_in_flock' => 'Voir :name dans le troupeau',
+        'settings' => [
+            'filter' => 'Filtre : :names',
+            'nothing_ticked' => 'Rien de coché',
+            'capacity_kg' => ':stored / :limit kg',
+            'capacity_critters' => ':stored / :limit critters',
+            'max_kg' => 'Maximum : :max kg',
+            'max_critters' => 'Maximum : :max critters',
+        ],
     ],
     'flock' => [
         'stage' => [

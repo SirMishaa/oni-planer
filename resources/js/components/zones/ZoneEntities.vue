@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
 import GameSprite from '@/components/viability/GameSprite.vue';
+import { buildingSettingsLine } from '@/components/zones/zoneBuildingSettings';
 import ZoneEggTimeline from '@/components/zones/ZoneEggTimeline.vue';
 import {
     bandId,
@@ -9,6 +10,7 @@ import {
 } from '@/components/zones/zoneFlock';
 import ZoneFlock from '@/components/zones/ZoneFlock.vue';
 import ZoneIcon from '@/components/zones/ZoneIcon.vue';
+import { useFormat } from '@/composables/useFormat';
 import { useT } from '@/composables/useT';
 import { useZoneText } from '@/composables/useZoneText';
 import type {
@@ -58,6 +60,7 @@ type Filter = 'all' | 'problems' | 'plants' | 'buildings' | 'critters' | 'eggs';
 
 const { t } = useT();
 const text = useZoneText();
+const format = useFormat();
 const filter = ref<Filter>('all');
 
 const withProblems = computed(() => props.problems);
@@ -195,6 +198,18 @@ function isActionable(entity: ZoneEntityData): boolean {
     return entity.instanceId !== null || entity.groupKey !== null;
 }
 
+/** The filter and capacity line of a building row; null for anything else or when the game sent none. */
+function settingsLine(
+    entity: ZoneEntityData,
+): { text: string; title: string | null } | null {
+    return entity.kind === 'building'
+        ? buildingSettingsLine(entity.settings, {
+              t,
+              number: format.number,
+          })
+        : null;
+}
+
 // endregion
 </script>
 
@@ -297,7 +312,19 @@ function isActionable(entity: ZoneEntityData): boolean {
                                     :kind="entitySpriteKind(entity.kind)"
                                     :size="24"
                                 />
-                                <span>{{ entity.name }}</span>
+                                <span class="zone-table__name">
+                                    {{ entity.name }}
+                                    <small
+                                        v-if="settingsLine(entity)"
+                                        class="zone-table__settings"
+                                        :title="
+                                            settingsLine(entity)?.title ??
+                                            undefined
+                                        "
+                                        data-test="zone-building-settings"
+                                        >{{ settingsLine(entity)?.text }}</small
+                                    >
+                                </span>
                             </button>
                         </td>
                         <td class="zone-table__muted">
@@ -575,6 +602,16 @@ function isActionable(entity: ZoneEntityData): boolean {
     outline: 2px solid var(--color-oni-amber);
     outline-offset: 2px;
     border-radius: 4px;
+}
+
+.zone-table__name {
+    display: flex;
+    flex-direction: column;
+}
+
+.zone-table__settings {
+    color: var(--text-3);
+    font-size: 12px;
 }
 
 .zone-table__muted {

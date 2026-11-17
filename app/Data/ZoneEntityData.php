@@ -36,5 +36,7 @@ final class ZoneEntityData extends Data
         public ?string $groupKey = null,
         /** `critter_group` problems: how many critters the problem covers. */
         public ?int $count = null,
+        /** Buildings only: the filter (display names) and capacity the player set; null when the game sent none. */
+        public ?BuildingSettingsData $settings = null,
     ) {}
 }

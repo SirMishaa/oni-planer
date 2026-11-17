@@ -220,3 +220,19 @@ it('prints the deficit and the grazed plants of a feeding group', function (): v
         ->assertSee('Pacu:adult ×1 · eats Algae 7.5 kg/cycle · or grazes SpiceVine (1 in the zone) · stock 0 kg · missing 7.5 kg/cycle (derived)')
         ->assertSee('Drecko:adult ×1 · grazes SpiceVine (1 in the zone)');
 });
+
+it('prints the filter and capacity of each building', function (): void {
+    $colony = Colony::factory()->create();
+    Zone::factory()->sodicaneFarm()->create(['colony_guid' => $colony->guid, 'name' => 'Pond', 'fast_state' => [
+        'schema' => 1,
+        'buildings' => [
+            ['instanceId' => '9001', 'prefabId' => 'CreatureFeeder', 'operational' => true, 'settings' => ['filter' => ['Algae', 'Kelp'], 'capacity' => ['limit' => 500.0, 'max' => 2000.0, 'stored' => 340.0, 'unit' => 'kg']]],
+            ['instanceId' => '9002', 'prefabId' => 'CreatureFeeder', 'operational' => true, 'settings' => ['filter' => [], 'capacity' => null]],
+        ],
+    ]]);
+
+    OniServer::tool(ZoneOverviewTool::class, ['zone' => 'Pond'])
+        ->assertOk()
+        ->assertSee('#9001 filter: Algae, Kelp; capacity 340/500 kg (max 2000)')
+        ->assertSee('#9002 filter: nothing ticked');
+});
