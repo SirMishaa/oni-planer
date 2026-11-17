@@ -26,6 +26,11 @@ import {
     type TripCheck,
     tripsFrameConcerns,
 } from '@/components/zones/critterRelay';
+import {
+    type LiveStats,
+    payloadBytes,
+    recordRelay,
+} from '@/composables/liveStats';
 import type {
     ZoneCritterData,
     ZoneData,
@@ -58,6 +63,8 @@ export function useUplinkFastRelay(options: {
     map: MaybeRefOrGetter<ZoneMapData | null>;
     critters: MaybeRefOrGetter<ZoneCritterData[] | null>;
     crittersAt: MaybeRefOrGetter<string | null>;
+    /** Counts the relayed messages and how fast they move the critters, for the live panel. */
+    stats?: LiveStats;
 }): {
     critters: ComputedRef<ZoneCritterData[] | null>;
     crittersAt: Ref<string | null>;
@@ -110,33 +117,62 @@ export function useUplinkFastRelay(options: {
         options.relay,
     );
 
+    /** Counts one relayed message in `stats`, when the page keeps them. */
+    function count(
+        source: 'trips' | 'fast',
+        data: unknown,
+        receivedAt: number,
+        concerns: boolean,
+        moved: boolean,
+    ): void {
+        if (!options.stats || disposed) {
+            return;
+        }
+
+        recordRelay(options.stats, source, {
+            bytes: concerns ? payloadBytes(data) : 0,
+            concerns,
+            applied: moved,
+            delayMs: performance.now() - receivedAt,
+        });
+    }
+
     useEchoPublic<unknown>(channel, tripsEvent, async (data) => {
+        const receivedAt = performance.now();
+
         if (!tripsFrameConcerns(data, toValue(options.zone).guid)) {
+            count('trips', data, receivedAt, false, false);
+
             return;
         }
 
         const message = await decode(data);
         const frame = message && readTripFrame(message, target(tripsSchema));
+        const moved =
+            frame !== null &&
+            applyTripFrame(book.value, frame, stored(), performance.now());
 
-        if (
-            frame &&
-            applyTripFrame(book.value, frame, stored(), performance.now())
-        ) {
+        if (moved) {
             applied();
         }
+
+        count('trips', data, receivedAt, true, moved);
     });
 
     useEchoPublic<unknown>(channel, event, async (data) => {
+        const receivedAt = performance.now();
         const message = await decode(data);
         const frame = message && readFastFrame(message, target(schema));
-
-        if (
-            frame &&
+        const moved =
+            frame !== null &&
             frameIsAhead(frame, stored()) &&
-            applyFastFrame(book.value, frame, performance.now(), overrides)
-        ) {
+            applyFastFrame(book.value, frame, performance.now(), overrides);
+
+        if (moved) {
             applied();
         }
+
+        count('fast', data, receivedAt, frame !== null, moved);
     });
     // endregion
 

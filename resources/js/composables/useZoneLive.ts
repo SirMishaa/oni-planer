@@ -10,6 +10,11 @@ import {
     ref,
     toValue,
 } from 'vue';
+import {
+    type LiveStats,
+    recordReload,
+    recordZoneEvent,
+} from '@/composables/liveStats';
 import { useFormat } from '@/composables/useFormat';
 import { useT } from '@/composables/useT';
 
@@ -77,6 +82,8 @@ export function useZoneLive(options: {
     only: string[] | ((kind: ZoneUpdateKind) => string[]);
     updatedAt: MaybeRefOrGetter<string | null>;
     onGone?: () => void;
+    /** Counts this zone's events and the reloads they cause, for the live panel. */
+    stats?: LiveStats;
 }): {
     live: ComputedRef<boolean>;
     ageLabel: ComputedRef<string>;
@@ -100,6 +107,34 @@ export function useZoneLive(options: {
         typeof only === 'function' ? only(kind) : only;
     const { channel, event } = toValue(options.echo);
 
+    /** The reload options, timed into `stats` when the page keeps them. */
+    const timedReload = (props: string[]): ReloadOptions => {
+        const reload = liveReloadOptions(props, markGone);
+        const stats = options.stats;
+
+        if (!stats) {
+            return reload;
+        }
+
+        const startedAt = performance.now();
+        let failed = false;
+
+        return {
+            ...reload,
+            onHttpException: (response) => {
+                failed = true;
+
+                return reload.onHttpException?.(response);
+            },
+            onNetworkError: () => {
+                failed = true;
+            },
+            onFinish: () => {
+                recordReload(stats, performance.now() - startedAt, failed);
+            },
+        };
+    };
+
     useEchoPublic<ZoneUpdatedPayload>(channel, event, (payload) => {
         const guid = toValue(zoneGuid);
 
@@ -107,12 +142,16 @@ export function useZoneLive(options: {
             return;
         }
 
+        if (options.stats) {
+            recordZoneEvent(options.stats, payload.kind);
+        }
+
         propsOf(payload.kind).forEach((prop) => pendingProps.add(prop));
         clearTimeout(pendingReload);
         pendingReload = setTimeout(() => {
             const props = [...pendingProps];
             pendingProps.clear();
-            router.reload(liveReloadOptions(props, markGone));
+            router.reload(timedReload(props));
         }, RELOAD_DEBOUNCE_MS);
     });
     // endregion

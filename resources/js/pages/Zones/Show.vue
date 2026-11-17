@@ -7,9 +7,11 @@ import ZoneCaptures from '@/components/zones/ZoneCaptures.vue';
 import ZoneCaptureView from '@/components/zones/ZoneCaptureView.vue';
 import ZoneEntities from '@/components/zones/ZoneEntities.vue';
 import ZoneIcon from '@/components/zones/ZoneIcon.vue';
+import ZoneLivePanel from '@/components/zones/ZoneLivePanel.vue';
 import ZoneMap from '@/components/zones/ZoneMap.vue';
 import type { ZoneMapLayer } from '@/components/zones/zoneMapPainter';
 import ZonePanel from '@/components/zones/ZonePanel.vue';
+import { createLiveStats } from '@/composables/liveStats';
 import { useFormat } from '@/composables/useFormat';
 import { useT } from '@/composables/useT';
 import { useUplink } from '@/composables/useUplink';
@@ -51,8 +53,12 @@ const props = defineProps<{
 
 // region Live link
 
+/** What the live link brought since the page opened, shown in the live panel. */
+const liveStats = createLiveStats();
+
 /** `gone`: a live reload found the zone archived (removed in the game); the page keeps its last state. */
-const { live, ageLabel, gone } = useZoneLive({
+const { live, ageLabel, gone, now } = useZoneLive({
+    stats: liveStats,
     echo: () => props.echo,
     zoneGuid: () => props.zone.guid,
     /** Each event reloads the props of its stream only: a fast state every 5 s never refetches the terrain. */
@@ -73,6 +79,7 @@ const { critters: mapCritters, crittersAt: mapCrittersAt } = useUplinkFastRelay(
         map: () => props.map,
         critters: () => props.critters,
         crittersAt: () => props.crittersAt,
+        stats: liveStats,
     },
 );
 
@@ -266,14 +273,13 @@ function showOnMap(instanceId: string): void {
                         {{ tc('zones.index.cells', zone.cellCount) }} ·
                         {{ t('zones.show.world', { id: zone.worldId }) }}
                     </span>
-                    <span
-                        class="zone-live"
-                        :class="{ 'zone-live--on': live }"
-                        role="status"
-                    >
-                        <span class="zone-live__dot" aria-hidden="true" />
-                        {{ ageLabel }}
-                    </span>
+                    <ZoneLivePanel
+                        :live="live"
+                        :age-label="ageLabel"
+                        :stats="liveStats"
+                        :now="now"
+                        :linked="linked"
+                    />
                 </div>
             </header>
 
@@ -528,35 +534,6 @@ function showOnMap(instanceId: string): void {
 .zone-header__meta {
     color: var(--text-3);
     font-size: 13.5px;
-}
-
-.zone-live {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-left: auto;
-    padding: 5px 12px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    color: var(--text-2);
-    font-size: 13.5px;
-}
-
-.zone-live__dot {
-    width: 8px;
-    height: 8px;
-    border: 1.5px solid var(--text-3);
-    border-radius: 50%;
-}
-
-.zone-live--on {
-    color: var(--text);
-}
-
-.zone-live--on .zone-live__dot {
-    border-color: var(--live);
-    background: var(--live);
-    box-shadow: 0 0 0 3px oklch(78% 0.15 150 / 0.2);
 }
 
 .zone-banner.zone-banner--gone {
