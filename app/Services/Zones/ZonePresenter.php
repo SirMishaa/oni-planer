@@ -166,9 +166,11 @@ final class ZonePresenter
         });
         $critters = self::once(fn (): ?array => ZoneCritterState::critters($zone));
         $population = self::once(fn (): ?array => $this->population->forZone($zone));
+        $feeding = self::once(fn (): ?array => $critters() === null ? null : $this->feeding->of($zone, $critters(), $population()));
         $problems = self::once(fn (): array => [
             ...array_filter($entities(), fn (ZoneEntityData $entity): bool => $entity->problems !== []),
             ...CritterProblems::of($critters() ?? [], $population() ?? []),
+            ...RanchProblems::of($zone, $feeding() ?? [], $population() ?? []),
         ]);
         $eggs = self::once(function () use ($zone): ?array {
             $eggs = ZoneCritterState::eggs($zone);
@@ -218,7 +220,7 @@ final class ZonePresenter
                 array_values(array_filter($fastPlants(), fn (array $plant): bool => is_numeric($plant['cell'] ?? null))),
             ) : null,
             'crittersAt' => fn (): ?string => $critters() === null ? null : $zone->fast_state_at?->toIso8601String(),
-            'feeding' => fn (): ?array => $critters() === null ? null : $this->feeding->of($zone, $critters(), $population()),
+            'feeding' => $feeding,
             'liveProps' => fn (): array => self::PROPS_BY_KIND,
             'echo' => fn (): array => ['channel' => 'uplink', 'event' => '.zone.updated'],
             'fastRelay' => fn (): array => [

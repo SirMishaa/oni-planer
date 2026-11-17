@@ -308,5 +308,9 @@ return [
         ],
         'wilting' => 'Wilting',
         'not_operational' => 'Not operational',
+        'derived' => 'derived',
+        'low_stock' => 'Low stock: :food for :cycles cycles',
+        'blocked_by_filter' => 'No feeder accepts its food',
+        'drop_off_over_room' => 'The drop-off brings up to :limit critters, the room supports :supported',
     ],
 ];

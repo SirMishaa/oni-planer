@@ -308,5 +308,9 @@ return [
         ],
         'wilting' => 'Flétrit',
         'not_operational' => 'Hors service',
+        'derived' => 'dérivé',
+        'low_stock' => 'Stock bas : :food pour :cycles cycles',
+        'blocked_by_filter' => "Aucun distributeur n'accepte sa nourriture",
+        'drop_off_over_room' => "Le point de dépôt amène jusqu'à :limit critters, la pièce en supporte :supported",
     ],
 ];
