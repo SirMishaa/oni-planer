@@ -17,6 +17,7 @@ final class ZoneFeedingData extends Data
     /**
      * @param  list<ZoneFeedingLineData>  $foods
      * @param  list<ZoneFeedingLineData>  $produces
+     * @param  list<ZoneFeedingLineData>  $untickedFoods
      */
     public function __construct(
         /** The flock band: `${prefabId}:${stage}`. */
@@ -38,5 +39,12 @@ final class ZoneFeedingData extends Data
         /** Cycles the stock lasts; null with unknown stock or no item food. */
         public ?float $autonomyCycles,
         public bool $derived = true,
+        /**
+         * True when the zone's feeders have known filters and none accepts any item food of the band; null when the
+         * filters are unknown (an older mod) or the band eats no item food.
+         */
+        public ?bool $blockedByFilter = null,
+        /** The item foods of the diet that no feeder of the zone accepts; empty when the filters are unknown. */
+        public array $untickedFoods = [],
     ) {}
 }

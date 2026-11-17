@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
-import GameSprite from '@/components/viability/GameSprite.vue';
-import { useFormat } from '@/composables/useFormat';
-import { useT } from '@/composables/useT';
+import { computed, reactive, ref } from "vue";
+import GameSprite from "@/components/viability/GameSprite.vue";
+import { useFormat } from "@/composables/useFormat";
+import { useT } from "@/composables/useT";
 import type {
     ZoneCritterData,
     ZoneFeedingData,
     ZoneFeedingLineData,
     ZonePopulationData,
-} from '@/types/App/Data/data.d';
-import ZoneCritterSheet from './ZoneCritterSheet.vue';
+} from "@/types/App/Data/data.d";
+import ZoneCritterSheet from "./ZoneCritterSheet.vue";
 import {
     FLOCK_METRICS,
     amountDigits,
@@ -25,8 +25,9 @@ import {
     median,
     metricValue,
     sortByMetric,
-} from './zoneFlock';
-import type { FlockGroup, FlockMetric } from './zoneFlock';
+    untickedNames,
+} from "./zoneFlock";
+import type { FlockGroup, FlockMetric } from "./zoneFlock";
 
 // region Props
 
@@ -67,23 +68,23 @@ function frozen(critter: ZoneCritterData): boolean {
 }
 
 function gaugeTone(critter: ZoneCritterData, metric: FlockMetric): string {
-    if (metric === 'fertility' && frozen(critter)) {
-        return 'zone-mon__gauge--warn';
+    if (metric === "fertility" && frozen(critter)) {
+        return "zone-mon__gauge--warn";
     }
 
-    return metric === 'stomach' && critter.hungry ? 'zone-mon__gauge--bad' : '';
+    return metric === "stomach" && critter.hungry ? "zone-mon__gauge--bad" : "";
 }
 
 function vignetteLabel(group: FlockGroup, critter: ZoneCritterData): string {
     const alerts = individualAlerts(group, critter);
-    const label = t('zones.flock.critter_label', {
+    const label = t("zones.flock.critter_label", {
         name: critter.name,
         position: `w(${Math.floor(critter.x)}, ${Math.floor(critter.y)})`,
     });
 
     return alerts.length === 0
         ? label
-        : `${label}, ${t('zones.flock.alerts_label', { statuses: format.list(alerts) })}`;
+        : `${label}, ${t("zones.flock.alerts_label", { statuses: format.list(alerts) })}`;
 }
 
 // endregion
@@ -150,7 +151,7 @@ function shown(value: number, digits: number): number {
 function grazedLabel(food: ZoneFeedingLineData): string {
     return food.inZone === null
         ? food.name
-        : `${food.name} (${t('zones.flock.feeding.in_zone', { count: format.number(food.inZone) })})`;
+        : `${food.name} (${t("zones.flock.feeding.in_zone", { count: format.number(food.inZone) })})`;
 }
 
 /** "Varech, Grès, +74 autres": the other item foods, then the count of foods not sent; null when there are none. */
@@ -160,10 +161,10 @@ function alternativesLabel(feeding: ZoneFeedingData): string | null {
         .map((food) => food.name);
 
     if (feeding.otherFoods > 0) {
-        names.push(tc('zones.flock.feeding.other_foods', feeding.otherFoods));
+        names.push(tc("zones.flock.feeding.other_foods", feeding.otherFoods));
     }
 
-    return names.length === 0 ? null : names.join(', ');
+    return names.length === 0 ? null : names.join(", ");
 }
 
 /** The plants grazed and the prey hunted; alternatives to the item foods when the band also eats items. */
@@ -172,7 +173,7 @@ function grazing(
 ): { verb: string; names: string; alternative: boolean }[] {
     const foods = feedingFoods(feeding);
     const alternative = foods.items.length > 0;
-    const prefix = alternative ? 'or_' : '';
+    const prefix = alternative ? "or_" : "";
 
     const parts = [
         { verb: `${prefix}grazes`, lines: foods.plants },
@@ -181,29 +182,29 @@ function grazing(
         .filter((part) => part.lines.length > 0)
         .map((part) => ({
             verb: part.verb,
-            names: part.lines.map(grazedLabel).join(', '),
+            names: part.lines.map(grazedLabel).join(", "),
             alternative,
         }));
     const last = parts[parts.length - 1];
 
     // Without an item line, the foods not sent are counted here.
     if (!alternative && last !== undefined && feeding.otherFoods > 0) {
-        last.names += `, ${tc('zones.flock.feeding.other_foods', feeding.otherFoods)}`;
+        last.names += `, ${tc("zones.flock.feeding.other_foods", feeding.otherFoods)}`;
     }
 
     return parts;
 }
 
 function producedLabel(line: ZoneFeedingLineData): string {
-    return line.kind === 'egg'
+    return line.kind === "egg"
         ? tc(
-              'zones.flock.feeding.eggs_per_cycle',
+              "zones.flock.feeding.eggs_per_cycle",
               shown(line.perCycle, amountDigits(line.perCycle)),
               {
                   value: amount(line.perCycle),
               },
           )
-        : t('zones.flock.feeding.kg_per_cycle', {
+        : t("zones.flock.feeding.kg_per_cycle", {
               value: amount(line.perCycle),
           });
 }
@@ -214,14 +215,14 @@ function chipLabel(feeding: ZoneFeedingData): string | null {
     switch (chip?.kind) {
         case undefined:
             return null;
-        case 'unknown':
-            return t('zones.flock.feeding.stock_unknown');
-        case 'missing':
-            return t('zones.flock.feeding.missing', {
+        case "unknown":
+            return t("zones.flock.feeding.stock_unknown");
+        case "missing":
+            return t("zones.flock.feeding.missing", {
                 value: amount(chip.kgPerCycle),
             });
-        case 'stock':
-            return tc('zones.flock.feeding.stock', shown(chip.cycles, 1), {
+        case "stock":
+            return tc("zones.flock.feeding.stock", shown(chip.cycles, 1), {
                 value: format.number(chip.cycles, 1),
             });
     }
@@ -231,11 +232,11 @@ function chipLabel(feeding: ZoneFeedingData): string | null {
 function chipTone(feeding: ZoneFeedingData): string {
     const chip = feedingChip(feeding);
 
-    if (chip?.kind === 'stock') {
+    if (chip?.kind === "stock") {
         return `zone-chip--${chip.tone}`;
     }
 
-    return chip?.kind === 'unknown' ? '' : 'zone-chip--bad';
+    return chip?.kind === "unknown" ? "" : "zone-chip--bad";
 }
 
 // endregion
@@ -269,7 +270,7 @@ function chipTone(feeding: ZoneFeedingData): string {
                     >{{ alert.name }}<b>{{ alert.count }}</b></span
                 >
                 <label class="zone-band__metric">
-                    {{ t('zones.flock.metric_label') }}
+                    {{ t("zones.flock.metric_label") }}
                     <select
                         :value="metricOf(group)"
                         @change="
@@ -337,7 +338,7 @@ function chipTone(feeding: ZoneFeedingData): string {
             <!-- region Facts -->
             <p class="zone-band__facts">
                 <span v-if="happinessCounts(group.critters).length > 0"
-                    >{{ t('zones.flock.mood') }}
+                    >{{ t("zones.flock.mood") }}
                     <template
                         v-for="(entry, index) in happinessCounts(
                             group.critters,
@@ -354,13 +355,13 @@ function chipTone(feeding: ZoneFeedingData): string {
                     ></span
                 >
                 <span v-if="stomachMedian(group) !== null"
-                    >{{ t('zones.flock.stomach_median') }}
+                    >{{ t("zones.flock.stomach_median") }}
                     <b
                         >{{ format.number(stomachMedian(group)! * 100) }} %</b
                     ></span
                 >
                 <span v-if="ageRange(group.critters)">{{
-                    t('zones.flock.age_range', {
+                    t("zones.flock.age_range", {
                         min: format.number(ageRange(group.critters)!.min),
                         max: format.number(ageRange(group.critters)!.max),
                     })
@@ -378,17 +379,17 @@ function chipTone(feeding: ZoneFeedingData): string {
                 <span
                     v-for="food in feedingFoods(feeding).items.slice(0, 1)"
                     :key="food.resource"
-                    >{{ t('zones.flock.feeding.eats') }}
+                    >{{ t("zones.flock.feeding.eats") }}
                     <b>{{ food.name }}</b>
                     {{
-                        t('zones.flock.feeding.kg_per_cycle', {
+                        t("zones.flock.feeding.kg_per_cycle", {
                             value: amount(food.perCycle),
                         })
                     }}<span
                         v-if="alternativesLabel(feeding)"
                         class="zone-band__alt"
                     >
-                        ({{ t('zones.flock.feeding.or') }}
+                        ({{ t("zones.flock.feeding.or") }}
                         {{ alternativesLabel(feeding) }})</span
                     ></span
                 >
@@ -400,7 +401,7 @@ function chipTone(feeding: ZoneFeedingData): string {
                     <b>{{ part.names }}</b></span
                 >
                 <span v-if="feeding.produces.length > 0"
-                    >{{ t('zones.flock.feeding.produces') }}
+                    >{{ t("zones.flock.feeding.produces") }}
                     <template
                         v-for="(line, index) in feeding.produces"
                         :key="line.resource"
@@ -408,6 +409,20 @@ function chipTone(feeding: ZoneFeedingData): string {
                         ><b>{{ line.name }}</b>
                         {{ producedLabel(line) }}</template
                     ></span
+                >
+                <span
+                    v-if="untickedNames(feeding)"
+                    :class="
+                        feeding.blockedByFilter
+                            ? 'zone-band__blocked'
+                            : 'zone-band__alt'
+                    "
+                    data-test="zone-feeding-unticked"
+                    ><template v-if="feeding.blockedByFilter"
+                        >{{ t("zones.flock.feeding.blocked") }}.
+                    </template>
+                    {{ t("zones.flock.feeding.unticked") }}
+                    <b>{{ untickedNames(feeding) }}</b></span
                 >
                 <span v-if="chipLabel(feeding)" class="zone-band__balance"
                     ><span
@@ -419,7 +434,7 @@ function chipTone(feeding: ZoneFeedingData): string {
                         v-if="feedingChip(feeding)?.kind !== 'unknown'"
                         class="zone-band__derived"
                         :title="t('zones.flock.feeding.derived_hint')"
-                        >{{ t('zones.flock.feeding.derived') }}</small
+                        >{{ t("zones.flock.feeding.derived") }}</small
                     ></span
                 >
             </p>
@@ -491,7 +506,7 @@ function chipTone(feeding: ZoneFeedingData): string {
 
 .zone-chip--bad::before {
     font-weight: 700;
-    content: '! ';
+    content: "! ";
 }
 
 .zone-band__metric {
@@ -597,7 +612,7 @@ function chipTone(feeding: ZoneFeedingData): string {
     right: 6px;
     color: var(--bad);
     font: 700 12px/1 var(--font-figure);
-    content: '!';
+    content: "!";
 }
 
 .zone-mon--selected {
@@ -639,6 +654,10 @@ function chipTone(feeding: ZoneFeedingData): string {
 
 .zone-band__alt {
     color: var(--text-3);
+}
+
+.zone-band__blocked {
+    color: var(--bad);
 }
 
 .zone-band__balance {

@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 import type {
     ZoneCritterData,
     ZoneFeedingData,
     ZoneFeedingLineData,
-} from '@/types/App/Data/data.d';
+} from "@/types/App/Data/data.d";
 import {
     amountDigits,
     bandId,
@@ -15,7 +15,8 @@ import {
     individualAlerts,
     isGroupAlert,
     sortByMetric,
-} from './zoneFlock';
+    untickedNames,
+} from "./zoneFlock";
 
 let nextId = 1;
 
@@ -23,14 +24,14 @@ let nextId = 1;
 function critter(overrides: Partial<ZoneCritterData> = {}): ZoneCritterData {
     return {
         instanceId: String(nextId++),
-        prefabId: 'Pacu',
-        name: 'Pacu',
-        sprite: '/assets/game/critters/Pacu.webp',
+        prefabId: "Pacu",
+        name: "Pacu",
+        sprite: "/assets/game/critters/Pacu.webp",
         cell: 1000,
         x: 10,
         y: 20,
-        facing: 'left',
-        navType: 'Swim',
+        facing: "left",
+        navType: "Swim",
         moving: false,
         speed: 1,
         path: [],
@@ -43,27 +44,27 @@ function critter(overrides: Partial<ZoneCritterData> = {}): ZoneCritterData {
         fertilityRatio: 0.5,
         breeding: [],
         happiness: 0,
-        happinessState: 'neutral',
+        happinessState: "neutral",
         stomach: [],
         nextPoop: null,
         hungry: false,
         statuses: [],
-        regionId: 'pond:1',
+        regionId: "pond:1",
         ...overrides,
     };
 }
 
-const cramped = { id: 'Cramped', name: "À l'étroit", bad: true };
-const hungry = { id: 'Hungry', name: 'Affamé', bad: true };
+const cramped = { id: "Cramped", name: "À l'étroit", bad: true };
+const hungry = { id: "Hungry", name: "Affamé", bad: true };
 
-describe('groupFlock', () => {
-    it('groups by prefab and stage, largest first', () => {
+describe("groupFlock", () => {
+    it("groups by prefab and stage, largest first", () => {
         const groups = groupFlock([
-            critter({ baby: true, prefabId: 'PacuBaby' }),
+            critter({ baby: true, prefabId: "PacuBaby" }),
             critter(),
             critter({ tame: false }),
             critter(),
-            critter({ prefabId: 'PacuTropical', tame: false }),
+            critter({ prefabId: "PacuTropical", tame: false }),
             critter({ tame: false }),
             critter(),
         ]);
@@ -71,27 +72,27 @@ describe('groupFlock', () => {
         expect(
             groups.map((group) => [group.key, group.critters.length]),
         ).toEqual([
-            ['Pacu:adult', 3],
-            ['Pacu:wild', 2],
-            ['PacuBaby:baby', 1],
-            ['PacuTropical:wild', 1],
+            ["Pacu:adult", 3],
+            ["Pacu:wild", 2],
+            ["PacuBaby:baby", 1],
+            ["PacuTropical:wild", 1],
         ]);
         expect(groups[0]).toMatchObject({
-            prefabId: 'Pacu',
-            name: 'Pacu',
-            stage: 'adult',
+            prefabId: "Pacu",
+            name: "Pacu",
+            stage: "adult",
         });
     });
 
-    it('calls a wild baby a baby', () => {
+    it("calls a wild baby a baby", () => {
         const [group] = groupFlock([critter({ baby: true, tame: false })]);
 
-        expect(group.stage).toBe('baby');
+        expect(group.stage).toBe("baby");
     });
 });
 
-describe('alerts', () => {
-    it('a status on every critter is a group alert, not an individual one', () => {
+describe("alerts", () => {
+    it("a status on every critter is a group alert, not an individual one", () => {
         const [group] = groupFlock([
             critter({ statuses: [cramped] }),
             critter({ statuses: [cramped, hungry] }),
@@ -100,18 +101,18 @@ describe('alerts', () => {
 
         expect(group.groupAlerts).toEqual([
             { name: "À l'étroit", count: 3 },
-            { name: 'Affamé', count: 1 },
+            { name: "Affamé", count: 1 },
         ]);
         expect(isGroupAlert(group, "À l'étroit")).toBe(true);
-        expect(isGroupAlert(group, 'Affamé')).toBe(false);
+        expect(isGroupAlert(group, "Affamé")).toBe(false);
     });
 
-    it('individual alerts exclude group alerts', () => {
+    it("individual alerts exclude group alerts", () => {
         const starving = critter({
             statuses: [
                 cramped,
                 hungry,
-                { id: 'Groomed', name: 'Toiletté', bad: false },
+                { id: "Groomed", name: "Toiletté", bad: false },
             ],
         });
         const [group] = groupFlock([
@@ -119,57 +120,57 @@ describe('alerts', () => {
             starving,
         ]);
 
-        expect(individualAlerts(group, starving)).toEqual(['Affamé']);
+        expect(individualAlerts(group, starving)).toEqual(["Affamé"]);
         expect(individualAlerts(group, group.critters[0])).toEqual([]);
     });
 
-    it('a lone critter has individual alerts, never group ones', () => {
+    it("a lone critter has individual alerts, never group ones", () => {
         const lone = critter({ statuses: [hungry] });
         const [group] = groupFlock([lone]);
 
-        expect(isGroupAlert(group, 'Affamé')).toBe(false);
-        expect(individualAlerts(group, lone)).toEqual(['Affamé']);
+        expect(isGroupAlert(group, "Affamé")).toBe(false);
+        expect(individualAlerts(group, lone)).toEqual(["Affamé"]);
     });
 });
 
-describe('sortByMetric', () => {
-    it('sorts by metric with unknown values last', () => {
+describe("sortByMetric", () => {
+    it("sorts by metric with unknown values last", () => {
         const low = critter({ fertilityRatio: 0.2 });
         const unknown = critter({ fertilityRatio: null });
         const high = critter({ fertilityRatio: 0.9 });
         const input = [low, unknown, high];
 
-        expect(sortByMetric(input, 'fertility')).toEqual([high, low, unknown]);
+        expect(sortByMetric(input, "fertility")).toEqual([high, low, unknown]);
         expect(input).toEqual([low, unknown, high]);
     });
 
-    it('measures the growth of babies only, against their lifespan', () => {
+    it("measures the growth of babies only, against their lifespan", () => {
         const baby = critter({ baby: true, ageCycles: 2, lifespanCycles: 5 });
         const adult = critter({ ageCycles: 20 });
 
-        expect(sortByMetric([adult, baby], 'growth')).toEqual([baby, adult]);
+        expect(sortByMetric([adult, baby], "growth")).toEqual([baby, adult]);
     });
 });
 
-describe('cyclesToHatch', () => {
-    it('computes cycles to hatch from incubation', () => {
+describe("cyclesToHatch", () => {
+    it("computes cycles to hatch from incubation", () => {
         expect(cyclesToHatch({ incubation: 40 }, 5)).toBeCloseTo(3);
         expect(cyclesToHatch({ incubation: 100 }, 5)).toBe(0);
     });
 });
 
-describe('entitySpriteKind', () => {
-    it('draws critter problems with the critter placeholder', () => {
-        expect(entitySpriteKind('critter')).toBe('critter');
-        expect(entitySpriteKind('critter_group')).toBe('critter');
-        expect(entitySpriteKind('plant')).toBe('plant');
-        expect(entitySpriteKind('building')).toBe('building');
+describe("entitySpriteKind", () => {
+    it("draws critter problems with the critter placeholder", () => {
+        expect(entitySpriteKind("critter")).toBe("critter");
+        expect(entitySpriteKind("critter_group")).toBe("critter");
+        expect(entitySpriteKind("plant")).toBe("plant");
+        expect(entitySpriteKind("building")).toBe("building");
     });
 });
 
-describe('bandId', () => {
-    it('is a stable element id for a flock band', () => {
-        expect(bandId('Pacu:adult')).toBe('zone-band-Pacu:adult');
+describe("bandId", () => {
+    it("is a stable element id for a flock band", () => {
+        expect(bandId("Pacu:adult")).toBe("zone-band-Pacu:adult");
     });
 });
 
@@ -177,10 +178,10 @@ function line(
     overrides: Partial<ZoneFeedingLineData> = {},
 ): ZoneFeedingLineData {
     return {
-        resource: 'Algae',
-        name: 'Algues',
+        resource: "Algae",
+        name: "Algues",
         perCycle: 285,
-        kind: 'item',
+        kind: "item",
         inZone: null,
         ...overrides,
     };
@@ -188,7 +189,7 @@ function line(
 
 function feeding(overrides: Partial<ZoneFeedingData> = {}): ZoneFeedingData {
     return {
-        groupKey: 'Pacu:adult',
+        groupKey: "Pacu:adult",
         count: 38,
         foods: [line()],
         otherFoods: 0,
@@ -197,24 +198,26 @@ function feeding(overrides: Partial<ZoneFeedingData> = {}): ZoneFeedingData {
         deficitKgPerCycle: null,
         autonomyCycles: 1.6,
         derived: true,
+        blockedByFilter: null,
+        untickedFoods: [],
         ...overrides,
     };
 }
 
-describe('feedingChip', () => {
-    it('tones the stock by the cycles it lasts', () => {
+describe("feedingChip", () => {
+    it("tones the stock by the cycles it lasts", () => {
         expect(feedingChip(feeding({ autonomyCycles: 3 }))).toEqual({
-            kind: 'stock',
+            kind: "stock",
             cycles: 3,
-            tone: 'ok',
+            tone: "ok",
         });
-        expect(feedingChip(feeding())).toMatchObject({ tone: 'warn' });
+        expect(feedingChip(feeding())).toMatchObject({ tone: "warn" });
         expect(feedingChip(feeding({ autonomyCycles: 0.4 }))).toMatchObject({
-            tone: 'bad',
+            tone: "bad",
         });
     });
 
-    it('shows the need as missing without stock', () => {
+    it("shows the need as missing without stock", () => {
         expect(
             feedingChip(
                 feeding({
@@ -223,10 +226,10 @@ describe('feedingChip', () => {
                     autonomyCycles: 0,
                 }),
             ),
-        ).toEqual({ kind: 'missing', kgPerCycle: 285 });
+        ).toEqual({ kind: "missing", kgPerCycle: 285 });
     });
 
-    it('says the stock is unknown while the feeders were not read', () => {
+    it("says the stock is unknown while the feeders were not read", () => {
         expect(
             feedingChip(
                 feeding({
@@ -235,14 +238,14 @@ describe('feedingChip', () => {
                     autonomyCycles: null,
                 }),
             ),
-        ).toEqual({ kind: 'unknown' });
+        ).toEqual({ kind: "unknown" });
     });
 
-    it('shows nothing for a plant or prey eater', () => {
+    it("shows nothing for a plant or prey eater", () => {
         expect(
             feedingChip(
                 feeding({
-                    foods: [line({ kind: 'plant', inZone: 12 })],
+                    foods: [line({ kind: "plant", inZone: 12 })],
                     availableKg: null,
                     autonomyCycles: null,
                 }),
@@ -251,7 +254,7 @@ describe('feedingChip', () => {
         expect(
             feedingChip(
                 feeding({
-                    foods: [line({ kind: 'plant', inZone: 12 })],
+                    foods: [line({ kind: "plant", inZone: 12 })],
                     availableKg: 0,
                     autonomyCycles: null,
                 }),
@@ -260,11 +263,11 @@ describe('feedingChip', () => {
     });
 });
 
-describe('feedingFoods', () => {
-    it('splits the shown foods into items, plants and prey', () => {
-        const kelp = line({ resource: 'Kelp', name: 'Varech' });
-        const spice = line({ resource: 'SpiceVine', kind: 'plant' });
-        const pacu = line({ resource: 'Pacu', kind: 'prey' });
+describe("feedingFoods", () => {
+    it("splits the shown foods into items, plants and prey", () => {
+        const kelp = line({ resource: "Kelp", name: "Varech" });
+        const spice = line({ resource: "SpiceVine", kind: "plant" });
+        const pacu = line({ resource: "Pacu", kind: "prey" });
 
         expect(
             feedingFoods(feeding({ foods: [line(), kelp, spice, pacu] })),
@@ -276,8 +279,27 @@ describe('feedingFoods', () => {
     });
 });
 
-describe('amountDigits', () => {
-    it('keeps a small amount from rounding to zero', () => {
+describe("untickedNames", () => {
+    it("names the foods to tick in the feeder", () => {
+        const kelp = line({ resource: "Kelp", name: "Varech" });
+
+        expect(untickedNames(feeding({ untickedFoods: [kelp] }))).toBe(
+            "Varech",
+        );
+        expect(
+            untickedNames(
+                feeding({ untickedFoods: [kelp, line({ name: "Grès" })] }),
+            ),
+        ).toBe("Varech, Grès");
+    });
+
+    it("says nothing when every food is ticked or the filters are unknown", () => {
+        expect(untickedNames(feeding())).toBeNull();
+    });
+});
+
+describe("amountDigits", () => {
+    it("keeps a small amount from rounding to zero", () => {
         expect(amountDigits(285)).toBe(0);
         expect(amountDigits(41.25)).toBe(1);
         expect(amountDigits(0.55)).toBe(2);

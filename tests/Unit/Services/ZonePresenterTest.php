@@ -965,3 +965,73 @@ it('lays no egg in a cramped or confined region, however happy', function (strin
     expect($feeding[0]->produces[1]->perCycle)->toBe(0.0)
         ->and($feeding[0]->foods[0]->perCycle)->toBe(82.5);
 })->with(['cramped', 'confined']);
+
+/**
+ * The feeding of the pond's Pacu (eats Algae or Kelp) with the given feeders, each `[instanceId => settings filter]`
+ * where a null filter is a feeder without filter.
+ *
+ * @param  array<string, list<string>|null>  $filters
+ */
+function feedingWithFeeders(array $filters): App\Data\ZoneFeedingData
+{
+    $buildings = [];
+    foreach ($filters as $id => $filter) {
+        $buildings[] = [
+            'instanceId' => (string) $id, 'prefabId' => 'CreatureFeeder', 'storage' => [],
+            'settings' => ['filter' => $filter],
+        ];
+    }
+
+    return app(ZonePresenter::class)->present(feedingPond(['buildings' => $buildings]))->feeding[0];
+}
+
+it('marks a flock blocked when no feeder accepts its foods', function (): void {
+    $feeding = feedingWithFeeders(['9001' => [], '9002' => ['Sand']]);
+
+    expect($feeding->blockedByFilter)->toBeTrue()
+        ->and(array_map(fn ($line): string => $line->resource, $feeding->untickedFoods))->toBe(['Algae', 'Kelp']);
+});
+
+it('does not block when one of two feeders accepts a food', function (): void {
+    $feeding = feedingWithFeeders(['9001' => [], '9002' => ['Algae']]);
+
+    expect($feeding->blockedByFilter)->toBeFalse()
+        ->and(array_map(fn ($line): string => $line->resource, $feeding->untickedFoods))->toBe(['Kelp']);
+});
+
+it('does not block when a feeder has no filter', function (): void {
+    $feeding = feedingWithFeeders(['9001' => [], '9002' => null]);
+
+    expect($feeding->blockedByFilter)->toBeFalse()
+        ->and($feeding->untickedFoods)->toBe([]);
+});
+
+it('lists unticked foods of the diet', function (): void {
+    $feeding = feedingWithFeeders(['9001' => ['Kelp']]);
+
+    expect($feeding->untickedFoods)->toHaveCount(1)
+        ->and($feeding->untickedFoods[0]->toArray())->toMatchArray(['resource' => 'Algae', 'name' => 'Algae', 'kind' => 'item', 'perCycle' => 82.5]);
+});
+
+it('leaves blocked null for grazers and hunters', function (): void {
+    $zone = feedingPond(['buildings' => [['instanceId' => '9001', 'prefabId' => 'CreatureFeeder', 'storage' => [], 'settings' => ['filter' => []]]]]);
+    $morph = CritterMorph::factory()->for(Critter::factory())->create(['morph_id' => 'Drecko']);
+    App\Models\CritterMorphDiet::factory()->create(['critter_morph_id' => $morph->id, 'consumed_element_id' => 'Algae', 'amount_per_cycle' => 0.75, 'produced_element_id' => null, 'conversion_ratio' => null, 'food_kind' => 'plant']);
+    $fast = $zone->fast_state;
+    $fast['critters'][] = ['instanceId' => '1300', 'prefabId' => 'Drecko', 'cell' => 100, 'x' => 1.0, 'y' => 1.0, 'tame' => true];
+    $zone->update(['fast_state' => $fast]);
+
+    $drecko = collect(app(ZonePresenter::class)->present($zone->fresh())->feeding)->firstWhere('groupKey', 'Drecko:adult');
+
+    expect($drecko->blockedByFilter)->toBeNull()
+        ->and($drecko->untickedFoods)->toBe([]);
+});
+
+it('leaves blocked null and no unticked foods for an older mod', function (): void {
+    $feeding = app(ZonePresenter::class)->present(feedingPond(['buildings' => [
+        ['instanceId' => '9001', 'prefabId' => 'CreatureFeeder', 'storage' => []],
+    ]]))->feeding[0];
+
+    expect($feeding->blockedByFilter)->toBeNull()
+        ->and($feeding->untickedFoods)->toBe([]);
+});

@@ -241,6 +241,8 @@ return [
             'stock' => 'Stock pour :value cycle|Stock pour :value cycles',
             'missing' => 'Il manque :value kg/cycle',
             'stock_unknown' => 'Stock inconnu',
+            'unticked' => 'À cocher dans le distributeur :',
+            'blocked' => 'Aucun distributeur n\'accepte sa nourriture',
             'derived' => 'dérivé',
             'derived_hint' => 'Calculé par le planner à partir du régime du jeu et des stocks de la zone, pas lu dans la partie.',
         ],

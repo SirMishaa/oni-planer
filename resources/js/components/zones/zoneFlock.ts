@@ -5,11 +5,11 @@ import type {
     ZoneFeedingData,
     ZoneFeedingLineData,
     ZonePopulationData,
-} from '@/types/App/Data/data.d';
+} from "@/types/App/Data/data.d";
 
 // region Groups
 
-export type FlockStage = 'adult' | 'baby' | 'wild';
+export type FlockStage = "adult" | "baby" | "wild";
 
 /** The critters of one prefab at one stage: one band of the flock. */
 export type FlockGroup = {
@@ -26,13 +26,13 @@ export type FlockGroup = {
 
 /** A baby stays a baby whether tame or not; an adult is wild until tamed. */
 export function flockStage(
-    critter: Pick<ZoneCritterData, 'baby' | 'tame'>,
+    critter: Pick<ZoneCritterData, "baby" | "tame">,
 ): FlockStage {
     if (critter.baby) {
-        return 'baby';
+        return "baby";
     }
 
-    return critter.tame ? 'adult' : 'wild';
+    return critter.tame ? "adult" : "wild";
 }
 
 /** One group per prefab and stage, the largest first (then by key, so live reloads keep the order). */
@@ -99,9 +99,9 @@ export function bandId(groupKey: string): string {
 
 /** The placeholder glyph of an entity row: critter problems draw like critters. */
 export function entitySpriteKind(
-    kind: ZoneEntityData['kind'],
-): 'plant' | 'building' | 'critter' {
-    return kind === 'plant' || kind === 'building' ? kind : 'critter';
+    kind: ZoneEntityData["kind"],
+): "plant" | "building" | "critter" {
+    return kind === "plant" || kind === "building" ? kind : "critter";
 }
 
 // endregion
@@ -137,18 +137,18 @@ export function individualAlerts(
 
 // region Metrics
 
-export type FlockMetric = 'fertility' | 'growth' | 'stomach' | 'age';
+export type FlockMetric = "fertility" | "growth" | "stomach" | "age";
 
 export const FLOCK_METRICS: FlockMetric[] = [
-    'fertility',
-    'growth',
-    'stomach',
-    'age',
+    "fertility",
+    "growth",
+    "stomach",
+    "age",
 ];
 
 /** The gauge a band shows first: growth for babies (they do not breed), fertility otherwise. */
 export function defaultMetric(stage: FlockStage): FlockMetric {
-    return stage === 'baby' ? 'growth' : 'fertility';
+    return stage === "baby" ? "growth" : "fertility";
 }
 
 function lifeShare(critter: ZoneCritterData): number | null {
@@ -198,13 +198,13 @@ export function sortByMetric(
 
 // region Facts
 
-export type HappinessState = 'happy' | 'neutral' | 'glum' | 'miserable';
+export type HappinessState = "happy" | "neutral" | "glum" | "miserable";
 
 const HAPPINESS_STATES: HappinessState[] = [
-    'happy',
-    'neutral',
-    'glum',
-    'miserable',
+    "happy",
+    "neutral",
+    "glum",
+    "miserable",
 ];
 
 /** Critters per happiness state, in the game's order, states nobody is in left out. */
@@ -253,7 +253,7 @@ export function ageRange(
  * infertile (`FertilityMonitor.IsFertile`), a hard stop, as in `CritterFeeding::fertilityRatio`.
  */
 export function fertilityFrozen(
-    critter: Pick<ZoneCritterData, 'regionId'>,
+    critter: Pick<ZoneCritterData, "regionId">,
     population: ZonePopulationData[] | null,
 ): boolean {
     const region = (population ?? []).find(
@@ -265,7 +265,7 @@ export function fertilityFrozen(
 
 /** Next-egg odds as shares of their total, most likely first. */
 export function eggOdds(
-    critter: Pick<ZoneCritterData, 'breeding'>,
+    critter: Pick<ZoneCritterData, "breeding">,
 ): { egg: string; name: string; share: number }[] {
     const total = critter.breeding.reduce((sum, odd) => sum + odd.weight, 0);
 
@@ -296,7 +296,7 @@ export function groupEggs(eggs: ZoneEggData[]): EggGroup[] {
     const groups = new Map<string, EggGroup>();
 
     for (const egg of eggs) {
-        const location = egg.location ?? 'unknown';
+        const location = egg.location ?? "unknown";
         const key = `${egg.prefabId}:${location}`;
         const group = groups.get(key) ?? {
             key,
@@ -366,25 +366,25 @@ export const FEEDING_OK_CYCLES = 3;
 /** Below this many cycles the stock is about to run out. */
 export const FEEDING_BAD_CYCLES = 1;
 
-export type FeedingTone = 'ok' | 'warn' | 'bad';
+export type FeedingTone = "ok" | "warn" | "bad";
 
 /** The balance chip of a band: how long the stock lasts, or the need nothing covers. */
 export type FeedingChip =
-    | { kind: 'stock'; cycles: number; tone: FeedingTone }
-    | { kind: 'missing'; kgPerCycle: number }
-    | { kind: 'unknown' };
+    | { kind: "stock"; cycles: number; tone: FeedingTone }
+    | { kind: "missing"; kgPerCycle: number }
+    | { kind: "unknown" };
 
 /** `unknown` while the feeders were not read; null for a band that only grazes or hunts (its food is not stocked). */
 export function feedingChip(feeding: ZoneFeedingData): FeedingChip | null {
     if (feeding.deficitKgPerCycle !== null) {
-        return { kind: 'missing', kgPerCycle: feeding.deficitKgPerCycle };
+        return { kind: "missing", kgPerCycle: feeding.deficitKgPerCycle };
     }
 
     if (
         feeding.availableKg === null &&
-        feeding.foods.some((food) => food.kind === 'item')
+        feeding.foods.some((food) => food.kind === "item")
     ) {
-        return { kind: 'unknown' };
+        return { kind: "unknown" };
     }
 
     if (feeding.autonomyCycles === null) {
@@ -394,14 +394,14 @@ export function feedingChip(feeding: ZoneFeedingData): FeedingChip | null {
     const cycles = feeding.autonomyCycles;
 
     return {
-        kind: 'stock',
+        kind: "stock",
         cycles,
         tone:
             cycles >= FEEDING_OK_CYCLES
-                ? 'ok'
+                ? "ok"
                 : cycles < FEEDING_BAD_CYCLES
-                  ? 'bad'
-                  : 'warn',
+                  ? "bad"
+                  : "warn",
     };
 }
 
@@ -411,10 +411,17 @@ export function feedingFoods(feeding: ZoneFeedingData): {
     plants: ZoneFeedingLineData[];
     prey: ZoneFeedingLineData[];
 } {
-    const of = (kind: ZoneFeedingLineData['kind']): ZoneFeedingLineData[] =>
+    const of = (kind: ZoneFeedingLineData["kind"]): ZoneFeedingLineData[] =>
         feeding.foods.filter((food) => food.kind === kind);
 
-    return { items: of('item'), plants: of('plant'), prey: of('prey') };
+    return { items: of("item"), plants: of("plant"), prey: of("prey") };
+}
+
+/** The item foods no feeder of the zone accepts, comma-separated ("Varech, Grès"); null when there are none. */
+export function untickedNames(feeding: ZoneFeedingData): string | null {
+    return feeding.untickedFoods.length === 0
+        ? null
+        : feeding.untickedFoods.map((food) => food.name).join(", ");
 }
 
 /** Decimals to show an amount per cycle with: none from 100, one from 1, two significant digits below (0.55, 0.011). */

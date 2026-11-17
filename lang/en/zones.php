@@ -241,6 +241,8 @@ return [
             'stock' => 'Stock for :value cycle|Stock for :value cycles',
             'missing' => 'Short :value kg/cycle',
             'stock_unknown' => 'Stock unknown',
+            'unticked' => 'To tick in the feeder:',
+            'blocked' => 'No feeder accepts its food',
             'derived' => 'derived',
             'derived_hint' => 'Computed by the planner from the game diet and the zone stock, not read from the game.',
         ],

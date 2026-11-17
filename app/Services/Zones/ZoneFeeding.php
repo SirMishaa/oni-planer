@@ -72,6 +72,8 @@ final readonly class ZoneFeeding
         $plants = $this->plantCounts($zone);
         $prey = array_count_values(array_map(fn (ZoneCritterData $critter): string => $critter->prefabId, $critters));
 
+        $filters = ZoneBuildingSettings::feederFilters($zone);
+
         $feeding = [];
         foreach ($groups as $key => $group) {
             $flows = $this->feeding->flows((string) $key, $group['prefabId'], $group['count'], $zone->id, $group['eaters'], $group['layers']);
@@ -83,6 +85,7 @@ final readonly class ZoneFeeding
             $balance = $consumed === null ? null : $this->feeding->balance($consumed, $inventory);
             $accepts = $consumed->accepts ?? [];
             [$foods, $otherFoods] = $this->foods($accepts, $balance?->mainResource, $plants, $prey);
+            $unticked = $this->untickedFoods($accepts, $filters);
 
             $feeding[] = new ZoneFeedingData(
                 groupKey: (string) $key,
@@ -93,6 +96,8 @@ final readonly class ZoneFeeding
                 availableKg: $storageKnown ? $balance?->availableKg : null,
                 deficitKgPerCycle: $storageKnown ? $balance?->deficitKgPerCycle : null,
                 autonomyCycles: $storageKnown ? $balance?->autonomyCycles : null,
+                blockedByFilter: $this->blockedByFilter($accepts, $unticked, $filters),
+                untickedFoods: $unticked,
             );
         }
 
@@ -133,6 +138,56 @@ final readonly class ZoneFeeding
             ), $shown),
             count($accepts) - count($shown),
         ];
+    }
+
+    /**
+     * The item foods of the diet that no feeder accepts. A feeder without filter (null) accepts every food, one
+     * with nothing ticked (an empty list) none; empty when the filters are unknown.
+     *
+     * @param  list<AcceptedFoodData>  $accepts
+     * @param  array<int|string, list<string>|null>|null  $filters  the filter of each feeder, null when unknown
+     * @return list<ZoneFeedingLineData>
+     */
+    private function untickedFoods(array $accepts, ?array $filters): array
+    {
+        if ($filters === null) {
+            return [];
+        }
+
+        $unticked = [];
+        foreach ($accepts as $food) {
+            if ($food->kind !== CritterFeeding::STOCKABLE_KIND) {
+                continue;
+            }
+
+            $ticked = false;
+            foreach ($filters as $filter) {
+                if ($filter === null || in_array($food->resource, $filter, true)) {
+                    $ticked = true;
+                    break;
+                }
+            }
+
+            if (! $ticked) {
+                $unticked[] = new ZoneFeedingLineData($food->resource, $this->text->name($food->resource), $food->kgPerCycle, $food->kind);
+            }
+        }
+
+        return $unticked;
+    }
+
+    /**
+     * Blocked when the filters are known, the band eats item foods and no feeder accepts any of them.
+     *
+     * @param  list<AcceptedFoodData>  $accepts
+     * @param  list<ZoneFeedingLineData>  $unticked
+     * @param  array<int|string, list<string>|null>|null  $filters
+     */
+    private function blockedByFilter(array $accepts, array $unticked, ?array $filters): ?bool
+    {
+        $itemFoods = count(array_filter($accepts, fn (AcceptedFoodData $food): bool => $food->kind === CritterFeeding::STOCKABLE_KIND));
+
+        return $filters === null || $itemFoods === 0 ? null : count($unticked) === $itemFoods;
     }
 
     /**
