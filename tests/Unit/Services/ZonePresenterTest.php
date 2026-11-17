@@ -1037,11 +1037,11 @@ it('leaves blocked null and no unticked foods for an older mod', function (): vo
 });
 
 it('puts settings on building entities, with display names for the filter', function (): void {
-    PrefabName::factory()->create(['prefab_id' => 'Algae', 'name_key' => 'STRINGS.ITEMS.INGREDIENTS.ALGAE.NAME']);
+    PrefabName::factory()->create(['prefab_id' => 'ZedItem', 'name_key' => 'STRINGS.ELEMENTS.ALGAE.NAME']);
     $zone = Zone::factory()->sodicaneFarm()->create();
     $zone->update(['fast_state' => [...$zone->fast_state, 'buildings' => [
         ['instanceId' => '8001', 'prefabId' => 'CreatureFeeder', 'operational' => true, 'active' => true, 'settings' => [
-            'filter' => ['Algae', 'Mystery'],
+            'filter' => ['ZedItem', 'Mystery'],
             'capacity' => ['limit' => 500.0, 'max' => 2000.0, 'stored' => 340.0, 'unit' => 'kg'],
         ]],
         ['instanceId' => '8002', 'prefabId' => 'CreatureFeeder', 'operational' => true, 'active' => true, 'settings' => ['filter' => [], 'capacity' => null]],
@@ -1050,7 +1050,8 @@ it('puts settings on building entities, with display names for the filter', func
 
     $buildings = collect(app(ZonePresenter::class)->present($zone)->entities)->where('kind', 'building')->keyBy('instanceId');
 
-    expect($buildings['8001']->settings?->filter)->toBe(['Algae', 'Mystery'])
+    expect(__('STRINGS.ELEMENTS.ALGAE.NAME'))->not->toBe('STRINGS.ELEMENTS.ALGAE.NAME')
+        ->and($buildings['8001']->settings?->filter)->toBe([__('STRINGS.ELEMENTS.ALGAE.NAME'), 'Mystery'])
         ->and($buildings['8001']->settings?->capacity?->stored)->toBe(340.0)
         ->and($buildings['8001']->settings?->capacity?->max)->toBe(2000.0)
         ->and($buildings['8002']->settings?->filter)->toBe([])
