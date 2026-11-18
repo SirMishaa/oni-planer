@@ -44,10 +44,7 @@ final class StartChatQuestion
         $colonyGuid = $message['colonyId'];
         $worldId = $message['worldId'];
 
-        /** @var list<array{zoneId: string, worldId: int, cells: list<int>, capture: bool}> $contextRequests */
-        $contextRequests = [];
-
-        $question = DB::transaction(function () use ($message, $colonyGuid, $worldId, &$contextRequests): ChatQuestion {
+        $question = DB::transaction(function () use ($message, $colonyGuid, $worldId): ChatQuestion {
             $conversation = ChatConversation::query()->firstOrCreate(
                 ['id' => $message['conversationId']],
                 ['colony_guid' => $colonyGuid],
@@ -64,46 +61,69 @@ final class StartChatQuestion
 
             foreach ($message['items'] as $item) {
                 $zone = $this->resolveZone($colonyGuid, $worldId, $item);
-                $capture = $item['capture'];
 
                 $question->contextItems()->create([
                     'kind' => $item['kind'],
                     'label' => $item['label'],
                     'zone_id' => $zone?->id,
-                    'instance_id' => isset($item['instanceId']) ? (int) $item['instanceId'] : null,
+                    'instance_id' => $item['instanceId'] ?? null,
                     'layer_hint' => $item['layerHint'] ?? null,
-                    'wants_capture' => $capture,
+                    'wants_capture' => $item['capture'],
                 ]);
-
-                if ($zone !== null && ($zone->transient || $capture)) {
-                    $contextRequests[] = [
-                        'zoneId' => $zone->zone_guid,
-                        'worldId' => $zone->world_id,
-                        'cells' => $zone->transient ? array_values($item['cells'] ?? []) : [],
-                        'capture' => $capture,
-                    ];
-                }
             }
 
             return $question;
         });
 
-        if (! $question->wasRecentlyCreated) {
+        // A resent ask finishes the tail a failed first attempt left undone; later states are untouched.
+        if ($question->status !== ChatQuestion::PENDING) {
             return $question;
         }
 
-        if ($contextRequests !== []) {
-            $command = $this->sendCommand->handle($colonyGuid, 'chat.context', [
-                'questionId' => $question->id,
-                'items' => $contextRequests,
-            ], self::CONTEXT_TTL_SECONDS);
-
-            $question->update(['context_requested_at' => now(), 'context_command_id' => $command->id]);
-        }
+        $this->requestContext($question, $message);
 
         AnswerChatQuestion::dispatch($question->id);
 
         return $question;
+    }
+
+    /**
+     * Sends the one `chat.context` command the question needs, unless it was already sent or nothing needs sampling.
+     *
+     * @param  array<string, mixed>  $message
+     */
+    private function requestContext(ChatQuestion $question, array $message): void
+    {
+        if ($question->context_command_id !== null) {
+            return;
+        }
+
+        $contextItems = $question->contextItems()->with('zone')->orderBy('id')->get();
+        $requests = [];
+
+        foreach ($contextItems as $index => $contextItem) {
+            $zone = $contextItem->zone;
+
+            if ($zone !== null && ($zone->transient || $contextItem->wants_capture)) {
+                $requests[] = [
+                    'zoneId' => $zone->zone_guid,
+                    'worldId' => $zone->world_id,
+                    'cells' => $zone->transient ? array_values(array_unique($message['items'][$index]['cells'] ?? [])) : [],
+                    'capture' => $contextItem->wants_capture,
+                ];
+            }
+        }
+
+        if ($requests === []) {
+            return;
+        }
+
+        $command = $this->sendCommand->handle($question->conversation->colony_guid, 'chat.context', [
+            'questionId' => $question->id,
+            'items' => $requests,
+        ], self::CONTEXT_TTL_SECONDS);
+
+        $question->update(['context_requested_at' => now(), 'context_command_id' => $command->id]);
     }
 
     /**
@@ -124,7 +144,7 @@ final class StartChatQuestion
             }
         }
 
-        $cells = array_values($item['cells'] ?? []);
+        $cells = array_values(array_unique($item['cells'] ?? []));
 
         if ($item['kind'] === self::KIND_ZONE || $cells === []) {
             return null;

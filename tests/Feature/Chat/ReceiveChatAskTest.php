@@ -158,3 +158,81 @@ it('drops a malformed ask and still acks it', function (): void {
         ->and(ChatQuestion::query()->count())->toBe(0);
     Bus::assertNotDispatched(AnswerChatQuestion::class);
 });
+
+it('drops and acks asks that would poison the queue', function (array $override): void {
+    $message = chatAskMessage($this->questionId, $this->conversationId, [
+        ['kind' => 'box', 'label' => 'Box', 'cells' => [1, 2], 'capture' => false],
+    ], $override);
+
+    $acks = receiveUplinkData(uplinkData('client-chat.ask', $message));
+
+    expect($acks)->toHaveCount(1)
+        ->and(ChatQuestion::query()->count())->toBe(0)
+        ->and(ChatConversation::query()->count())->toBe(0);
+})->with([
+    'non-uuid conversation' => [['conversationId' => 'not-a-uuid']],
+    'non-uuid id' => [['id' => 'not-a-uuid']],
+    'over-long question' => [['question' => str_repeat('a', 4001)]],
+    'too many items' => [['items' => array_fill(0, 17, ['kind' => 'box', 'label' => 'B', 'cells' => [1], 'capture' => false])]],
+    'too many cells' => [['items' => [['kind' => 'box', 'label' => 'B', 'cells' => range(0, 5000), 'capture' => false]]]],
+    'negative cell' => [['items' => [['kind' => 'box', 'label' => 'B', 'cells' => [-1], 'capture' => false]]]],
+    'over-long label' => [['items' => [['kind' => 'box', 'label' => str_repeat('a', 256), 'cells' => [1], 'capture' => false]]]],
+    'over-long layer hint' => [['items' => [['kind' => 'box', 'label' => 'B', 'cells' => [1], 'layerHint' => str_repeat('a', 256), 'capture' => false]]]],
+]);
+
+it('counts duplicate cells once', function (): void {
+    receiveUplinkData(uplinkData('client-chat.ask', chatAskMessage($this->questionId, $this->conversationId, [
+        ['kind' => 'box', 'label' => 'Box', 'cells' => [5, 5, 6], 'capture' => false],
+    ])));
+
+    expect(Zone::query()->sole()->cell_count)->toBe(2)
+        ->and(UplinkCommand::query()->sole()->payload['items'][0]['cells'])->toBe([5, 6]);
+});
+
+it('drops an ask whose conversation belongs to another colony', function (): void {
+    $conversation = ChatConversation::factory()->create(['colony_guid' => 'colony-other']);
+
+    $acks = receiveUplinkData(uplinkData('client-chat.ask', chatAskMessage($this->questionId, $conversation->id, [
+        ['kind' => 'box', 'label' => 'Box', 'cells' => [1], 'capture' => false],
+    ])));
+
+    expect($acks)->toHaveCount(1)
+        ->and(ChatQuestion::query()->count())->toBe(0)
+        ->and($conversation->questions()->count())->toBe(0);
+});
+
+it('finishes the tail of a pending question when the ask is resent after a failure', function (): void {
+    $message = chatAskMessage($this->questionId, $this->conversationId, [
+        ['kind' => 'box', 'label' => 'Box', 'cells' => [1, 2], 'capture' => false],
+    ]);
+    $fail = true;
+    Illuminate\Support\Facades\Event::listen(App\Events\Uplink\UplinkCommandIssued::class, function () use (&$fail): void {
+        if ($fail) {
+            $fail = false;
+            throw new RuntimeException('broadcast down');
+        }
+    });
+
+    expect(fn () => app(App\Actions\Chat\StartChatQuestion::class)->handle($message))->toThrow(RuntimeException::class);
+    Bus::assertNotDispatched(AnswerChatQuestion::class);
+
+    $question = app(App\Actions\Chat\StartChatQuestion::class)->handle($message);
+
+    expect(ChatQuestion::query()->count())->toBe(1)
+        ->and(Zone::query()->count())->toBe(1)
+        ->and($question->fresh()->context_command_id)->not->toBeNull();
+    Bus::assertDispatchedTimes(AnswerChatQuestion::class, 1);
+});
+
+it('queues the history listener on the chat queue and truncates long answers', function (): void {
+    expect(new App\Listeners\Chat\SendChatHistory(app(App\Actions\Uplink\SendUplinkCommand::class)))
+        ->toBeInstanceOf(Illuminate\Contracts\Queue\ShouldQueue::class)
+        ->queue->toBe('chat');
+
+    $conversation = ChatConversation::factory()->create(['colony_guid' => 'colony-1']);
+    ChatQuestion::factory()->for($conversation, 'conversation')->create(['status' => ChatQuestion::ANSWERED, 'answer' => str_repeat('a', 5000)]);
+
+    UplinkSessionStarted::dispatch('colony-1', 'session-1');
+
+    expect(mb_strlen(UplinkCommand::query()->sole()->payload['entries'][0]['answer']))->toBe(4000);
+});

@@ -8,13 +8,21 @@ use App\Actions\Uplink\SendUplinkCommand;
 use App\Events\Uplink\UplinkSessionStarted;
 use App\Models\ChatConversation;
 use App\Models\ChatQuestion;
+use Illuminate\Contracts\Queue\ShouldQueue;
 
 /** Sends the colony's latest conversation when a session starts, so the panel shows it after a reload. */
-final readonly class SendChatHistory
+final readonly class SendChatHistory implements ShouldQueue
 {
+    public const int TEXT_LIMIT = 4000;
+
     public const int ENTRY_LIMIT = 20;
 
-    public function __construct(private SendUplinkCommand $sendCommand) {}
+    public string $queue;
+
+    public function __construct(private SendUplinkCommand $sendCommand)
+    {
+        $this->queue = 'chat';
+    }
 
     public function handle(UplinkSessionStarted $event): void
     {
@@ -44,8 +52,8 @@ final readonly class SendChatHistory
                 'question' => $question->question,
                 'items' => $question->contextItems->map(fn ($item): array => ['kind' => $item->kind, 'label' => $item->label])->all(),
                 'status' => $question->status,
-                'answer' => $question->answer,
-                'error' => $question->error,
+                'answer' => $question->answer === null ? null : mb_substr($question->answer, 0, self::TEXT_LIMIT),
+                'error' => $question->error === null ? null : mb_substr($question->error, 0, self::TEXT_LIMIT),
                 'durationMs' => $question->duration_ms,
                 'tools' => $question->tools,
             ], fn (mixed $value): bool => $value !== null))->all(),

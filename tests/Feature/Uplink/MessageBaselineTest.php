@@ -43,7 +43,7 @@ const BASELINE_QUERIES = [
     'client-zone.fast' => 3, // + 1 zone read by the crowding consistency check
     'client-colony.state' => 7,
     'client-command.ack' => 2,
-    'client-chat.ask' => 11,
+    'client-chat.ask' => 15,
     'client-zone.capture' => 4,
 ];
 
