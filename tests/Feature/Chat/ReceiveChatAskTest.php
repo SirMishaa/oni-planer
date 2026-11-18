@@ -265,3 +265,71 @@ it('still drops ids that are neither dashed nor N-form', function (): void {
 
     expect($acks)->toHaveCount(1)->and(ChatQuestion::query()->count())->toBe(0);
 });
+
+it('reports questions older than the answer job can run as failed in the history', function (): void {
+    $conversation = ChatConversation::factory()->create(['colony_guid' => 'colony-1']);
+    $stuck = ChatQuestion::factory()->for($conversation, 'conversation')->create([
+        'status' => ChatQuestion::WORKING, 'created_at' => now()->subSeconds(App\Listeners\Chat\SendChatHistory::STALE_AFTER_SECONDS + 1),
+    ]);
+    $running = ChatQuestion::factory()->for($conversation, 'conversation')->create([
+        'status' => ChatQuestion::PENDING, 'created_at' => now()->subSeconds(30),
+    ]);
+
+    UplinkSessionStarted::dispatch('colony-1', 'session-1');
+
+    $entries = collect(UplinkCommand::query()->sole()->payload['entries'])->keyBy('questionId');
+    expect($entries[$stuck->id]['status'])->toBe('failed')
+        ->and($entries[$stuck->id]['error'])->toBe(App\Listeners\Chat\SendChatHistory::STALE_ERROR)
+        ->and($entries[$running->id]['status'])->toBe('pending')
+        ->and($stuck->fresh()->status)->toBe(ChatQuestion::FAILED)
+        ->and($stuck->fresh()->error)->toBe(App\Listeners\Chat\SendChatHistory::STALE_ERROR)
+        ->and($running->fresh()->status)->toBe(ChatQuestion::PENDING)
+        ->and(App\Listeners\Chat\SendChatHistory::STALE_AFTER_SECONDS)->toBeGreaterThan((new AnswerChatQuestion('x'))->timeout);
+});
+
+it('sends an error reply for a dropped ask with valid ids, as the mod sent them', function (): void {
+    $questionId = str_replace('-', '', $this->questionId);
+    $conversationId = str_replace('-', '', $this->conversationId);
+
+    receiveUplinkData(uplinkData('client-chat.ask', chatAskMessage($questionId, $conversationId, [
+        ['kind' => 'nonsense', 'label' => 'x', 'capture' => false],
+    ])));
+
+    $command = UplinkCommand::query()->sole();
+    expect($command->type)->toBe('chat.reply')
+        ->and($command->colony_guid)->toBe('colony-1')
+        ->and($command->payload)->toBe([
+            'conversationId' => $conversationId, 'questionId' => $questionId,
+            'kind' => 'error', 'text' => App\Jobs\Uplink\ReceiveChatAsk::REFUSED_TEXT,
+        ])
+        ->and(ChatQuestion::query()->count())->toBe(0);
+});
+
+it('sends an error reply for an ask on a foreign conversation without touching it', function (): void {
+    $conversation = ChatConversation::factory()->create(['colony_guid' => 'colony-other']);
+
+    receiveUplinkData(uplinkData('client-chat.ask', chatAskMessage($this->questionId, $conversation->id, [
+        ['kind' => 'box', 'label' => 'Box', 'cells' => [1], 'capture' => false],
+    ])));
+
+    $command = UplinkCommand::query()->sole();
+    expect($command->type)->toBe('chat.reply')
+        ->and($command->colony_guid)->toBe('colony-1')
+        ->and($command->payload['kind'])->toBe('error')
+        ->and($command->payload['conversationId'])->toBe($conversation->id)
+        ->and(ChatQuestion::query()->count())->toBe(0)
+        ->and(ChatConversation::query()->count())->toBe(1)
+        ->and(Zone::query()->count())->toBe(0);
+});
+
+it('sends no error reply when the dropped ask has no usable ids or colony', function (array $override): void {
+    receiveUplinkData(uplinkData('client-chat.ask', chatAskMessage($this->questionId, $this->conversationId, [
+        ['kind' => 'nonsense', 'label' => 'x', 'capture' => false],
+    ], $override)));
+
+    expect(UplinkCommand::query()->count())->toBe(0);
+})->with([
+    'non-uuid id' => [['id' => 'not-a-uuid']],
+    'non-uuid conversation' => [['conversationId' => 'not-a-uuid']],
+    'non-string colony' => [['colonyId' => 42]],
+]);

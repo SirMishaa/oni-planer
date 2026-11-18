@@ -25,9 +25,19 @@ final class SendChatReply
      */
     public function handle(ChatQuestion $question, string $kind, string $text, ?int $durationMs = null, array $tools = []): void
     {
+        $this->send($question->conversation->colony_guid, $question->chat_conversation_id, $question->id, $kind, $text, $durationMs, $tools);
+    }
+
+    /**
+     * Sends a reply for ids the game sent, without a stored question (an ask the site refused).
+     *
+     * @param  list<string>  $tools
+     */
+    public function send(string $colonyGuid, string $conversationId, string $questionId, string $kind, string $text, ?int $durationMs = null, array $tools = []): void
+    {
         $payload = [
-            'conversationId' => $question->chat_conversation_id,
-            'questionId' => $question->id,
+            'conversationId' => $conversationId,
+            'questionId' => $questionId,
             'kind' => $kind,
             'text' => $text,
         ];
@@ -40,6 +50,6 @@ final class SendChatReply
             $payload['tools'] = array_values($tools);
         }
 
-        $this->sendCommand->handle($question->conversation->colony_guid, 'chat.reply', $payload, self::TTL_SECONDS);
+        $this->sendCommand->handle($colonyGuid, 'chat.reply', $payload, self::TTL_SECONDS);
     }
 }

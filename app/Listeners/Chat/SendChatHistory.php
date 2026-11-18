@@ -6,6 +6,7 @@ namespace App\Listeners\Chat;
 
 use App\Actions\Uplink\SendUplinkCommand;
 use App\Events\Uplink\UplinkSessionStarted;
+use App\Jobs\Chat\AnswerChatQuestion;
 use App\Models\ChatConversation;
 use App\Models\ChatQuestion;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -16,6 +17,11 @@ final readonly class SendChatHistory implements ShouldQueue
     public const int TEXT_LIMIT = 4000;
 
     public const int ENTRY_LIMIT = 20;
+
+    /** A question still pending or working this long after it was asked has outlived its answer job. */
+    public const int STALE_AFTER_SECONDS = AnswerChatQuestion::MAX_RUN_SECONDS + 60;
+
+    public const string STALE_ERROR = 'The answer timed out.';
 
     public string $queue;
 
@@ -36,6 +42,11 @@ final readonly class SendChatHistory implements ShouldQueue
         if ($conversation === null) {
             return;
         }
+
+        $conversation->questions()
+            ->whereIn('status', [ChatQuestion::PENDING, ChatQuestion::WORKING])
+            ->where('created_at', '<', now()->subSeconds(self::STALE_AFTER_SECONDS))
+            ->update(['status' => ChatQuestion::FAILED, 'error' => self::STALE_ERROR]);
 
         $questions = $conversation->questions()
             ->with('contextItems')

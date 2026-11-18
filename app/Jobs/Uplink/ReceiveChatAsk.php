@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Uplink;
 
+use App\Actions\Chat\SendChatReply;
 use App\Actions\Chat\StartChatQuestion;
 use App\Enums\UplinkMessageType;
 use App\Models\ChatConversation;
@@ -14,7 +15,8 @@ use Illuminate\Support\Str;
 
 /**
  * `client-chat.ask`: a question the player typed in game, with what they pointed at. Always
- * acked: a malformed ask never becomes valid by resending it.
+ * acked: a malformed ask never becomes valid by resending it. A refused ask whose ids are usable
+ * gets an error reply, so the panel does not wait for an answer that will never come.
  */
 final class ReceiveChatAsk implements ShouldQueue
 {
@@ -28,11 +30,13 @@ final class ReceiveChatAsk implements ShouldQueue
 
     public const int MAX_CELLS = 5000;
 
+    public const string REFUSED_TEXT = 'The planner refused this question (malformed, or the conversation belongs to another colony).';
+
     public int $tries = 1;
 
     public function __construct(public readonly string $frame) {}
 
-    public function handle(UplinkMessageReader $reader, StartChatQuestion $startQuestion): void
+    public function handle(UplinkMessageReader $reader, StartChatQuestion $startQuestion, SendChatReply $sendReply): void
     {
         $message = $reader->read($this->frame, UplinkMessageType::ChatAsk);
 
@@ -46,6 +50,10 @@ final class ReceiveChatAsk implements ShouldQueue
             $startQuestion->handle($canonical);
         } else {
             $reader->drop($message, UplinkMessageType::ChatAsk, 'malformed chat ask');
+
+            if ($canonical !== null && is_string($message['colonyId'] ?? null)) {
+                $sendReply->send($message['colonyId'], $message['conversationId'], $message['id'], SendChatReply::KIND_ERROR, self::REFUSED_TEXT);
+            }
         }
 
         $reader->acknowledge($message);

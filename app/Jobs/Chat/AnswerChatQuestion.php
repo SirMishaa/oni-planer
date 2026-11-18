@@ -33,7 +33,9 @@ final class AnswerChatQuestion implements ShouldBeUnique, ShouldQueue
     public const int CONTEXT_POLL_MILLISECONDS = 500;
 
     /** Seconds before the `claude` process timeout (300 s) plus the context wait (20 s) and some margin. */
-    public int $timeout = 360;
+    public const int MAX_RUN_SECONDS = 360;
+
+    public int $timeout = self::MAX_RUN_SECONDS;
 
     public int $tries = 1;
 
