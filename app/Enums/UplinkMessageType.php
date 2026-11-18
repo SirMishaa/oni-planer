@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Enums;
 
+use App\Jobs\Uplink\ReceiveChatAsk;
 use App\Jobs\Uplink\ReceiveColonyState;
 use App\Jobs\Uplink\ReceiveCommandAck;
 use App\Jobs\Uplink\ReceiveSessionStart;
@@ -30,6 +31,7 @@ enum UplinkMessageType: string
     case ColonyState = 'client-colony.state';
     case CommandAck = 'client-command.ack';
     case ZoneCapture = 'client-zone.capture';
+    case ChatAsk = 'client-chat.ask';
 
     public const string DATA_CHANNEL = 'uplink-data';
 
@@ -49,7 +51,7 @@ enum UplinkMessageType: string
 
     public function isReliable(): bool
     {
-        return in_array($this, [self::SessionStart, self::ZoneList, self::ZoneLayout, self::CommandAck, self::ZoneCapture], true);
+        return in_array($this, [self::SessionStart, self::ZoneList, self::ZoneLayout, self::CommandAck, self::ZoneCapture, self::ChatAsk], true);
     }
 
     public function queue(): string
@@ -63,7 +65,7 @@ enum UplinkMessageType: string
         return 1;
     }
 
-    /** @return class-string<ReceiveSessionStart|ReceiveZoneList|ReceiveZoneLayout|ReceiveZoneSlowState|ReceiveZoneFastState|ReceiveColonyState|ReceiveCommandAck|ReceiveZoneCapture> */
+    /** @return class-string<ReceiveSessionStart|ReceiveZoneList|ReceiveZoneLayout|ReceiveZoneSlowState|ReceiveZoneFastState|ReceiveColonyState|ReceiveCommandAck|ReceiveZoneCapture|ReceiveChatAsk> */
     public function job(): string
     {
         return match ($this) {
@@ -75,6 +77,7 @@ enum UplinkMessageType: string
             self::ColonyState => ReceiveColonyState::class,
             self::CommandAck => ReceiveCommandAck::class,
             self::ZoneCapture => ReceiveZoneCapture::class,
+            self::ChatAsk => ReceiveChatAsk::class,
         };
     }
 }

@@ -30,18 +30,20 @@ const BASELINE_BUDGETS = [
     'client-zone.fast' => 5.0,      // measured median 1.2 ms on 2026-11-13 (floor 5 ms)
     'client-colony.state' => 19.0,  // measured median 6.1 ms on 2026-11-13 (real 74 KB state)
     'client-command.ack' => 5.0,    // measured median 1.1 ms on 2026-11-13 (floor 5 ms)
+    'client-chat.ask' => 26.0,      // measured median 8.6 ms on 2026-11-18 (2 items, 1 transient zone, 1 command)
     'client-zone.capture' => 22.0,  // measured median 7.3 ms on 2026-11-14 (converts a 64x64 PNG to WebP; a real capture takes ~85 ms)
 ];
 
 /** Queries of one run of each message type (a change means the handler's work changed). */
 const BASELINE_QUERIES = [
-    'client-session.start' => 2,
+    'client-session.start' => 3, // + 1 conversation lookup by the chat history listener
     'client-zone.list' => 61,
     'client-zone.layout' => 5,
     'client-zone.slow' => 2,
     'client-zone.fast' => 3, // + 1 zone read by the crowding consistency check
     'client-colony.state' => 7,
     'client-command.ack' => 2,
+    'client-chat.ask' => 11,
     'client-zone.capture' => 4,
 ];
 
@@ -64,6 +66,7 @@ function baselineFrame(UplinkMessageType $type, int $run): string
         UplinkMessageType::ZoneSlowState, UplinkMessageType::ZoneFastState => [...$message, 'gameSeconds' => 40_000.0 + $run],
         UplinkMessageType::CommandAck => [...$message, 'commandId' => UplinkCommand::factory()->create(['colony_guid' => 'perf-colony'])->id],
         UplinkMessageType::ZoneCapture => baselineCaptureFile([...$message, 'fileName' => "perf-{$run}.png"]),
+        UplinkMessageType::ChatAsk => [...$message, 'id' => (string) Illuminate\Support\Str::uuid()],
         default => $message,
     };
 

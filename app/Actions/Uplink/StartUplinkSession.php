@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Uplink;
 
+use App\Events\Uplink\UplinkSessionStarted;
 use App\Models\UplinkSession;
 
 /**
@@ -16,7 +17,7 @@ final class StartUplinkSession
      */
     public function handle(array $message): void
     {
-        UplinkSession::query()->firstOrCreate(
+        $session = UplinkSession::query()->firstOrCreate(
             ['session_id' => $message['sessionId']],
             [
                 'colony_guid' => $message['colonyId'],
@@ -25,5 +26,9 @@ final class StartUplinkSession
                 'started_at' => now(),
             ],
         );
+
+        if ($session->wasRecentlyCreated) {
+            UplinkSessionStarted::dispatch($message['colonyId'], $message['sessionId']);
+        }
     }
 }
