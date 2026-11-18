@@ -40,6 +40,7 @@ La légende ne liste que les caractères présents, avec une ligne par préfab e
 </Accordion>
 <Accordion title="Coordonnées, unités et valeurs dérivées">
 - Les listes donnent des coordonnées monde `w(x,y)` : x = case modulo la largeur de la grille, y = case divisée par cette largeur, y vers le haut. Les cartes numérotent en local depuis leur origine, écrite dans l'en-tête.
+- Un identifiant de zone retrouve aussi une zone temporaire créée par le chat en jeu ; un nom, jamais. Ces zones n'apparaissent pas dans `list_zones`.
 - L'ancre d'un bâtiment est sa case en bas à gauche ; l'emprise monte depuis elle (`ZoneGeometry`).
 - Unités : kg, °C, secondes ; un cycle dure 600 s.
 - Les créatures et les œufs viennent des états de la zone (`ZoneCritterState`) : `entity` décrit une créature (région, surpeuplement, statuts, fertilité, chances du prochain œuf) ou un œuf (incubation, viabilité, porteur) par son identifiant. La carte marque les œufs `o`. Avec un ancien mod, les créatures de toute la colonie sont rattachées à une zone par leur case (`ZoneCritters`) et marquées `derived`.

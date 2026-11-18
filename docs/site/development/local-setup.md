@@ -42,7 +42,7 @@ Lance l'export OniExtract depuis le menu pause du jeu, puis les trois commandes 
 composer devWithOctane
 ```
 
-Lance ensemble Octane, les workers de queue, Pail, Vite et Reverb, avec le site sur le port 8003. `composer dev` fait pareil avec `php artisan serve` à la place d'Octane.
+Lance ensemble Octane, les workers de queue (dont celui de la file `chat`), Pail, Vite et Reverb, avec le site sur le port 8003. `composer dev` fait pareil avec `php artisan serve` à la place d'Octane.
 
 Les workers ne rechargent pas le code PHP : après une modification d'un job ou d'une action, lance `php artisan queue:restart` (ils redémarrent seuls).
 </Step>
@@ -50,6 +50,10 @@ Les workers ne rechargent pas le code PHP : après une modification d'un job ou 
 Compile et installe le mod Uplink, puis lance <Artisan command="uplink:install" /> pour écrire ses réglages dans le dossier du mod.
 </Step>
 </Steps>
+
+## Chat en jeu
+
+Le [chat en jeu](../product/chat.md) lance Claude Code sur ta machine : installe la commande `claude` et connecte-toi une fois (`claude`, puis la connexion à ton compte). Le worker de la file `chat` l'appelle avec ton compte, sans clé d'API. Sans Claude Code, la question reçoit une réponse d'erreur dans le panneau. Le fournisseur passe par le paquet `laravel/ai` (déjà dans `composer.json`).
 
 ## Conventions
 

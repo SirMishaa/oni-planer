@@ -1,7 +1,7 @@
 ---
 title: Uplink
 description: Comment le mod Uplink parle au planner via Reverb, comment chaque message est traité en file et les règles d'ordre et de commande.
-sources: ["app/Listeners/RouteUplinkMessage.php", "app/Listeners/Uplink/**", "app/Enums/UplinkMessageType.php", "app/Jobs/Uplink/**", "app/Events/Uplink/**", "app/Services/Uplink/**", "app/Actions/Uplink/**", "app/Events/ZoneUpdated.php", "app/Models/UplinkCommand.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Console/Commands/UplinkResyncZoneCommand.php", "app/Console/Commands/UplinkCaptureCommand.php", "app/Http/Controllers/ZoneCaptureController.php", "app/Services/Zones/ZonePresenter.php", "app/Services/Zones/ZoneProblems.php", "app/Services/Zones/ZoneCritterState.php", "app/Services/Zones/ZoneCritters.php", "app/Services/Critters/CritterStatusText.php", "resources/js/composables/useZoneLive.ts", "resources/js/composables/useCritterMotion.ts", "resources/js/components/zones/critterMotion.ts", "resources/js/composables/useUplinkFastRelay.ts", "resources/js/components/zones/critterRelay.ts", "app/Services/Zones/ZoneBuildingSettings.php"]
+sources: ["app/Listeners/RouteUplinkMessage.php", "app/Listeners/Uplink/**", "app/Enums/UplinkMessageType.php", "app/Jobs/Uplink/**", "app/Events/Uplink/**", "app/Services/Uplink/**", "app/Actions/Uplink/**", "app/Events/ZoneUpdated.php", "app/Models/UplinkCommand.php", "app/Console/Commands/UplinkInstallCommand.php", "app/Console/Commands/UplinkResyncZoneCommand.php", "app/Console/Commands/UplinkCaptureCommand.php", "app/Http/Controllers/ZoneCaptureController.php", "app/Services/Zones/ZonePresenter.php", "app/Services/Zones/ZoneProblems.php", "app/Services/Zones/ZoneCritterState.php", "app/Services/Zones/ZoneCritters.php", "app/Services/Critters/CritterStatusText.php", "resources/js/composables/useZoneLive.ts", "resources/js/composables/useCritterMotion.ts", "resources/js/components/zones/critterMotion.ts", "resources/js/composables/useUplinkFastRelay.ts", "resources/js/components/zones/critterRelay.ts", "app/Services/Zones/ZoneBuildingSettings.php", "app/Listeners/Chat/**", "app/Actions/Chat/**", "app/Jobs/Chat/**", "app/Services/Chat/**", "app/Ai/**"]
 order: 4
 ---
 
@@ -14,7 +14,7 @@ Uplink est un mod du jeu (dépôt séparé) qui se connecte à Reverb comme clie
 | Canal | Événements | File |
 | --- | --- | --- |
 | `uplink` | `client-colony.state` | `uplink-state` |
-| `uplink-data` | `client-session.start`, `client-zone.list`, `client-zone.layout`, `client-command.ack`, `client-zone.capture` (fiables) | `uplink-reliable` |
+| `uplink-data` | `client-session.start`, `client-zone.list`, `client-zone.layout`, `client-command.ack`, `client-zone.capture`, `client-chat.ask` (fiables) | `uplink-reliable` |
 | `uplink-data` | `client-zone.slow`, `client-zone.fast` (dernier état) | `uplink-state` |
 
 Chaque événement a un job dans `app/Jobs/Uplink` (par exemple `ReceiveZoneLayout`), listé par l'enum `UplinkMessageType`. Ajouter un type de message, c'est un cas de l'enum et un job.
@@ -95,7 +95,7 @@ Le site envoie `uplink.command` sur `uplink-data` : `{schema, id, colonyId, type
 
 <Model name="UplinkCommand" />
 
-Deux commandes existent :
+Quatre commandes existent :
 
 - `zone.resync` : le mod renvoie le layout et les deux états d'une zone. Le site l'envoie seul pour une zone toujours sans layout 30 s après sa création (puis attend 10 min si le mod n'a pas répondu), ou à la main :
 
@@ -104,6 +104,9 @@ Deux commandes existent :
 - `zone.capture` : le mod dessine la zone (voir [Captures de zone](#captures-de-zone)). Le bouton **Capturer** de la page de la zone l'envoie (<Route name="zones.captures.store" />), ou à la main, en attendant l'image :
 
 <Artisan command="uplink:capture" />
+
+- `chat.context` : le mod lit une fois une boîte, une pièce ou un objet hors de toute zone, pour une question du chat (voir [Chat en jeu](#chat-en-jeu)).
+- `chat.reply` et `chat.history` : le site renvoie au panneau l'état d'une question, sa réponse ou son erreur, puis l'historique de la dernière conversation.
 
 ## Captures de zone
 
@@ -118,6 +121,27 @@ Le mod dessine la zone comme le timelapse du jeu : il fige l'écran, rend le cad
 <Accordion title="Versions des messages">
 
 Chaque type de message a sa propre version (`schema`). Un champ ajouté et optionnel ne la change pas ; une version plus récente que celle que le site connaît est refusée (avertissement au plus une fois par heure, par type de message et par colonie ; pour l'état colonie, le refus apparaît dans le journal de l'inspecteur). Le site et le mod peuvent donc être mis à jour dans n'importe quel ordre.
+
+</Accordion>
+
+## Chat en jeu
+
+Le joueur pose une question dans le panneau du mod ([Chat en jeu](../product/chat.md)). Le trajet complet :
+
+1. Le mod envoie `client-chat.ask` (fiable) : la question, l'identifiant de la conversation et des **références** seulement (identifiants d'instance, de zone, bornes d'une boîte, cases d'une pièce, indice de calque, demande de capture). Les identifiants sont acceptés au format dashé comme au format `N` du mod (32 caractères hexadécimaux). Un renvoi du même message ne crée qu'une question. Au plus 16 éléments et 5000 cases par question ; un message mal formé est écarté puis acquitté.
+2. `StartChatQuestion` enregistre la question et ses éléments de contexte. Pour ce que le site n'a pas en base (boîte, pièce, objet hors zone), il crée des **zones temporaires** (`zones.transient`) et envoie la commande `chat.context`. Le mod répond par les messages habituels `client-zone.layout`, `client-zone.slow`, `client-zone.fast` et `client-zone.capture` : l'ingestion ne change pas. Les zones temporaires n'apparaissent dans aucune liste, ne sont pas archivées par la liste des zones et se retrouvent par identifiant seulement dans le [serveur MCP](./mcp.md).
+3. Le job `AnswerChatQuestion`, sur la file `chat`, attend ce contexte au plus 20 s (le mod peut refuser un élément, par exemple une boîte sur un autre astéroïde, avec une raison). Il construit le prompt (`ChatPrompt`) puis appelle l'agent `ColonyChatAgent`.
+4. Le site envoie `chat.reply` à chaque changement (en cours, réponse, erreur). `chat.history` renvoie la dernière conversation de la colonie quand une session démarre : l'événement <Event name="UplinkSessionStarted" /> déclenche `SendChatHistory`.
+
+<Accordion title="Le fournisseur claude-code">
+
+L'agent passe par le SDK Laravel AI avec un fournisseur maison, `claude-code`, enregistré par `Ai::extend` (`app/Ai/ClaudeCode/`). Cette extension s'appuie sur le gestionnaire du SDK, que sa doc ne décrit pas : `ClaudeCodeProviderTest` échoue si une mise à jour du SDK la casse.
+
+- La passerelle lance `claude -p` en `stream-json` dans le dossier du planner, avec l'utilisateur du worker, donc avec la connexion Claude Code du joueur. Elle lit le flux pour le texte final, les appels d'outils et l'identifiant de session.
+- **Lecture seule par les options de Claude Code**, pas par le prompt : seulement les outils du serveur MCP `oni`, `Read`, `Grep`, `Glob` et les commandes `ilspycmd` et `rg`. Le serveur MCP est passé en configuration stricte, jamais en mode sans permission. `request_capture` reste permis : il ne change rien à la colonie.
+- **Reprise** : la première question d'une conversation fixe l'identifiant de session, les suivantes la reprennent (`--resume`). Si la reprise échoue, une seule nouvelle tentative repart d'une session neuve avec les échanges précédents dans le prompt.
+- Le processus a un délai de 300 s. Une erreur (`claude` absent, non connecté, code de sortie non nul) devient une réponse d'erreur avec la première ligne de sa sortie d'erreur.
+- Les tests utilisent un faux exécutable (`tests/Fixtures/claude-fake`).
 
 </Accordion>
 

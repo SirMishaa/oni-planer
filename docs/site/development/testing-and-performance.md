@@ -17,6 +17,8 @@ composer test                              # couverture de types, unitaires + co
 
 Les tests tournent sur la base PostgreSQL `oni_planner_testing` (voir [Installation locale](./local-setup.md)).
 
+Si une exécution ne se termine pas, lance-la avec `OTEL_SDK_DISABLED=true` devant la commande.
+
 `composer test:unit` charge pcov via `tests/php/coverage.ini` et exige 100 % de couverture. pcov n'est chargé nulle part ailleurs, car il désactive le JIT.
 
 ## Temps de traitement des messages Uplink
@@ -26,7 +28,7 @@ Les tests tournent sur la base PostgreSQL `oni_planner_testing` (voir [Installat
 - la médiane reste sous un budget d'environ 3 fois la médiane mesurée (minimum 5 ms, une remesure avant d'échouer) ;
 - le nombre de requêtes d'un passage est exact (un état rapide en fait 3, dont la lecture de la zone par le contrôle de surpeuplement).
 
-Un nouveau type de message fait échouer ce test tant qu'il n'a pas de fixture, de budget et de nombre de requêtes.
+Le message `client-chat.ask` y a sa fixture (`chat-ask.json`) comme les autres types. Un nouveau type de message fait échouer ce test tant qu'il n'a pas de fixture, de budget et de nombre de requêtes.
 
 ## Mesurer avant d'optimiser
 

@@ -6,7 +6,7 @@ sources: ["README.md", "composer.json", "routes/web.php"]
 
 # ONI Planner
 
-**ONI Planner** est un outil de planification pour [Oxygen Not Included](https://www.klei.com/games/oxygen-not-included). Il présente les éléments, bâtiments et créatures du jeu, aide à équilibrer un ranch et suit ta colonie en direct grâce au mod Uplink.
+**ONI Planner** est un outil de planification pour [Oxygen Not Included](https://www.klei.com/games/oxygen-not-included). Il présente les éléments, bâtiments et créatures du jeu, aide à équilibrer un ranch et suit ta colonie en direct grâce au mod Uplink. Depuis le jeu, tu peux aussi poser une question à Claude sur ce que tu regardes ([Chat en jeu](./product/chat.md)).
 
 Chaque chiffre vient du jeu lui-même : un export en jeu (le mod OniExtract) est importé dans la base du site, donc les pages correspondent à ta version du jeu et à tes mods installés.
 
