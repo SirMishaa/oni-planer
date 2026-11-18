@@ -224,7 +224,7 @@ Search and read the docs with the `larecipe` MCP server. Never write configurati
 
 ### Docs index: ONI Planner
 
-16 pages. One line per page: path, title, description. Read a page with the `read_page` tool of the `larecipe` MCP server, or open its file in `docs/site/`. Refresh this index with `php artisan larecipe:agents-md`.
+17 pages. One line per page: path, title, description. Read a page with the `read_page` tool of the `larecipe` MCP server, or open its file in `docs/site/`. Refresh this index with `php artisan larecipe:agents-md`.
 
 - `index`: Introduction. Ce qu'est ONI Planner, d'où viennent ses données et comment cette doc est organisée.
 - `development/architecture`: Architecture. Comment les données du jeu et celles de la colonie en direct arrivent au planner, et quel processus fait quoi.
@@ -235,6 +235,7 @@ Search and read the docs with the `larecipe` MCP server. Never write configurati
 - `development/testing-and-performance`: Tests et performance. Lancer les suites de tests et mesurer le traitement des messages Uplink avec le benchmark k6 et Excimer.
 - `development/uplink`: Uplink. Comment le mod Uplink parle au planner via Reverb, comment chaque message est traité en file et les règles d'ordre et…
 - `product/buildings`: Bâtiments. Trouver un bâtiment par catégorie ou par nom et lire sa construction, son emprise, sa chaleur et sa production.
+- `product/chat`: Chat en jeu. Poser une question à Claude depuis le jeu, avec ce que tu regardes comme contexte, et lire sa réponse dans un panneau.
 - `product/codex`: Codex. Lire les entrées de la base de données du jeu, avec des liens vers les pages des bâtiments et éléments correspondants.
 - `product/colony`: Ma colonie. Relier le jeu au planner avec le mod Uplink, puis suivre la viabilité alimentaire de ta colonie, la carte de tes zones…
 - `product/critters-and-ranch`: Créatures et ranch. Lire chaque famille de créatures et ses variantes, puis équilibrer la nourriture, les productions et les œufs d'un…
