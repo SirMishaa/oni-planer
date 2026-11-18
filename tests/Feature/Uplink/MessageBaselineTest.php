@@ -68,7 +68,7 @@ function baselineFrame(UplinkMessageType $type, int $run): string
         UplinkMessageType::ZoneSlowState, UplinkMessageType::ZoneFastState => [...$message, 'gameSeconds' => 40_000.0 + $run],
         UplinkMessageType::CommandAck => [...$message, 'commandId' => UplinkCommand::factory()->create(['colony_guid' => 'perf-colony'])->id],
         UplinkMessageType::ZoneCapture => baselineCaptureFile([...$message, 'fileName' => "perf-{$run}.png"]),
-        UplinkMessageType::ChatAsk => [...$message, 'id' => (string) Illuminate\Support\Str::uuid()],
+        UplinkMessageType::ChatAsk => [...$message, 'id' => str_replace('-', '', (string) Illuminate\Support\Str::uuid())],
         default => $message,
     };
 

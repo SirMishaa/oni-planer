@@ -236,3 +236,32 @@ it('queues the history listener on the chat queue and truncates long answers', f
 
     expect(mb_strlen(UplinkCommand::query()->sole()->payload['entries'][0]['answer']))->toBe(4000);
 });
+
+it('stores an ask with mod-style N-form guids once, even when resent', function (): void {
+    $id = str_replace('-', '', $this->questionId);
+    $conversationId = str_replace('-', '', $this->conversationId);
+    $frame = uplinkData('client-chat.ask', chatAskMessage($id, $conversationId, [
+        ['kind' => 'box', 'label' => 'Box', 'cells' => [1], 'capture' => false],
+    ]));
+
+    $first = receiveUplinkData($frame);
+    $second = receiveUplinkData($frame);
+
+    expect($first)->toBe([ackFrame($id)])
+        ->and($second)->toHaveCount(1)
+        ->and(ChatQuestion::query()->sole()->id)->toBe($this->questionId)
+        ->and(ChatConversation::query()->sole()->id)->toBe($this->conversationId)
+        ->and(UplinkCommand::query()->count())->toBe(1);
+    Bus::assertDispatchedTimes(AnswerChatQuestion::class, 1);
+
+    $dashedResend = receiveUplinkData(uplinkData('client-chat.ask', chatAskMessage($this->questionId, $this->conversationId, [
+        ['kind' => 'box', 'label' => 'Box', 'cells' => [1], 'capture' => false],
+    ])));
+    expect(ChatQuestion::query()->count())->toBe(1);
+});
+
+it('still drops ids that are neither dashed nor N-form', function (): void {
+    $acks = receiveUplinkData(uplinkData('client-chat.ask', chatAskMessage(str_repeat('z', 32), $this->conversationId, [])));
+
+    expect($acks)->toHaveCount(1)->and(ChatQuestion::query()->count())->toBe(0);
+});

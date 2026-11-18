@@ -40,13 +40,41 @@ final class ReceiveChatAsk implements ShouldQueue
             return;
         }
 
-        if ($this->isWellFormed($message) && ! $this->conversationBelongsToOtherColony($message)) {
-            $startQuestion->handle($message);
+        $canonical = $this->canonical($message);
+
+        if ($canonical !== null && $this->isWellFormed($canonical) && ! $this->conversationBelongsToOtherColony($canonical)) {
+            $startQuestion->handle($canonical);
         } else {
             $reader->drop($message, UplinkMessageType::ChatAsk, 'malformed chat ask');
         }
 
         $reader->acknowledge($message);
+    }
+
+    /**
+     * The message with `id` and `conversationId` in the dashed UUID form: the mod sends .NET "N" guids (32 hex chars).
+     * Null when either is neither form. The ack keeps the id the mod sent.
+     *
+     * @param  array<string, mixed>  $message
+     * @return array<string, mixed>|null
+     */
+    private function canonical(array $message): ?array
+    {
+        foreach (['id', 'conversationId'] as $key) {
+            $value = $message[$key] ?? null;
+
+            if (is_string($value) && preg_match('/^[0-9a-fA-F]{32}$/', $value) === 1) {
+                $value = Str::lower(preg_replace('/^(.{8})(.{4})(.{4})(.{4})(.{12})$/', '$1-$2-$3-$4-$5', $value) ?? $value);
+            }
+
+            if (! is_string($value) || ! Str::isUuid($value)) {
+                return null;
+            }
+
+            $message[$key] = Str::lower($value);
+        }
+
+        return $message;
     }
 
     /** @param  array<string, mixed>  $message */
