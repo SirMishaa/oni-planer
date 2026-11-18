@@ -43,6 +43,7 @@ final class CheckCrowdingConsistency
         $zone = Zone::query()
             ->where('colony_guid', $event->colonyGuid)
             ->where('zone_guid', $event->zoneGuid)
+            ->where('transient', false)
             ->first(['id', 'zone_guid', 'fast_state', 'slow_state', 'crowding_mismatches']);
 
         $regions = $zone instanceof Zone ? ZoneCritterState::regions($zone) : null;

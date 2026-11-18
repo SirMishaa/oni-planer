@@ -61,6 +61,7 @@ final readonly class ColonyController
     private function crowdingMismatches(): array
     {
         return Zone::query()
+            ->active()
             ->whereNotNull('crowding_mismatches')
             ->orderBy('name')
             ->get(['id', 'name', 'crowding_mismatches'])

@@ -189,3 +189,12 @@ it('logs and stores a persisting mismatch once, keeping its first time', functio
     expect($zone->fresh()->crowding_mismatches[0]['at'])->toBe($first);
     Log::shouldHaveReceived('warning')->with('crowding mismatch', Mockery::type('array'))->once();
 });
+
+it('ignores transient zones', function (): void {
+    $zone = crowdedZone(['occupied' => 96]);
+    $zone->update(['transient' => true]);
+
+    checkCrowding();
+
+    expect($zone->fresh()->crowding_mismatches)->toBeNull();
+});

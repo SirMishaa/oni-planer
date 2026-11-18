@@ -13,7 +13,7 @@ final readonly class ZoneCaptureController
 {
     public function store(Zone $zone, SendUplinkCommand $sendCommand): RedirectResponse
     {
-        abort_if($zone->archived_at !== null, 404);
+        abort_if($zone->archived_at !== null || $zone->transient, 404);
 
         $sendCommand->handle($zone->colony_guid, 'zone.capture', ['zoneId' => $zone->zone_guid]);
 

@@ -13,6 +13,7 @@ use App\Models\Colony;
 use App\Models\UplinkCommand;
 use App\Models\Zone;
 use Illuminate\Support\Facades\Event;
+use Inertia\Testing\AssertableInertia;
 
 it('keeps transient zones out of the active zones', function (): void {
     $regular = Zone::factory()->create(['colony_guid' => 'colony-1']);
@@ -53,4 +54,19 @@ it('resolves a transient zone by id but not by name in MCP tools', function (): 
 
     OniServer::tool(ZoneOverviewTool::class, ['zone' => 'Hidden/Sample'])
         ->assertHasErrors(['No active zone matches "Hidden/Sample". Call list_zones.']);
+});
+
+it('answers 404 for the page and capture of a transient zone', function (): void {
+    $zone = Zone::factory()->sodicaneFarm()->transient()->create();
+
+    $this->get(route('zones.show', $zone))->assertNotFound();
+    $this->post(route('zones.captures.store', $zone))->assertNotFound();
+});
+
+it('does not show the crowding mismatches of a transient zone on the colony page', function (): void {
+    $mismatch = [['regionId' => 'pond:1', 'prefabId' => 'Pacu', 'field' => 'overcrowded', 'game' => true, 'planner' => false, 'at' => '2026-11-14T10:00:00+00:00']];
+    Zone::factory()->transient()->create(['name' => 'Hidden', 'crowding_mismatches' => $mismatch]);
+
+    $this->get('/colony/uplink')
+        ->assertInertia(fn (AssertableInertia $page) => $page->has('crowdingMismatches', 0));
 });

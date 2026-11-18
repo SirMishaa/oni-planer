@@ -56,7 +56,7 @@ final readonly class ZoneController
      */
     public function show(Zone $zone): Response
     {
-        abort_if($zone->archived_at !== null, 404);
+        abort_if($zone->archived_at !== null || $zone->transient, 404);
 
         return Inertia::render('Zones/Show', $this->presenter->props($zone));
     }
