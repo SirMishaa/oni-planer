@@ -46,4 +46,5 @@ it('keeps a long-lived worker running for each Uplink queue', function (): void 
 
     expect($commands->get('reliable')['command'])->toContain('while true; do php artisan queue:work redis --queue=uplink-reliable ');
     expect($commands->get('state')['command'])->toContain('while true; do php artisan queue:work redis --queue=uplink-state,default ');
+    expect($commands->get('chat')['command'])->toContain('while true; do php artisan queue:work redis --queue=chat ');
 });

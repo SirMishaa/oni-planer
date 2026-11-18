@@ -47,6 +47,8 @@ final class AppServiceProvider extends ServiceProvider
             // Uplink messages land on their own queues (UplinkMessageType::queue()): reliable ones in order on one worker, states on another.
             DevCommands::register(self::teeToLog(self::workerLoop('uplink-reliable'), 'queue-reliable'), 'reliable')->yellow();
             DevCommands::register(self::teeToLog(self::workerLoop('uplink-state,default'), 'queue-state'), 'state')->yellow();
+            // Chat questions run `claude -p` for minutes, so they get a worker of their own.
+            DevCommands::register(self::teeToLog(self::workerLoop('chat'), 'queue-chat'), 'chat')->yellow();
             DevCommands::artisan('pail --timeout=0', 'logs')->orange();
             if (! $isPreviewServer) {
                 DevCommands::register(self::teeToLog('bun run dev', 'vite'), 'vite')->green();

@@ -115,7 +115,7 @@
         ],
         "queue-workers": [
             "Composer\\Config::disableProcessTimeout",
-            "bunx concurrently --restart-tries=-1 --restart-after=1000 \"php artisan queue:work redis --queue=uplink-reliable --tries=1 --sleep=0.1 --memory=256\" \"php artisan queue:work redis --queue=uplink-state,default --tries=1 --sleep=0.1 --memory=256\" \"php artisan queue:work redis --queue=uplink-state,default --tries=1 --sleep=0.1 --memory=256\" \"php artisan queue:work redis --queue=uplink-state,default --tries=1 --sleep=0.1 --memory=256\" \"php artisan queue:work redis --queue=uplink-state,default --tries=1 --sleep=0.1 --memory=256\" --names=reliable,state1,state2,state3,state4"
+            "bunx concurrently --restart-tries=-1 --restart-after=1000 \"php artisan queue:work redis --queue=uplink-reliable --tries=1 --sleep=0.1 --memory=256\" \"php artisan queue:work redis --queue=uplink-state,default --tries=1 --sleep=0.1 --memory=256\" \"php artisan queue:work redis --queue=uplink-state,default --tries=1 --sleep=0.1 --memory=256\" \"php artisan queue:work redis --queue=uplink-state,default --tries=1 --sleep=0.1 --memory=256\" \"php artisan queue:work redis --queue=uplink-state,default --tries=1 --sleep=0.1 --memory=256\" \"php artisan queue:work redis --queue=chat --tries=1 --sleep=0.1 --timeout=0\" --names=reliable,state1,state2,state3,state4,chat"
         ]
     },
     "extra": {
