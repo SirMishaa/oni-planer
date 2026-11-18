@@ -143,3 +143,13 @@ it('prints nothing ticked', function (): void {
         ->assertSee('filter: nothing ticked')
         ->assertDontSee('capacity');
 });
+
+it('finds an entity in a transient zone when no active zone holds it', function (): void {
+    $this->zone->update(['fast_state' => null, 'layout' => null]);
+    Zone::factory()->sodicaneFarm()->transient()->create(['colony_guid' => $this->zone->colony_guid, 'name' => 'Chat capture']);
+
+    OniServer::tool(EntityTool::class, ['instanceId' => '7001'])
+        ->assertOk()
+        ->assertSee('(FarmStation) #7001')
+        ->assertSee('Chat capture');
+});

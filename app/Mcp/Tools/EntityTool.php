@@ -50,90 +50,12 @@ final class EntityTool extends Tool
             return Response::error($this->colonyMissing($request));
         }
 
-        $zones = Zone::query()->active()->where('colony_guid', $colony->guid)->orderBy('id')
-            ->get(['id', 'name', 'layout', 'fast_state', 'slow_state', 'layout_at', 'slow_state_at', 'fast_state_at']);
-        $creature = $this->creature($zones, $instanceId);
-        if ($creature !== null) {
-            return Response::text(implode("\n", [McpHeader::line($colony, $creature['zone']), '', ...$creature['lines']]));
-        }
+        $columns = ['id', 'name', 'layout', 'fast_state', 'slow_state', 'layout_at', 'slow_state_at', 'fast_state_at'];
+        $active = Zone::query()->active()->where('colony_guid', $colony->guid)->orderBy('id')->get($columns);
 
-        $source = null;
-        $found = null;
-        $layoutEntry = null;
-        $containing = [];
-        $gridWidth = 0;
-
-        foreach ($zones as $zone) {
-            $plant = self::byInstance($zone->fast_state['plants'] ?? null, $instanceId);
-            $building = self::byInstance($zone->fast_state['buildings'] ?? null, $instanceId);
-            $layout = self::byInstance($zone->layout['buildings'] ?? null, $instanceId);
-
-            if ($plant === null && $building === null && $layout === null) {
-                continue;
-            }
-
-            $containing[] = sprintf('#%d %s', $zone->id, $zone->name);
-            $source ??= $zone;
-            $found ??= $plant !== null ? ['plant', $plant] : ($building !== null ? ['building', $building] : null);
-            $layoutEntry ??= $layout;
-            $gridWidth = $gridWidth ?: (int) ($zone->layout['gridWidth'] ?? 0);
-        }
-
-        if ($found === null && $layoutEntry === null) {
-            return Response::error(sprintf('No plant, building, critter or egg #%s in the zones of colony "%s".', $instanceId, $colony->name));
-        }
-
-        [$kind, $entity] = $found ?? ['building', []];
-        $prefabId = (string) ($entity['id'] ?? $entity['prefabId'] ?? $layoutEntry['prefabId'] ?? '?');
-        $lines = [McpHeader::line($colony, $source), '', sprintf('%s %s (%s) #%s', $kind, $text->name($prefabId), $prefabId, $instanceId)];
-
-        $cell = $kind === 'plant' ? ($entity['cell'] ?? null) : ($layoutEntry['anchorCell'] ?? null);
-        if (is_int($cell) && $gridWidth > 0) {
-            [$x, $y] = ZoneGeometry::xy($cell, $gridWidth);
-            $lines[] = 'at '.McpFormat::world($x, $y).($layoutEntry === null ? '' : sprintf(' %dx%d %s (anchor = bottom-left)', $layoutEntry['width'] ?? 1, $layoutEntry['height'] ?? 1, $layoutEntry['orientation'] ?? 'Neutral'));
-        }
-
-        if ($kind === 'plant') {
-            $growth = ZonePlants::growth($entity);
-            $lines[] = sprintf('growth %s%s', $growth === null ? 'unavailable' : round($growth * 100).' %', ($entity['grown'] ?? false) !== true && is_numeric($entity['secondsUntilHarvest'] ?? null) ? ' · next harvest in '.round((float) $entity['secondsUntilHarvest']).' s' : '');
-        }
-
-        foreach ($kind === 'plant' ? $entity : array_diff_key($entity, ['statusItems' => true, 'storage' => true, 'settings' => true]) as $key => $value) {
-            if (! in_array($key, ['id', 'prefabId', 'instanceId'], true)) {
-                $lines[] = sprintf('%s: %s', $key, self::scalar($value));
-            }
-        }
-
-        if ($kind === 'building' && $entity !== []) {
-            foreach ((array) ($entity['statusItems'] ?? []) as $status) {
-                if (is_array($status)) {
-                    $lines[] = sprintf('status %s: %s', $status['id'] ?? '?', $status['name'] ?? '');
-                }
-            }
-            $settings = McpBuildingSettings::line($entity, $text);
-            if ($settings !== null) {
-                $lines[] = $settings;
-            }
-            foreach ((array) ($entity['storage'] ?? []) as $item) {
-                if (is_array($item)) {
-                    $lines[] = sprintf('storage %s %s', $item['id'] ?? '?', McpFormat::kg(is_numeric($item['mass'] ?? null) ? (float) $item['mass'] : null));
-                }
-            }
-        }
-        if ($found === null) {
-            $lines[] = 'state unavailable (in the layout, not in the fast state)';
-        }
-
-        $problems = $kind === 'plant' ? ZoneProblems::forPlant($entity) : ZoneProblems::forBuilding($entity);
-        $lines[] = 'problems: '.match (true) {
-            $found === null => 'unavailable',
-            $problems === [] => 'none',
-            default => implode('; ', $problems),
-        };
-        $lines[] = 'zones: '.implode(', ', $containing);
-        $lines[] = 'game data: lookup '.$prefabId;
-
-        return Response::text(implode("\n", $lines));
+        return $this->describe($colony, $active, $instanceId, $text)
+            ?? $this->describe($colony, Zone::query()->where('colony_guid', $colony->guid)->where('transient', true)->orderByDesc('id')->get($columns), $instanceId, $text)
+            ?? Response::error(sprintf('No plant, building, critter or egg #%s in the zones of colony "%s".', $instanceId, $colony->name));
     }
 
     /**
@@ -238,6 +160,97 @@ final class EntityTool extends Tool
         }
 
         return null;
+    }
+
+    /**
+     * The entity with this instance id in these zones, described; null when none of them holds it.
+     *
+     * @param  Collection<int, Zone>  $zones
+     */
+    private function describe(Colony $colony, Collection $zones, string $instanceId, GameText $text): ?Response
+    {
+        $creature = $this->creature($zones, $instanceId);
+        if ($creature !== null) {
+            return Response::text(implode("\n", [McpHeader::line($colony, $creature['zone']), '', ...$creature['lines']]));
+        }
+
+        $source = null;
+        $found = null;
+        $layoutEntry = null;
+        $containing = [];
+        $gridWidth = 0;
+
+        foreach ($zones as $zone) {
+            $plant = self::byInstance($zone->fast_state['plants'] ?? null, $instanceId);
+            $building = self::byInstance($zone->fast_state['buildings'] ?? null, $instanceId);
+            $layout = self::byInstance($zone->layout['buildings'] ?? null, $instanceId);
+
+            if ($plant === null && $building === null && $layout === null) {
+                continue;
+            }
+
+            $containing[] = sprintf('#%d %s', $zone->id, $zone->name);
+            $source ??= $zone;
+            $found ??= $plant !== null ? ['plant', $plant] : ($building !== null ? ['building', $building] : null);
+            $layoutEntry ??= $layout;
+            $gridWidth = $gridWidth ?: (int) ($zone->layout['gridWidth'] ?? 0);
+        }
+
+        if ($found === null && $layoutEntry === null) {
+            return null;
+        }
+
+        [$kind, $entity] = $found ?? ['building', []];
+        $prefabId = (string) ($entity['id'] ?? $entity['prefabId'] ?? $layoutEntry['prefabId'] ?? '?');
+        $lines = [McpHeader::line($colony, $source), '', sprintf('%s %s (%s) #%s', $kind, $text->name($prefabId), $prefabId, $instanceId)];
+
+        $cell = $kind === 'plant' ? ($entity['cell'] ?? null) : ($layoutEntry['anchorCell'] ?? null);
+        if (is_int($cell) && $gridWidth > 0) {
+            [$x, $y] = ZoneGeometry::xy($cell, $gridWidth);
+            $lines[] = 'at '.McpFormat::world($x, $y).($layoutEntry === null ? '' : sprintf(' %dx%d %s (anchor = bottom-left)', $layoutEntry['width'] ?? 1, $layoutEntry['height'] ?? 1, $layoutEntry['orientation'] ?? 'Neutral'));
+        }
+
+        if ($kind === 'plant') {
+            $growth = ZonePlants::growth($entity);
+            $lines[] = sprintf('growth %s%s', $growth === null ? 'unavailable' : round($growth * 100).' %', ($entity['grown'] ?? false) !== true && is_numeric($entity['secondsUntilHarvest'] ?? null) ? ' · next harvest in '.round((float) $entity['secondsUntilHarvest']).' s' : '');
+        }
+
+        foreach ($kind === 'plant' ? $entity : array_diff_key($entity, ['statusItems' => true, 'storage' => true, 'settings' => true]) as $key => $value) {
+            if (! in_array($key, ['id', 'prefabId', 'instanceId'], true)) {
+                $lines[] = sprintf('%s: %s', $key, self::scalar($value));
+            }
+        }
+
+        if ($kind === 'building' && $entity !== []) {
+            foreach ((array) ($entity['statusItems'] ?? []) as $status) {
+                if (is_array($status)) {
+                    $lines[] = sprintf('status %s: %s', $status['id'] ?? '?', $status['name'] ?? '');
+                }
+            }
+            $settings = McpBuildingSettings::line($entity, $text);
+            if ($settings !== null) {
+                $lines[] = $settings;
+            }
+            foreach ((array) ($entity['storage'] ?? []) as $item) {
+                if (is_array($item)) {
+                    $lines[] = sprintf('storage %s %s', $item['id'] ?? '?', McpFormat::kg(is_numeric($item['mass'] ?? null) ? (float) $item['mass'] : null));
+                }
+            }
+        }
+        if ($found === null) {
+            $lines[] = 'state unavailable (in the layout, not in the fast state)';
+        }
+
+        $problems = $kind === 'plant' ? ZoneProblems::forPlant($entity) : ZoneProblems::forBuilding($entity);
+        $lines[] = 'problems: '.match (true) {
+            $found === null => 'unavailable',
+            $problems === [] => 'none',
+            default => implode('; ', $problems),
+        };
+        $lines[] = 'zones: '.implode(', ', $containing);
+        $lines[] = 'game data: lookup '.$prefabId;
+
+        return Response::text(implode("\n", $lines));
     }
 
     /**
