@@ -16,6 +16,11 @@ use OpenTelemetry\Context\Context;
 use OpenTelemetry\Context\ContextStorage;
 use Tests\TestCase;
 
+// The OpenTelemetry SDK only accepts the literal string "true", and phpunit.xml <env> turns
+// "true" into "1", so the SDK is disabled here, before any test boots the app and its exporter.
+putenv('OTEL_SDK_DISABLED=true');
+$_ENV['OTEL_SDK_DISABLED'] = $_SERVER['OTEL_SDK_DISABLED'] = 'true';
+
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->beforeEach(function (): void {
@@ -108,6 +113,16 @@ function uplinkData(string $event, array $inner, string $channel = 'uplink-data'
         'event' => $event,
         'channel' => $channel,
         'data' => ['payload' => base64_encode((string) gzencode((string) json_encode($inner)))],
+    ]);
+}
+
+/** The acknowledgement frame the mod receives for an accepted message. */
+function ackFrame(string $id): string
+{
+    return (string) json_encode([
+        'event' => 'uplink.ack',
+        'channel' => 'uplink-data',
+        'data' => json_encode(['id' => $id]),
     ]);
 }
 

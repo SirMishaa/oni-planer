@@ -12,15 +12,6 @@ use Illuminate\Support\Facades\Event;
 
 uses(RefreshDatabase::class);
 
-function ackFrame(string $id): string
-{
-    return (string) json_encode([
-        'event' => 'uplink.ack',
-        'channel' => 'uplink-data',
-        'data' => json_encode(['id' => $id]),
-    ]);
-}
-
 it('acks a zone list after storing it', function (): void {
     $sent = receiveUplinkData(uplinkData('client-zone.list', zoneListMessage([zoneEntry('zone-a')])));
 
