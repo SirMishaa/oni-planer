@@ -307,7 +307,7 @@ it('does not retry a resumed run that produced an error result', function (): vo
         ->and(app(ClaudeCodeRunRecorder::class)->last()->errorMessage)->toBe('Tool crashed');
 });
 
-it('passes the bash, MCP wildcard and .env deny rules', function (): void {
+it('passes the bash, MCP wildcard and every deny rule', function (): void {
     claudeFakeOutput([claudeResultEvent()]);
 
     claudeAgent(['session_id' => CLAUDE_FAKE_SESSION, 'resume' => false])->prompt('Salut', provider: 'claude-code');
@@ -317,5 +317,29 @@ it('passes the bash, MCP wildcard and .env deny rules', function (): void {
     $denied = array_slice($arguments, array_search('--disallowedTools', $arguments, true) + 1);
 
     expect($allowed)->toContain('Bash(rg *)', 'Bash(ilspycmd *)', 'mcp__oni__*')
-        ->and($denied)->toContain('Read(.env)', 'Read(.env.*)', 'Bash(rg *.env*)', 'Bash(rg *--hidden*)', 'Bash(rg *--no-ignore*)');
+        ->and($denied)->toBe([
+            'Read(.env)',
+            'Read(.env.*)',
+            'Edit',
+            'Bash(rg *.env*)',
+            'Bash(rg *--hidden*)',
+            'Bash(rg *--no-ignore*)',
+            'Bash(rg *--ignore-file*)',
+            'Bash(rg *--glob*)',
+            'Bash(rg *--pre*)',
+            'Bash(rg * -u*)',
+            'Bash(rg * -g*)',
+            'Bash(ilspycmd -o*)',
+            'Bash(ilspycmd * -o*)',
+            'Bash(ilspycmd *--outputdir*)',
+            'Bash(ilspycmd -p*)',
+            'Bash(ilspycmd * -p*)',
+            'Bash(ilspycmd *--project*)',
+            'Bash(ilspycmd *-genpdb*)',
+            'Bash(ilspycmd *--generate-pdb*)',
+            'Bash(ilspycmd -d*)',
+            'Bash(ilspycmd * -d*)',
+            'Bash(ilspycmd *--dump-package*)',
+            'Bash(ilspycmd *--generate-diagrammer*)',
+        ]);
 });

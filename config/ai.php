@@ -70,9 +70,13 @@ return [
                 'mcp__oni__*',
             ],
             // Read denies also apply to Grep and Glob. rg skips hidden and ignored files by default, so the rg denies close the flags and paths that would reach .env.
+            // The Edit deny also covers shell output redirects and tee targets (Claude Code checks them against Edit rules);
+            // chained commands (&&, ;, |) must match an allow rule subcommand by subcommand, so dontAsk refuses the rest.
+            // The ilspycmd denies close every flag that writes to disk (output dir, project, PDB, package dump, diagrammer).
             'denied_tools' => [
                 'Read(.env)',
                 'Read(.env.*)',
+                'Edit',
                 'Bash(rg *.env*)',
                 'Bash(rg *--hidden*)',
                 'Bash(rg *--no-ignore*)',
@@ -81,6 +85,18 @@ return [
                 'Bash(rg *--pre*)',
                 'Bash(rg * -u*)',
                 'Bash(rg * -g*)',
+                'Bash(ilspycmd -o*)',
+                'Bash(ilspycmd * -o*)',
+                'Bash(ilspycmd *--outputdir*)',
+                'Bash(ilspycmd -p*)',
+                'Bash(ilspycmd * -p*)',
+                'Bash(ilspycmd *--project*)',
+                'Bash(ilspycmd *-genpdb*)',
+                'Bash(ilspycmd *--generate-pdb*)',
+                'Bash(ilspycmd -d*)',
+                'Bash(ilspycmd * -d*)',
+                'Bash(ilspycmd *--dump-package*)',
+                'Bash(ilspycmd *--generate-diagrammer*)',
             ],
             'models' => [
                 'text' => [
