@@ -56,7 +56,7 @@ final class ClaudeCodeGateway implements StepTextGateway
 
         $run = $this->run($model, $instructions, $question, $sessionId, $resume);
 
-        if ($resume && $run['run']->isError && ! $run['timedOut']) {
+        if ($resume && $run['resumeFailed']) {
             $run = $this->run($model, $instructions, $this->replayPrompt($earlierMessages, $question), (string) Str::uuid(), false);
         }
 
@@ -87,7 +87,7 @@ final class ClaudeCodeGateway implements StepTextGateway
     }
 
     /**
-     * @return array{run: ClaudeCodeRun, text: string, usage: TextUsage, timedOut: bool}
+     * @return array{run: ClaudeCodeRun, text: string, usage: TextUsage, resumeFailed: bool}
      */
     private function run(string $model, ?string $instructions, string $prompt, string $sessionId, bool $resume): array
     {
@@ -98,7 +98,7 @@ final class ClaudeCodeGateway implements StepTextGateway
                 ->timeout($this->config['timeout'])
                 ->run([$this->config['binary'], ...$arguments]);
         } catch (ProcessTimedOutException) {
-            return $this->failure($sessionId, "claude timed out after {$this->config['timeout']} s", timedOut: true);
+            return $this->failure($sessionId, "claude timed out after {$this->config['timeout']} s");
         }
 
         $parsed = $this->parseStream($result->output());
@@ -116,6 +116,7 @@ final class ClaudeCodeGateway implements StepTextGateway
                 $stderr !== '' ? $stderr : ($parsed['result'] ?: "claude exited with code {$result->exitCode()}"),
                 $parsed['durationMs'],
                 $parsed['toolNames'],
+                resumeFailed: $resume && ($parsed['result'] === null || preg_match('/No conversation found/i', $stderr) === 1),
             );
         }
 
@@ -123,21 +124,21 @@ final class ClaudeCodeGateway implements StepTextGateway
             'run' => new ClaudeCodeRun($parsed['sessionId'] ?? $sessionId, $parsed['durationMs'], $parsed['toolNames'], false, null),
             'text' => $parsed['result'],
             'usage' => $parsed['usage'],
-            'timedOut' => false,
+            'resumeFailed' => false,
         ];
     }
 
     /**
      * @param  list<string>  $toolNames
-     * @return array{run: ClaudeCodeRun, text: string, usage: TextUsage, timedOut: bool}
+     * @return array{run: ClaudeCodeRun, text: string, usage: TextUsage, resumeFailed: bool}
      */
-    private function failure(string $sessionId, string $message, int $durationMs = 0, array $toolNames = [], bool $timedOut = false): array
+    private function failure(string $sessionId, string $message, int $durationMs = 0, array $toolNames = [], bool $resumeFailed = false): array
     {
         return [
             'run' => new ClaudeCodeRun($sessionId, $durationMs, $toolNames, true, $message),
             'text' => '',
             'usage' => new TextUsage,
-            'timedOut' => $timedOut,
+            'resumeFailed' => $resumeFailed,
         ];
     }
 

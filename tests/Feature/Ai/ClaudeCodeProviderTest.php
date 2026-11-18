@@ -284,3 +284,38 @@ it('kills claude after the timeout', function (): void {
         ->and($run->errorMessage)->toContain('timed out after 1 s')
         ->and(claudeCalls())->toHaveCount(1);
 });
+
+it('does not retry a resumed run that produced an error result', function (): void {
+    claudeFakeOutput([claudeResultEvent('Tool crashed', isError: true)]);
+    claudeFakeEnv('CLAUDE_FAKE_EXIT', '1');
+
+    $provider = Ai::textProvider('claude-code');
+    $step = $provider->textGateway()->generateTextStep(
+        $provider,
+        'opus',
+        null,
+        [new UserMessage('Avant'), new Message('assistant', 'Réponse'), new UserMessage('Salut')],
+        [],
+        null,
+        new TextGenerationOptions(providerOptions: ['claude-code' => ['session_id' => CLAUDE_FAKE_SESSION, 'resume' => true]]),
+        null,
+        new StepContext,
+    );
+
+    expect(claudeCalls())->toHaveCount(1)
+        ->and($step->finishReason)->toBe(FinishReason::Error)
+        ->and(app(ClaudeCodeRunRecorder::class)->last()->errorMessage)->toBe('Tool crashed');
+});
+
+it('passes the bash, MCP wildcard and .env deny rules', function (): void {
+    claudeFakeOutput([claudeResultEvent()]);
+
+    claudeAgent(['session_id' => CLAUDE_FAKE_SESSION, 'resume' => false])->prompt('Salut', provider: 'claude-code');
+
+    [$arguments] = claudeCalls();
+    $allowed = array_slice($arguments, array_search('--allowedTools', $arguments, true) + 1);
+    $denied = array_slice($arguments, array_search('--disallowedTools', $arguments, true) + 1);
+
+    expect($allowed)->toContain('Bash(rg *)', 'Bash(ilspycmd *)', 'mcp__oni__*')
+        ->and($denied)->toContain('Read(.env)', 'Read(.env.*)', 'Bash(rg *.env*)', 'Bash(rg *--hidden*)', 'Bash(rg *--no-ignore*)');
+});
