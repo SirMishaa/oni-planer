@@ -3,9 +3,11 @@
 declare(strict_types=1);
 
 use App\Enums\UplinkMessageType;
+use App\Jobs\Chat\AnswerChatQuestion;
 use App\Models\UplinkCommand;
 use App\Models\UplinkSession;
 use App\Models\Zone;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -115,6 +117,9 @@ function baselineMedian(UplinkMessageType $type, int $runs): float
 }
 
 it('processes each message type within its baseline', function (UplinkMessageType $type): void {
+    // The queue is sync in tests: answering a chat question is a separate queued job, not part of receiving it.
+    Bus::fake([AnswerChatQuestion::class]);
+
     expect(BASELINE_BUDGETS)->toHaveKey($type->value)
         ->and(BASELINE_QUERIES)->toHaveKey($type->value);
 
