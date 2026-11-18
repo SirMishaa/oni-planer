@@ -31,6 +31,7 @@ final class ResyncZoneWithoutLayout
         $needsLayout = Zone::query()
             ->where('colony_guid', $event->colonyGuid)
             ->where('zone_guid', $event->zoneGuid)
+            ->where('transient', false)
             ->whereNull('layout')
             ->where('created_at', '<=', now()->subSeconds(self::GRACE_SECONDS))
             ->exists();

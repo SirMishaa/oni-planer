@@ -9,7 +9,7 @@ use App\Models\Colony;
 use App\Models\Zone;
 use Illuminate\Database\Eloquent\Collection;
 
-/** Finds an active zone of a colony from what the assistant typed: its id or its name. */
+/** Finds an active zone of a colony from what the assistant typed: its id or its name. Transient zones resolve by id only. */
 final class McpZones
 {
     /** Candidates listed when a name is ambiguous. */
@@ -31,7 +31,7 @@ final class McpZones
         }
 
         if (ctype_digit($needle)) {
-            return (clone $zones)->whereKey((int) $needle)->first()
+            return Zone::query()->whereNull('archived_at')->where('colony_guid', $colony->guid)->whereKey((int) $needle)->first()
                 ?? throw new McpLookupException(sprintf('No active zone #%s in colony "%s". Call list_zones.', $needle, $colony->name));
         }
 

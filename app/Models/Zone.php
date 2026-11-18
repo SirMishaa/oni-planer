@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * it is never truncated by `game:import`.
  */
 #[Fillable([
-    'colony_guid', 'zone_guid', 'name', 'world_id', 'version', 'cell_count', 'orphaned', 'archived_at',
+    'colony_guid', 'zone_guid', 'name', 'world_id', 'version', 'cell_count', 'orphaned', 'transient', 'archived_at',
     'layout', 'slow_state', 'fast_state', 'layout_at', 'slow_state_at', 'fast_state_at', 'previous_slow_temperature', 'crowding_mismatches',
 ])]
 final class Zone extends Model
@@ -35,6 +35,7 @@ final class Zone extends Model
             'version' => 'integer',
             'cell_count' => 'integer',
             'orphaned' => 'boolean',
+            'transient' => 'boolean',
             'archived_at' => 'datetime',
             'layout' => 'array',
             'slow_state' => 'array',
@@ -62,12 +63,12 @@ final class Zone extends Model
     }
 
     /**
-     * Zones that were not archived.
+     * Zones that were not archived and are shown to the player (not transient).
      *
      * @param  Builder<Zone>  $query
      */
     public function scopeActive(Builder $query): void
     {
-        $query->whereNull('archived_at');
+        $query->whereNull('archived_at')->where('transient', false);
     }
 }

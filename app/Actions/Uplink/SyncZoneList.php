@@ -41,6 +41,7 @@ final class SyncZoneList
         $missing = Zone::query()
             ->where('colony_guid', $colonyGuid)
             ->whereNull('archived_at')
+            ->where('transient', false)
             ->whereNotIn('zone_guid', $listed)
             ->pluck('zone_guid');
 

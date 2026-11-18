@@ -135,6 +135,12 @@ final class ZoneFactory extends Factory
         ]);
     }
 
+    /** A hidden zone sampled for the in-game chat, never listed to the player. */
+    public function transient(): self
+    {
+        return $this->state(fn (): array => ['transient' => true]);
+    }
+
     public function definition(): array
     {
         return [
