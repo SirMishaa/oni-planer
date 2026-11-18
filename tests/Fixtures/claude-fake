@@ -4,6 +4,7 @@
 // Stand-in for the `claude` binary, driven by environment variables:
 //   CLAUDE_FAKE_ARGS_FILE   every call appends its argv as one JSON line
 //   CLAUDE_FAKE_OUTPUT_FILE stdout to print (stream-json lines)
+//   CLAUDE_FAKE_PATH_FILE   every call writes its PATH there
 //   CLAUDE_FAKE_EXIT        exit code (default 0)
 //   CLAUDE_FAKE_STDERR      text written to stderr
 //   CLAUDE_FAKE_SLEEP       seconds to sleep before answering
@@ -13,6 +14,10 @@ $arguments = array_slice($argv, 1);
 
 if (getenv('CLAUDE_FAKE_ARGS_FILE')) {
     file_put_contents(getenv('CLAUDE_FAKE_ARGS_FILE'), json_encode($arguments)."\n", FILE_APPEND);
+}
+
+if (getenv('CLAUDE_FAKE_PATH_FILE')) {
+    file_put_contents(getenv('CLAUDE_FAKE_PATH_FILE'), (string) getenv('PATH'));
 }
 
 if (getenv('CLAUDE_FAKE_SLEEP')) {

@@ -61,6 +61,8 @@ return [
             'working_directory' => base_path(),
             'mcp_config' => base_path('.mcp.json'),
             'mcp_server' => 'oni',
+            // Prepended to the PATH of the claude process, so `ilspycmd` (a dotnet global tool) resolves under the queue worker.
+            'extra_path' => env('CLAUDE_CODE_EXTRA_PATH', env('HOME') === null ? null : env('HOME').'/.dotnet/tools'),
             'allowed_tools' => [
                 'Read',
                 'Grep',
@@ -73,6 +75,7 @@ return [
             // The Edit deny also covers shell output redirects and tee targets (Claude Code checks them against Edit rules);
             // chained commands (&&, ;, |) must match an allow rule subcommand by subcommand, so dontAsk refuses the rest.
             // The ilspycmd denies close every flag that writes to disk (output dir, project, PDB, package dump, diagrammer).
+            // Only project settings load (--setting-sources project); the last denies override the project's own Bash allows.
             'denied_tools' => [
                 'Read(.env)',
                 'Read(.env.*)',
@@ -97,6 +100,9 @@ return [
                 'Bash(ilspycmd * -d*)',
                 'Bash(ilspycmd *--dump-package*)',
                 'Bash(ilspycmd *--generate-diagrammer*)',
+                'Bash(dotnet *)',
+                'Bash(php *)',
+                'Bash(vendor/bin/phpstan *)',
             ],
             'models' => [
                 'text' => [

@@ -87,6 +87,24 @@ final class ClaudeCodeGateway implements StepTextGateway
     }
 
     /**
+     * The claude process's extra variables: the configured extra path ahead of the inherited PATH.
+     *
+     * @return array<string, string>
+     */
+    private function environment(): array
+    {
+        $extraPath = $this->config['extra_path'] ?? null;
+
+        if (! is_string($extraPath) || $extraPath === '') {
+            return [];
+        }
+
+        $path = (string) getenv('PATH');
+
+        return ['PATH' => $path === '' ? $extraPath : $extraPath.PATH_SEPARATOR.$path];
+    }
+
+    /**
      * @return array{run: ClaudeCodeRun, text: string, usage: TextUsage, resumeFailed: bool}
      */
     private function run(string $model, ?string $instructions, string $prompt, string $sessionId, bool $resume): array
@@ -95,6 +113,7 @@ final class ClaudeCodeGateway implements StepTextGateway
 
         try {
             $result = Process::path($this->config['working_directory'])
+                ->env($this->environment())
                 ->timeout($this->config['timeout'])
                 ->run([$this->config['binary'], ...$arguments]);
         } catch (ProcessTimedOutException) {

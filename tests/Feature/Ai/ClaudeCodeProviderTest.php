@@ -32,7 +32,7 @@ beforeEach(function (): void {
 });
 
 afterEach(function (): void {
-    foreach (['ARGS_FILE', 'OUTPUT_FILE', 'EXIT', 'STDERR', 'SLEEP', 'FAIL_RESUME'] as $name) {
+    foreach (['ARGS_FILE', 'OUTPUT_FILE', 'PATH_FILE', 'EXIT', 'STDERR', 'SLEEP', 'FAIL_RESUME'] as $name) {
         claudeFakeEnv("CLAUDE_FAKE_{$name}", null);
     }
 
@@ -166,6 +166,7 @@ it('passes the read-only flags', function (): void {
         ->and($joined)->toContain('--output-format stream-json')
         ->and($joined)->toContain('--permission-mode dontAsk')
         ->and($joined)->toContain('--tools Read,Grep,Glob,Bash')
+        ->and($joined)->toContain('--setting-sources project')
         ->and($joined)->not->toContain('--dangerously-skip-permissions')
         ->and($joined)->not->toContain('bypassPermissions');
 
@@ -341,5 +342,23 @@ it('passes the bash, MCP wildcard and every deny rule', function (): void {
             'Bash(ilspycmd * -d*)',
             'Bash(ilspycmd *--dump-package*)',
             'Bash(ilspycmd *--generate-diagrammer*)',
+            'Bash(dotnet *)',
+            'Bash(php *)',
+            'Bash(vendor/bin/phpstan *)',
         ]);
+});
+
+it('puts the extra path first on the PATH of the claude process', function (): void {
+    $pathFile = tempnam(sys_get_temp_dir(), 'claude-path');
+    claudeFakeEnv('CLAUDE_FAKE_PATH_FILE', $pathFile);
+    config()->set('ai.providers.claude-code.extra_path', '/opt/dotnet-tools');
+    claudeFakeOutput([claudeResultEvent()]);
+
+    claudeAgent(['session_id' => CLAUDE_FAKE_SESSION, 'resume' => false])->prompt('Salut', provider: 'claude-code');
+
+    $path = (string) file_get_contents($pathFile);
+    @unlink($pathFile);
+
+    expect($path)->toStartWith('/opt/dotnet-tools'.PATH_SEPARATOR)
+        ->and($path)->toContain((string) getenv('PATH'));
 });

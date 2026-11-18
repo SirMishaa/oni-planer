@@ -34,6 +34,7 @@ final class ClaudeCodeCommand
             '--model', $model,
             $resume ? '--resume' : '--session-id', $sessionId,
             '--permission-mode', 'dontAsk',
+            '--setting-sources', 'project',
             '--strict-mcp-config',
             '--mcp-config', self::mcpConfig($config),
             '--tools', 'Read,Grep,Glob,Bash',
