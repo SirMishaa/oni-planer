@@ -1,0 +1,35 @@
+#!/usr/bin/env php
+<?php
+
+// Stand-in for the `claude` binary, driven by environment variables:
+//   CLAUDE_FAKE_ARGS_FILE   every call appends its argv as one JSON line
+//   CLAUDE_FAKE_OUTPUT_FILE stdout to print (stream-json lines)
+//   CLAUDE_FAKE_EXIT        exit code (default 0)
+//   CLAUDE_FAKE_STDERR      text written to stderr
+//   CLAUDE_FAKE_SLEEP       seconds to sleep before answering
+//   CLAUDE_FAKE_FAIL_RESUME when set, a call carrying --resume fails like an unknown session
+
+$arguments = array_slice($argv, 1);
+
+if (getenv('CLAUDE_FAKE_ARGS_FILE')) {
+    file_put_contents(getenv('CLAUDE_FAKE_ARGS_FILE'), json_encode($arguments)."\n", FILE_APPEND);
+}
+
+if (getenv('CLAUDE_FAKE_SLEEP')) {
+    sleep((int) getenv('CLAUDE_FAKE_SLEEP'));
+}
+
+if (getenv('CLAUDE_FAKE_FAIL_RESUME') && in_array('--resume', $arguments, true)) {
+    fwrite(STDERR, "No conversation found with session ID: unknown\n");
+    exit(1);
+}
+
+if (getenv('CLAUDE_FAKE_OUTPUT_FILE')) {
+    echo file_get_contents(getenv('CLAUDE_FAKE_OUTPUT_FILE'));
+}
+
+if (getenv('CLAUDE_FAKE_STDERR')) {
+    fwrite(STDERR, getenv('CLAUDE_FAKE_STDERR')."\n");
+}
+
+exit((int) (getenv('CLAUDE_FAKE_EXIT') ?: 0));

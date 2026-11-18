@@ -12,6 +12,7 @@
         "php": "^8.5.0",
         "inertiajs/inertia-laravel": "^3.7.0",
         "keepsuit/laravel-opentelemetry": "^2.3",
+        "laravel/ai": "^1.4.1",
         "laravel/framework": "^13.42.0",
         "laravel/mcp": "^1.2",
         "laravel/octane": "^2.24.0",
