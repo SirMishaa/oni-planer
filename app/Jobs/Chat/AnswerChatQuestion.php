@@ -180,9 +180,7 @@ final class AnswerChatQuestion implements ShouldBeUnique, ShouldQueue
 
     private function hasFreshCapture(Zone $zone, ChatQuestion $question): bool
     {
-        return $zone->captures()
-            ->when($question->context_requested_at !== null, fn ($query) => $query->where('taken_at', '>=', $question->context_requested_at))
-            ->exists();
+        return $zone->latestCapture($question->context_requested_at) !== null;
     }
 
     /** A conversation resumes only a session that answered before; otherwise it starts a new one. */

@@ -170,6 +170,39 @@ it('passes a fresh capture to the prompt and the image paths', function (): void
     expect($joined)->toContain(Storage::disk('public')->path($capture->path));
 });
 
+it('gives a stored zone without a fresh request its latest capture and does not wait', function (): void {
+    Storage::fake('public');
+    $zone = Zone::factory()->create(['colony_guid' => 'colony-1']);
+    ChatContextItem::factory()->for($this->question, 'question')->create(['kind' => 'zone', 'label' => 'Ferme', 'zone_id' => $zone->id, 'wants_capture' => false]);
+    ZoneCapture::factory()->for($zone)->create(['taken_at' => now()->subHours(2), 'path' => 'zone-captures/z/old.webp']);
+    ZoneCapture::factory()->for($zone)->create(['taken_at' => now()->subHour(), 'path' => 'zone-captures/z/latest.webp']);
+
+    runAnswerJob($this->question);
+
+    $joined = implode(' ', chatClaudeCalls()[0]);
+    Sleep::assertNeverSlept();
+    expect($joined)->toContain(Storage::disk('public')->path('zone-captures/z/latest.webp'))
+        ->and($joined)->toContain('taken 1 hour ago')
+        ->and($joined)->not->toContain('old.webp');
+});
+
+it('uses the newest of several fresh captures when a new one was requested', function (): void {
+    Storage::fake('public');
+    $zone = Zone::factory()->create(['colony_guid' => 'colony-1']);
+    ChatContextItem::factory()->for($this->question, 'question')->create(['kind' => 'zone', 'label' => 'Ferme', 'zone_id' => $zone->id, 'wants_capture' => true]);
+    $this->question->update(['context_requested_at' => now()->subMinutes(5)]);
+    ZoneCapture::factory()->for($zone)->create(['taken_at' => now()->subHour(), 'path' => 'zone-captures/z/stale.webp']);
+    ZoneCapture::factory()->for($zone)->create(['taken_at' => now()->subMinutes(3), 'path' => 'zone-captures/z/first.webp']);
+    ZoneCapture::factory()->for($zone)->create(['taken_at' => now()->subMinute(), 'path' => 'zone-captures/z/second.webp']);
+
+    runAnswerJob($this->question);
+
+    $joined = implode(' ', chatClaudeCalls()[0]);
+    expect($joined)->toContain('second.webp')
+        ->and($joined)->not->toContain('first.webp')
+        ->and($joined)->not->toContain('stale.webp');
+});
+
 it('answers with what it has when the game does not send the context in time', function (): void {
     $zone = Zone::factory()->create(['colony_guid' => 'colony-1', 'transient' => true, 'layout' => null]);
     ChatContextItem::factory()->for($this->question, 'question')->create(['kind' => 'box', 'label' => 'Boite', 'zone_id' => $zone->id]);

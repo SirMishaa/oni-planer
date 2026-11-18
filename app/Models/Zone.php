@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Database\Factories\ZoneFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -60,6 +61,16 @@ final class Zone extends Model
     public function captures(): HasMany
     {
         return $this->hasMany(ZoneCapture::class)->latest('taken_at')->latest('id');
+    }
+
+    /**
+     * The newest capture of the zone, taken at or after `$since` when given.
+     */
+    public function latestCapture(?CarbonInterface $since = null): ?ZoneCapture
+    {
+        return $this->captures()
+            ->when($since !== null, fn (Builder $query) => $query->where('taken_at', '>=', $since))
+            ->first();
     }
 
     /**

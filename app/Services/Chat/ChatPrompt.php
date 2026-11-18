@@ -7,6 +7,7 @@ namespace App\Services\Chat;
 use App\Models\ChatContextItem;
 use App\Models\ChatQuestion;
 use App\Models\Colony;
+use App\Models\ZoneCapture;
 use Illuminate\Support\Facades\Storage;
 
 /** Writes the prompt Claude gets: the colony, the question and what the player pointed at. */
@@ -51,7 +52,7 @@ final class ChatPrompt
     }
 
     /**
-     * Absolute paths of the captures taken for this question.
+     * Absolute paths of the captures the prompt points Claude at.
      *
      * @return list<string>
      */
@@ -59,11 +60,11 @@ final class ChatPrompt
     {
         $paths = [];
 
-        foreach ($question->contextItems()->where('wants_capture', true)->whereNotNull('zone_id')->get() as $item) {
-            $capture = self::freshCapture($item, $question);
+        foreach ($question->contextItems()->whereNotNull('zone_id')->with('zone')->get() as $item) {
+            $capture = self::capture($item, $question);
 
             if ($capture !== null) {
-                $paths[] = Storage::disk('public')->path($capture);
+                $paths[] = Storage::disk('public')->path($capture->path);
             }
         }
 
@@ -89,21 +90,36 @@ final class ChatPrompt
             $lines[] = '  Instance id: '.$item->instance_id;
         }
 
-        $capture = $item->wants_capture ? self::freshCapture($item, $question) : null;
+        $capture = self::capture($item, $question);
 
         if ($capture !== null) {
-            $lines[] = '  Capture (image, read it): '.Storage::disk('public')->path($capture);
+            $lines[] = sprintf(
+                '  Capture (image, read it; taken %s, cycle %d): %s',
+                $capture->taken_at->diffForHumans(),
+                $capture->cycle(),
+                Storage::disk('public')->path($capture->path),
+            );
         }
 
         return $lines;
     }
 
-    private static function freshCapture(ChatContextItem $item, ChatQuestion $question): ?string
+    /**
+     * A requested capture is the newest one taken since the question asked for it; a stored zone
+     * that did not ask for a new one gets its latest existing capture.
+     */
+    private static function capture(ChatContextItem $item, ChatQuestion $question): ?ZoneCapture
     {
-        $capture = $item->zone?->captures()
-            ->when($question->context_requested_at !== null, fn ($query) => $query->where('taken_at', '>=', $question->context_requested_at))
-            ->first();
+        $zone = $item->zone;
 
-        return $capture?->path;
+        if ($zone === null) {
+            return null;
+        }
+
+        if ($item->wants_capture) {
+            return $zone->latestCapture($question->context_requested_at);
+        }
+
+        return $zone->transient ? null : $zone->latestCapture();
     }
 }
