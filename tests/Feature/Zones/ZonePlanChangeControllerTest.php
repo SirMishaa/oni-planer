@@ -134,3 +134,25 @@ it('answers 404 for a change of another zone', function (): void {
     $this->patch(route('zones.plan.changes.update', [$zone, $foreign]), ['x' => 1, 'y' => 1])->assertNotFound();
     $this->delete(route('zones.plan.changes.destroy', [$zone, $foreign]))->assertNotFound();
 });
+
+it('refuses a move that leaves another add without its support', function (): void {
+    [$zone, $plan] = editPlan();
+    $tile = editAdd($plan, 'Tile', 105, 201);
+    $planter = editAdd($plan, 'PlanterBox', 105, 202, ['position' => 2]);
+
+    $this->patch(route('zones.plan.changes.update', [$zone, $tile]), ['x' => 106, 'y' => 201])->assertSessionHasErrors('position');
+
+    expect($tile->fresh()->anchor_cell)->toBe(editCell(105, 201))
+        ->and($tile->fresh()->moved_by_player)->toBeFalse()
+        ->and($planter->fresh()->anchor_cell)->toBe(editCell(105, 202));
+});
+
+it('keeps a refused applied add applied where it was', function (): void {
+    [$zone, $plan] = editPlan();
+    $add = editAdd($plan, 'PlanterBox', 105, 201, ['state' => ZonePlanChangeState::Applied]);
+
+    $this->patch(route('zones.plan.changes.update', [$zone, $add]), ['x' => 114, 'y' => 201])->assertSessionHasErrors('position');
+
+    expect($add->fresh()->state)->toBe(ZonePlanChangeState::Applied)
+        ->and($add->fresh()->anchor_cell)->toBe(editCell(105, 201));
+});

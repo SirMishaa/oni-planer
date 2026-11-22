@@ -38,8 +38,7 @@ final readonly class ZonePlanChangeController
         $x = $request->integer('x');
         $y = $request->integer('y');
 
-        if ($gridWidth <= 0 || ($box !== null && ($x < (int) ($box['x'] ?? 0) || $y < (int) ($box['y'] ?? 0)
-            || $x >= (int) ($box['x'] ?? 0) + (int) ($box['width'] ?? 0) || $y >= (int) ($box['y'] ?? 0) + (int) ($box['height'] ?? 0)))) {
+        if ($gridWidth <= 0 || ! $this->insideBox($box, $x, $y)) {
             throw ValidationException::withMessages(['position' => "({$x}, {$y}) is outside the zone box."]);
         }
 
@@ -102,5 +101,23 @@ final readonly class ZonePlanChangeController
         abort_unless($plan->zone_id === $zone->id, 404);
 
         return $plan;
+    }
+
+    /**
+     * Whether a world cell lies in the zone box; a zone without a box accepts any cell.
+     *
+     * @param  array<string, mixed>|null  $box
+     */
+    private function insideBox(?array $box, int $x, int $y): bool
+    {
+        if ($box === null) {
+            return true;
+        }
+
+        $left = (int) ($box['x'] ?? 0);
+        $bottom = (int) ($box['y'] ?? 0);
+
+        return $x >= $left && $y >= $bottom
+            && $x < $left + (int) ($box['width'] ?? 0) && $y < $bottom + (int) ($box['height'] ?? 0);
     }
 }
