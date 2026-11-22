@@ -1,0 +1,13 @@
+{
+    "allowWikiManagement": false,
+    "defaultWiki": "oxygennotincluded.wiki.gg",
+    "wikis": {
+        "oxygennotincluded.wiki.gg": {
+            "sitename": "Oxygen Not Included Wiki",
+            "server": "https://oxygennotincluded.wiki.gg",
+            "articlepath": "/wiki",
+            "scriptpath": "",
+            "readOnly": true
+        }
+    }
+}

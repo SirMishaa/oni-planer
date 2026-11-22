@@ -1,0 +1,33 @@
+# ONI Planner — mémoire de reprise
+
+Instantané du 22 novembre 2026, issu des notes locales de Claude Code et recoupé avec Git. Ce fichier complète `AGENTS.md` : c'est du contexte de projet, pas une autorisation d'agir. Vérifier l'état du code et des branches avant de reprendre un chantier ; mettre à jour les points devenus obsolètes après validation.
+
+## Décisions et état vérifié
+
+- **OniExtract** fournit les données de référence et les sprites du jeu et des mods ; **Uplink**, dans un dépôt séparé, remonte l'état réel de la colonie via Reverb. Ne pas concevoir la gestion de la colonie autour d'une saisie manuelle.
+- La pile locale est passée à PostgreSQL et Valkey après mesure. Pour une question de performance Uplink, partir d'un scénario réel, du benchmark k6 et d'Excimer avant d'ajouter de la complexité. Les workers de file persistants doivent recharger le code après une modification de job.
+- Les réglages et stocks des bâtiments sont intégrés à `main` côté planner (`3abb890`) et Uplink (`81abec5`). L'ancienne note disant « pas mergé » est obsolète ; la validation en jeu n'a pas été confirmée.
+- Les suggestions de zone sont intégrées à `main` (`39f9670`). Le MCP `oni` sait lire et écrire les suggestions ; le joueur peut déplacer les ajouts et supprimer des propositions. Le chat en jeu (`Shift+Q`) reste en lecture seule.
+- Dans OpenCode, `larecipe` et `oni` ont été ajoutés à `opencode.json` et testés en lecture. Préférer LaRecipe pour les docs du projet et `oni` pour les données de jeu et de colonie.
+
+## Reprise immédiate — pilote Codex (22 novembre 2026)
+
+- **Export groupé validé ; aucun redémarrage supplémentaire requis.** Build **U60-764025-SCRPAN**, installé à **16:02**, exporté à **16:05** avec zéro étape en échec. Snapshot local `game-data/oniextract/u60-764025-building-codex/`, comparé à la source ; anciens snapshots intacts. Le sidecar contient 50 descripteurs de pièce, 3 bâtiments avec conversions manuelles et 103 prefabs avec découpe. `FarmStation.room` donne `CreaturePen` / `Required` (identifiant interne), et `FarmStation.tinker` confirme 5 kg de `Fertilizer` par utilisation → 1 `FarmStationTools`, compétence `CanFarmTinker`. Le descripteur de pièce ne prouve pas que la fabrication est impossible hors serre.
+- **Validation automatisée : 312 tests / 1 161 assertions**, avec les trois flags `ONI_TEST_REAL_EXPORT=1 ONI_TEST_BUTCHER_DROPS=1 ONI_TEST_BUILDING_CODEX=1`, sur `oni_planner_testing`, couvrant GameImport, MCP, Critters et CodexEndpointTest.
+- **Activation locale effectuée avec accord du joueur.** Migration additive et réimport du snapshot `u60-764025-building-codex` sur `oni_planner`, avec rechargement Octane. Sauvegarde PostgreSQL et traductions antérieures dans `/tmp/opencode/oni-before-codex.cRMc1S/`. Après import : 937 fiches Codex, 593 bâtiments, 21 mods au lieu de 22 (Buildable Natural Tile `1840755803` absent du nouvel export) ; compteurs colonie inchangés (4 colonies, 30 zones). Les réponses HTTP de `FarmStation` et `ParrotFishSpecies` incluent les nouveaux faits. Un nouveau processus `php artisan mcp:start oni` expose bien `details: true` et renvoie les données de la Station Agronome ainsi que les conversions distinctes des Pacu ; l'ancienne connexion MCP OpenCode, démarrée avant les changements, n'exposait pas encore `details`.
+- **Branches et portée :** planner `feat/codex-mcp-pilot`, mod `~/dev/OniExtract2024` sur `feat/codex-butcher-drops`, changements locaux non poussés. Laisser intactes les modifications préexistantes du joueur. Plan : `docs/superpowers/plans/2026-11-22-codex-mcp-pilot.md`. Les changements côté planner sont dans les readers/importers OniExtract, `LookupTool`, `CodexFacts` / `CodexController` et `resources/js/components/codex/CodexPanel.vue`.
+- **Déjà vérifié avec U60 en jeu :** découpe pour 103 prefabs, Beakon et `PacuBeta` : filet de Pacu 1 kg / 1 000 kcal ; Jawbo : 12 kg / 12 000 kcal. Les variantes Pacu restent séparées : `PacuBeta` eau salée → eau, `PacuCleaner` eau polluée → eau à 0,2 kg/s nominal. Le Codex web ajoute des panneaux par variante et génère les fiches des bâtiments sans YAML, dont `FarmStation`. Le build Vue dans `/tmp/opencode` a passé ; `bun run typecheck` reste bloqué par `vue-tsc` / TypeScript (`ERR_PACKAGE_PATH_NOT_EXPORTED`). Pas de validation visuelle à ce stade.
+- Les conversions manuelles du registre sont des relations par événement à unités éventuellement spécifiques, pas des débits. Le wiki est une référence, pas l'autorité sur la version de jeu ni sur les mods ; le MCP `mediawiki` est configuré dans OpenCode en lecture seule.
+- **Préférence de travail :** regrouper les changements du mod, compiler et tester hors jeu, puis n'installer qu'une fois ONI fermé. Après installation, demander un seul redémarrage complet et **Échap → Export Game Data** ; pas d'exports d'images. Script du mod : `tools/wsl/build-and-install.sh` (option `--no-install` pendant que le jeu tourne). Continuer entre les vrais points de contrôle sans demandes de confirmation intermédiaires.
+
+## Autres directions, après le pilote Codex
+
+1. **OniExtract : synchroniser le fork avec l'amont.** Dernier chantier que le joueur avait demandé de retenir. Recontrôler l'écart réel avant d'agir. La PR amont `blueprintnotincluded/OniExtract2024#25` est le point de départ pour le rendu et l'emprise des plantes sauvages. Après résolution et reconstruction du mod, prévoir un nouvel export en jeu, puis vérifier l'import et le rendu dans le planner.
+2. **Stocks et réglages : valider en jeu.** Sur un ranch réel, comparer les filtres et stocks du distributeur ainsi que les tags des points de dépôt avec ce qu'affichent le planner et le MCP.
+3. **Suggestions : fiabiliser le placement.** Reproduire les cas de portes et de ponts classés comme dalles, puis examiner la règle `is_foundation` + emprise `1×1`, les fondations multi-cases et les erreurs 422 encore en anglais. Les calques câbles et tuyaux sont un chantier Uplink séparé.
+4. **Plus tard :** zones qui suivent les pièces du jeu, puis refonte visuelle une section à la fois une fois les données et sprites stabilisés. La grille des créatures est un bon point de référence.
+
+## Où retrouver le détail
+
+- Notes source : `~/.claude/projects/<chemin-absolu-du-projet-encodé-par-Claude-Code>/memory/MEMORY.md`. Consulter au besoin les fiches `project_oniextract_mod.md`, `project_zones_roadmap.md`, `project_zone_plans.md`, `project_in_game_chat.md` et les notes `feedback_*.md` du même dossier.
+- Les journaux Claude Code du projet restent à côté de `memory/`. Les consulter seulement pour retrouver une décision utile qui ne figure pas dans les fiches ; ne pas copier les conversations dans le dépôt ni les charger au démarrage.

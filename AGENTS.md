@@ -96,6 +96,7 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 # Deployment
 
 - Laravel can be deployed using [Laravel Cloud](https://cloud.laravel.com/), which is the fastest way to deploy and scale production Laravel applications.
+- Activate the `deploying-to-cloud` skill whenever deploying to Laravel Cloud, configuring Cloud environments or resources, using the Cloud CLI, or troubleshooting Cloud deployments.
 
 === tests rules ===
 
@@ -224,7 +225,7 @@ Search and read the docs with the `larecipe` MCP server. Never write configurati
 
 ### Docs index: ONI Planner
 
-17 pages. One line per page: path, title, description. Read a page with the `read_page` tool of the `larecipe` MCP server, or open its file in `docs/site/`. Refresh this index with `php artisan larecipe:agents-md`.
+18 pages. One line per page: path, title, description. Read a page with the `read_page` tool of the `larecipe` MCP server, or open its file in `docs/site/`. Refresh this index with `php artisan larecipe:agents-md`.
 
 - `index`: Introduction. Ce qu'est ONI Planner, d'où viennent ses données et comment cette doc est organisée.
 - `development/architecture`: Architecture. Comment les données du jeu et celles de la colonie en direct arrivent au planner, et quel processus fait quoi.
@@ -241,6 +242,7 @@ Search and read the docs with the `larecipe` MCP server. Never write configurati
 - `product/critters-and-ranch`: Créatures et ranch. Lire chaque famille de créatures et ses variantes, puis équilibrer la nourriture, les productions et les œufs d'un…
 - `product/elements`: Éléments. Parcourir tous les éléments du jeu et lire leur état, leur catégorie, leurs propriétés thermiques et leurs changements…
 - `product/getting-started`: Bien démarrer. Se repérer dans les sections du planner et le relier à ta partie.
+- `product/plans`: Suggestions de zone. Voir sur la carte d'une zone les changements qu'un assistant te propose, les déplacer ou les supprimer, et suivre leur…
 - `product/rules/feeding`: Alimentation. Comment le planner calcule ce qu'un groupe de critters mange et pond par cycle, et combien de cycles le stock de…
 - `product/rules/overcrowding`: Surpeuplement. Ce que veulent dire Surpeuplé, À l'étroit et Confiné pour une pièce ou un bassin, quand les œufs comptent et comment le…
 

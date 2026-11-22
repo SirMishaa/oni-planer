@@ -2,7 +2,7 @@
 
 # Components
 
-Every component LaRecipe ships. An app may define its own too; anything neither defines renders as escaped text and fails `php artisan larecipe:validate`.
+Every component this app's docs can use. Anything else renders as escaped text and fails `php artisan larecipe:validate`.
 
 - Write a component as a PascalCase tag on its own line: `<Callout type="warning">`, content on the next lines, then `</Callout>`. A component without content closes itself: `<Name prop="value" />`.
 - `:::callout` directives produce the same component, if you prefer that syntax.

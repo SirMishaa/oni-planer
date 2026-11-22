@@ -1,14 +1,46 @@
 {
     "$schema": "https://opencode.ai/config.json",
+    "instructions": [
+        "PROJECT_MEMORY.md"
+    ],
     "mcp": {
-        "laravel-boost": {
+        "servers": {
+          "laravel-boost": {
             "type": "local",
-            "enabled": true,
             "command": [
-                "php",
-                "artisan",
-                "boost:mcp"
+              "php",
+              "artisan",
+              "boost:mcp"
             ]
+          },
+          "larecipe": {
+            "type": "local",
+            "command": [
+              "php",
+              "artisan",
+              "larecipe:mcp"
+            ]
+          },
+          "oni": {
+            "type": "local",
+            "command": [
+              "php",
+              "artisan",
+              "mcp:start",
+              "oni"
+            ]
+          },
+          "mediawiki": {
+            "type": "local",
+            "command": [
+              "bunx",
+              "@professional-wiki/mediawiki-mcp-server@0.21.0"
+            ],
+            "environment": {
+              "CONFIG": "mediawiki-mcp.json",
+              "MCP_LOG_LEVEL": "warning"
+            }
+          }
         }
     }
 }
