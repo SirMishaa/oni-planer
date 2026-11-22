@@ -83,8 +83,8 @@ describe('removedFootprints', () => {
                 ]),
             ),
         ).toEqual([
-            { x: 5, y: 6, width: 2, height: 1, changeId: 2 },
-            { x: 9, y: 6, width: 2, height: 1, changeId: 3 },
+            { x: 5, y: 6, width: 2, height: 1, changeId: 2, overlapped: false },
+            { x: 9, y: 6, width: 2, height: 1, changeId: 3, overlapped: false },
         ]);
     });
 
@@ -94,6 +94,51 @@ describe('removedFootprints', () => {
                 plan([change({ kind: 'replace', state: 'applied', target })]),
             ),
         ).toEqual([]);
+    });
+
+    it('skips an in-place replace: its new building covers the whole target', () => {
+        expect(
+            removedFootprints(
+                plan([
+                    change({
+                        kind: 'replace',
+                        x: 5,
+                        y: 6,
+                        width: 2,
+                        height: 1,
+                        target,
+                    }),
+                    change({
+                        id: 2,
+                        kind: 'replace',
+                        x: 4,
+                        y: 6,
+                        width: 4,
+                        height: 2,
+                        target,
+                    }),
+                ]),
+            ),
+        ).toEqual([]);
+    });
+
+    it('marks a target the replacement only partly covers as overlapped', () => {
+        expect(
+            removedFootprints(
+                plan([
+                    change({
+                        kind: 'replace',
+                        x: 6,
+                        y: 6,
+                        width: 1,
+                        height: 1,
+                        target,
+                    }),
+                ]),
+            ),
+        ).toEqual([
+            { x: 5, y: 6, width: 2, height: 1, changeId: 1, overlapped: true },
+        ]);
     });
 
     it('skips changes without a target', () => {

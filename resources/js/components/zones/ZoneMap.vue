@@ -686,6 +686,8 @@ type PlanMark = {
     status: PlanChangeStatus;
     /** A target the plan removes: a hatched ghost and not an outline. */
     ghost: boolean;
+    /** A ghost its own replacement partly covers: outline only, so the new building shows. */
+    overlapped: boolean;
 };
 
 const planMarks = computed<PlanMark[]>(() => {
@@ -724,6 +726,7 @@ const planMarks = computed<PlanMark[]>(() => {
                       height: change.height,
                       status: planChangeStatus(change),
                       ghost: false,
+                      overlapped: false,
                   },
               ]
             : [],
@@ -783,6 +786,9 @@ function pointerCell(event: PointerEvent): { x: number; y: number } | null {
 }
 
 function onMarkPointerDown(event: PointerEvent, mark: PlanMark): void {
+    /** A drop whose click never came must not swallow this press's click. */
+    dropped = false;
+
     if (event.button !== 0 || mark.ghost || !mark.change.movable) {
         return;
     }
@@ -1480,7 +1486,8 @@ const temperatureLegend = computed(() => {
                         <span
                             v-else-if="
                                 layer === 'problems' &&
-                                problemMark(entity) === 'unknown'
+                                problemMark(entity) === 'unknown' &&
+                                planChangeId(entity.instanceId) === null
                             "
                             class="zone-entity__pin zone-entity__pin--unknown"
                             aria-hidden="true"
@@ -1501,6 +1508,7 @@ const temperatureLegend = computed(() => {
                             `zone-plan-mark--${mark.status}`,
                             {
                                 'zone-plan-mark--ghost': mark.ghost,
+                                'zone-plan-mark--overlapped': mark.overlapped,
                                 'zone-plan-mark--movable':
                                     !mark.ghost && mark.change.movable,
                                 'zone-plan-mark--selected':
@@ -1688,7 +1696,10 @@ const temperatureLegend = computed(() => {
                     <i class="zone-map__swatch zone-map__swatch--plan" />
                     {{ t('zones.plan.legend.planned') }}
                 </span>
-                <span class="zone-map__key">
+                <span
+                    v-if="planMarks.some((mark) => mark.ghost)"
+                    class="zone-map__key"
+                >
                     <i class="zone-map__swatch zone-map__swatch--plan-ghost" />
                     {{ t('zones.plan.legend.removed') }}
                 </span>
@@ -2140,6 +2151,10 @@ const temperatureLegend = computed(() => {
         oklch(72% 0.17 25 / 0.5) 0 2px,
         oklch(15% 0.02 230 / 0.35) 2px 6px
     );
+}
+
+.zone-plan-mark--ghost.zone-plan-mark--overlapped {
+    background: none;
 }
 
 .zone-plan-mark--selected {
