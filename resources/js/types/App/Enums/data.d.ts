@@ -41,4 +41,7 @@ export type UplinkMessageType =
     | 'client-zone.fast'
     | 'client-colony.state'
     | 'client-command.ack'
-    | 'client-zone.capture';
+    | 'client-zone.capture'
+    | 'client-chat.ask';
+export type ZonePlanChangeKind = 'add' | 'remove' | 'replace';
+export type ZonePlanChangeState = 'pending' | 'applied' | 'conflicted';

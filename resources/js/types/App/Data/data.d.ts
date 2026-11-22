@@ -392,6 +392,33 @@ export type ZoneMapData = {
     buildings: ZoneBuildingData[] | null;
     temperatureBands: string[];
 };
+export type ZonePlanChangeData = {
+    id: number;
+    kind: string;
+    state: string;
+    checked: boolean;
+    movedByPlayer: boolean;
+    note: string;
+    prefabId: string | null;
+    name: string | null;
+    x: number | null;
+    y: number | null;
+    width: number | null;
+    height: number | null;
+    orientation: string;
+    target: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        label: string;
+    } | null;
+    movable: boolean;
+};
+export type ZonePlanData = {
+    updatedAt: string;
+    changes: ZonePlanChangeData[];
+};
 export type ZonePlantData = {
     x: number;
     y: number;
@@ -441,6 +468,8 @@ export type ZoneShowData = {
     mapPlants: ZonePlantData[] | null;
     crittersAt: string | null;
     feeding: ZoneFeedingData[] | null;
+    plan: ZonePlanData | null;
+    planMap: ZoneMapData | null;
     liveProps: Record<string, string[]>;
     echo: { channel: 'uplink'; event: '.zone.updated' };
     fastRelay: {

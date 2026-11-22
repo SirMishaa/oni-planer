@@ -3,9 +3,14 @@
 declare(strict_types=1);
 
 use App\Data\ZoneShowData;
+use App\Enums\ZonePlanChangeState;
+use App\Models\Building;
 use App\Models\Colony;
 use App\Models\Zone;
+use App\Models\ZonePlan;
+use App\Models\ZonePlanChange;
 use App\Services\Zones\ZonePresenter;
+use Database\Factories\ZoneFactory;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Testing\AssertableInertia;
@@ -102,7 +107,7 @@ it('computes only the requested props on a partial reload', function (): void {
 it('groups the live props by stream, each a prop of the page', function (): void {
     $properties = array_map(fn (ReflectionParameter $parameter): string => $parameter->getName(), (new ReflectionMethod(ZoneShowData::class, '__construct'))->getParameters());
 
-    expect(array_keys(ZonePresenter::PROPS_BY_KIND))->toBe(['list', 'layout', 'slow', 'fast', 'capture'])
+    expect(array_keys(ZonePresenter::PROPS_BY_KIND))->toBe(['list', 'layout', 'slow', 'fast', 'capture', 'plan'])
         ->and(array_diff(array_merge(...array_values(ZonePresenter::PROPS_BY_KIND)), $properties))->toBe([])
         ->and(ZonePresenter::PROPS_BY_KIND['fast'])->toContain('critters', 'mapPlants', 'zone')
         ->and(ZonePresenter::PROPS_BY_KIND['fast'])->not->toContain('mapTerrain')
@@ -150,4 +155,74 @@ it('gives the page what it needs to apply the raw fast frames of the zone', func
             ->where('zone.fastSessionId', 'session-a')
             ->where('zone.fastGameSeconds', 3600.5)
             ->where('fastRelay', ['channel' => 'uplink-data', 'event' => '.client-zone.fast', 'schema' => 1, 'tripsEvent' => '.client-zone.trips', 'tripsSchema' => 1]));
+});
+
+it('sends no plan while the zone has none', function (): void {
+    $zone = Zone::factory()->sodicaneFarm()->create();
+
+    $this->get(route('zones.show', $zone))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('plan', null)
+            ->where('planMap', null));
+});
+
+it('sends the plan and the map of the planned layout', function (): void {
+    foreach ([['FarmStation', 2, 2], ['ManualGenerator', 2, 2]] as [$id, $width, $height]) {
+        Building::factory()->create(['building_id' => $id, 'width' => $width, 'height' => $height, 'build_location_rule' => 'Anywhere']);
+    }
+    $zone = Zone::factory()->sodicaneFarm()->create();
+    $plan = ZonePlan::factory()->for($zone)->create();
+    $remove = ZonePlanChange::factory()->remove()->for($plan, 'plan')->create(['position' => 1, 'target_instance_id' => '7001', 'target_cell' => null, 'note' => 'Out']);
+    $add = ZonePlanChange::factory()->add()->for($plan, 'plan')->create(['position' => 2, 'anchor_cell' => 10 * ZoneFactory::GRID_WIDTH + 5, 'note' => 'Power']);
+
+    $this->get(route('zones.show', $zone))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('plan.updatedAt', $plan->updated_at->toIso8601String())
+            ->has('plan.changes', 2)
+            ->where('plan.changes.0.id', $remove->id)
+            ->where('plan.changes.0.kind', 'remove')
+            ->where('plan.changes.0.movable', false)
+            ->where('plan.changes.0.target.label', 'FarmStation #7001')
+            ->where('plan.changes.0.target.width', 2)
+            ->where('plan.changes.1.id', $add->id)
+            ->where('plan.changes.1.name', 'ManualGenerator')
+            ->where('plan.changes.1.x', 5)
+            ->where('plan.changes.1.y', 10)
+            ->where('plan.changes.1.width', 2)
+            ->where('plan.changes.1.movable', true)
+            ->where('plan.changes.1.target', null)
+            ->where('plan.changes.1.note', 'Power')
+            ->where('planMap.buildings', fn ($buildings) => collect($buildings)->pluck('instanceId')->all() === ['plan:'.$add->id])
+            ->where('map.buildings.0.instanceId', '7001'));
+});
+
+it('leaves the changes the player deleted out of the plan and the planned map', function (): void {
+    Building::factory()->create(['building_id' => 'ManualGenerator', 'width' => 2, 'height' => 2, 'build_location_rule' => 'Anywhere']);
+    $zone = Zone::factory()->sodicaneFarm()->create();
+    $plan = ZonePlan::factory()->for($zone)->create();
+    ZonePlanChange::factory()->add()->for($plan, 'plan')->create(['position' => 1, 'anchor_cell' => 10 * ZoneFactory::GRID_WIDTH + 1, 'deleted_by_player' => true]);
+    $applied = ZonePlanChange::factory()->add()->for($plan, 'plan')->create(['position' => 2, 'anchor_cell' => 10 * ZoneFactory::GRID_WIDTH + 5, 'state' => ZonePlanChangeState::Applied]);
+
+    $this->get(route('zones.show', $zone))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('plan.changes', 1)
+            ->where('plan.changes.0.id', $applied->id)
+            ->where('plan.changes.0.movable', false)
+            ->where('planMap.buildings', fn ($buildings) => collect($buildings)->pluck('instanceId')->all() === ['7001']));
+});
+
+it('sends no plan while every change of it was deleted by the player', function (): void {
+    $zone = Zone::factory()->sodicaneFarm()->create();
+    $plan = ZonePlan::factory()->for($zone)->create();
+    ZonePlanChange::factory()->add()->for($plan, 'plan')->create(['deleted_by_player' => true]);
+
+    $this->get(route('zones.show', $zone))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('plan', null)
+            ->where('planMap', null));
+});
+
+it('reloads the plan props on a plan event', function (): void {
+    expect(ZonePresenter::PROPS_BY_KIND['plan'])->toBe(['plan', 'planMap'])
+        ->and(ZonePresenter::PROPS_BY_KIND['list'])->toContain('plan', 'planMap');
 });

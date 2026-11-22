@@ -18,7 +18,7 @@ final class ZoneUpdated implements ShouldBroadcast
     use Dispatchable;
 
     /**
-     * @param  string  $kind  `list`, `layout`, `slow` or `fast`
+     * @param  string  $kind  `list`, `layout`, `slow`, `fast` or `plan`
      */
     public function __construct(
         public readonly string $zoneGuid,

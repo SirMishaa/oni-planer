@@ -133,7 +133,13 @@ const statusTone = computed(() =>
 
 // region Server updates
 
-const ZONE_KINDS: ZoneUpdateKind[] = ['fast', 'slow', 'layout', 'capture'];
+const ZONE_KINDS: ZoneUpdateKind[] = [
+    'fast',
+    'slow',
+    'layout',
+    'capture',
+    'plan',
+];
 
 const reloadAverage = computed(() =>
     props.stats.reloads.count === 0

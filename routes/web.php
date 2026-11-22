@@ -10,6 +10,7 @@ use App\Http\Controllers\ElementController;
 use App\Http\Controllers\RanchController;
 use App\Http\Controllers\ZoneCaptureController;
 use App\Http\Controllers\ZoneController;
+use App\Http\Controllers\ZonePlanChangeController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/.well-known/appspecific/com.chrome.devtools.json', function () {
@@ -39,3 +40,5 @@ Route::get('/colony/uplink', [ColonyController::class, 'uplink'])->name('colony.
 Route::get('/zones', [ZoneController::class, 'index'])->name('zones.index');
 Route::get('/zones/{zone}', [ZoneController::class, 'show'])->name('zones.show');
 Route::post('/zones/{zone}/captures', [ZoneCaptureController::class, 'store'])->name('zones.captures.store');
+Route::patch('/zones/{zone}/plan/changes/{change}', [ZonePlanChangeController::class, 'update'])->name('zones.plan.changes.update');
+Route::delete('/zones/{zone}/plan/changes/{change}', [ZonePlanChangeController::class, 'destroy'])->name('zones.plan.changes.destroy');

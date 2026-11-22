@@ -25,7 +25,13 @@ const LIVE_WINDOW_MS = 20_000;
 const CLOCK_TICK_MS = 1_000;
 
 /** The stream a `ZoneUpdated` event is about. */
-export type ZoneUpdateKind = 'list' | 'layout' | 'slow' | 'fast' | 'capture';
+export type ZoneUpdateKind =
+    | 'list'
+    | 'layout'
+    | 'slow'
+    | 'fast'
+    | 'capture'
+    | 'plan';
 
 /** Payload of `App\Events\ZoneUpdated`. */
 type ZoneUpdatedPayload = {

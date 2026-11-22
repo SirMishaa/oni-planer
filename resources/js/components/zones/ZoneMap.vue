@@ -18,6 +18,8 @@ import type {
     ZoneEggData,
     ZoneEntityData,
     ZoneMapData,
+    ZonePlanChangeData,
+    ZonePlanData,
     ZonePlantData,
     ZoneTerrainData,
 } from '@/types/App/Data/data.d';
@@ -44,6 +46,13 @@ import {
     type ZoneMapInks,
     type ZoneMapLayer,
 } from './zoneMapPainter';
+import {
+    planChangeId,
+    planChangeStatus,
+    type PlanChangeStatus,
+    removedFootprints,
+    snapToCell,
+} from './zonePlan';
 import {
     getOverlayPalette,
     getRenderAssets,
@@ -78,10 +87,16 @@ const props = defineProps<{
     layer: ZoneMapLayer;
     selectedId: string | null;
     zoneName: string;
+    /** Suggestion mode: the plan whose changes the map outlines (the map is then the planned layout); null shows the game as is. */
+    plan?: ZonePlanData | null;
+    selectedChangeId?: number | null;
 }>();
 
 const emit = defineEmits<{
     select: [instanceId: string];
+    'select-change': [changeId: number];
+    /** A movable change dropped on a new spot: its new bottom-left world cell. */
+    'move-change': [changeId: number, x: number, y: number];
     /** The drawn cell size in CSS pixels, zoom included: the comparison draws the game's capture at it. */
     'cell-size': [px: number];
 }>();
@@ -648,9 +663,207 @@ function problemMark(entity: MapEntity): 'problem' | 'clear' | 'unknown' {
 }
 
 function select(entity: MapEntity): void {
-    if (entity.instanceId !== null) {
+    const changeId = planChangeId(entity.instanceId);
+
+    if (changeId !== null) {
+        emit('select-change', changeId);
+    } else if (entity.instanceId !== null) {
         emit('select', entity.instanceId);
     }
+}
+
+// endregion
+
+// region Plan
+
+/** A change drawn over the map: where it stands (planned spot, or the target it removes) and how it stands out. */
+type PlanMark = {
+    change: ZonePlanChangeData;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    status: PlanChangeStatus;
+    /** A target the plan removes: a hatched ghost and not an outline. */
+    ghost: boolean;
+    /** A ghost its own replacement partly covers: outline only, so the new building shows. */
+    overlapped: boolean;
+};
+
+const planMarks = computed<PlanMark[]>(() => {
+    const plan = props.plan;
+
+    if (!plan) {
+        return [];
+    }
+
+    const byId = new Map(plan.changes.map((change) => [change.id, change]));
+    const ghosts = removedFootprints(plan).flatMap((footprint): PlanMark[] => {
+        const change = byId.get(footprint.changeId);
+
+        return change
+            ? [
+                  {
+                      ...footprint,
+                      change,
+                      status: planChangeStatus(change),
+                      ghost: true,
+                  },
+              ]
+            : [];
+    });
+    const placed = plan.changes.flatMap((change): PlanMark[] =>
+        change.x !== null &&
+        change.y !== null &&
+        change.width !== null &&
+        change.height !== null
+            ? [
+                  {
+                      change,
+                      x: change.x,
+                      y: change.y,
+                      width: change.width,
+                      height: change.height,
+                      status: planChangeStatus(change),
+                      ghost: false,
+                      overlapped: false,
+                  },
+              ]
+            : [],
+    );
+
+    return [...ghosts, ...placed];
+});
+
+function footprintStyle(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+): Record<string, string> {
+    const { column, row } = cellToLocal(x, y + height - 1, props.map.box);
+
+    return {
+        left: `${column * cellPx.value}px`,
+        top: `${row * cellPx.value}px`,
+        width: `${width * cellPx.value}px`,
+        height: `${height * cellPx.value}px`,
+    };
+}
+
+function changeName(change: ZonePlanChangeData): string {
+    return change.name ?? change.target?.label ?? change.prefabId ?? '';
+}
+
+/** A movable change being dragged: the grabbed cell's offset in its footprint and the snapped spot under the pointer. */
+const drag = ref<{
+    changeId: number;
+    pointerId: number;
+    offsetX: number;
+    offsetY: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    moved: boolean;
+} | null>(null);
+/** A drop also fires a click on the mark: it must not count as a selection. */
+let dropped = false;
+
+function pointerCell(event: PointerEvent): { x: number; y: number } | null {
+    if (!stage.value) {
+        return null;
+    }
+
+    const rect = stage.value.getBoundingClientRect();
+
+    return snapToCell(
+        event.clientX - rect.left,
+        event.clientY - rect.top,
+        cellPx.value,
+        props.map.box,
+    );
+}
+
+function onMarkPointerDown(event: PointerEvent, mark: PlanMark): void {
+    /** A drop whose click never came must not swallow this press's click. */
+    dropped = false;
+
+    if (event.button !== 0 || mark.ghost || !mark.change.movable) {
+        return;
+    }
+
+    const cell = pointerCell(event);
+
+    if (!cell) {
+        return;
+    }
+
+    /** The map must not pan under a dragged change. */
+    event.stopPropagation();
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    drag.value = {
+        changeId: mark.change.id,
+        pointerId: event.pointerId,
+        offsetX: cell.x - mark.x,
+        offsetY: cell.y - mark.y,
+        x: mark.x,
+        y: mark.y,
+        width: mark.width,
+        height: mark.height,
+        moved: false,
+    };
+}
+
+function onMarkPointerMove(event: PointerEvent): void {
+    const current = drag.value;
+
+    if (!current || current.pointerId !== event.pointerId) {
+        return;
+    }
+
+    const cell = pointerCell(event);
+
+    if (!cell) {
+        return;
+    }
+
+    const x = cell.x - current.offsetX;
+    const y = cell.y - current.offsetY;
+
+    if (x !== current.x || y !== current.y) {
+        current.x = x;
+        current.y = y;
+        current.moved = true;
+    }
+}
+
+function onMarkPointerUp(event: PointerEvent, mark: PlanMark): void {
+    const current = drag.value;
+
+    if (!current || current.pointerId !== event.pointerId) {
+        return;
+    }
+
+    drag.value = null;
+
+    if (current.moved) {
+        dropped = true;
+
+        if (current.x !== mark.x || current.y !== mark.y) {
+            emit('move-change', current.changeId, current.x, current.y);
+        }
+    }
+}
+
+function onMarkClick(mark: PlanMark): void {
+    if (dropped) {
+        dropped = false;
+
+        return;
+    }
+
+    emit('select-change', mark.change.id);
 }
 
 // endregion
@@ -768,6 +981,8 @@ const hover = ref<{
     x: number;
     y: number;
     entityKey: string | null;
+    /** A plan change under the pointer (suggestion mode). */
+    changeId?: number | null;
 } | null>(null);
 
 function onPointerMove(event: PointerEvent): void {
@@ -795,6 +1010,9 @@ function onPointerMove(event: PointerEvent): void {
     const target = (event.target as Element | null)?.closest<HTMLElement>(
         '[data-entity]',
     );
+    const mark = (event.target as Element | null)?.closest<HTMLElement>(
+        '[data-plan-change]',
+    );
     const { x, y } = localToCell(column, row, props.map.box);
     hover.value = {
         clientX: event.clientX,
@@ -802,6 +1020,7 @@ function onPointerMove(event: PointerEvent): void {
         x,
         y,
         entityKey: target?.dataset.entity ?? null,
+        changeId: mark ? Number(mark.dataset.planChange) : null,
     };
 }
 
@@ -815,6 +1034,14 @@ function onEntityFocus(event: FocusEvent, entity: MapEntity): void {
         entityKey: entity.key,
     };
 }
+
+const hoveredChange = computed(() =>
+    hover.value?.changeId
+        ? (props.plan?.changes.find(
+              (change) => change.id === hover.value?.changeId,
+          ) ?? null)
+        : null,
+);
 
 const hoveredEntity = computed(() =>
     hover.value?.entityKey
@@ -910,7 +1137,7 @@ const liftCanvas = ref<HTMLCanvasElement | null>(null);
 const hoveredBlock = computed<{ x: number; y: number } | null>(() => {
     const current = hover.value;
 
-    if (!current || hoveredEntity.value) {
+    if (!current || hoveredEntity.value || hoveredChange.value) {
         return null;
     }
 
@@ -1259,13 +1486,84 @@ const temperatureLegend = computed(() => {
                         <span
                             v-else-if="
                                 layer === 'problems' &&
-                                problemMark(entity) === 'unknown'
+                                problemMark(entity) === 'unknown' &&
+                                planChangeId(entity.instanceId) === null
                             "
                             class="zone-entity__pin zone-entity__pin--unknown"
                             aria-hidden="true"
                             >?</span
                         >
                     </button>
+                </div>
+                <!-- endregion -->
+
+                <!-- region Plan -->
+                <div v-if="plan" class="zone-map__plan">
+                    <button
+                        v-for="mark in planMarks"
+                        :key="`${mark.ghost ? 'g' : 'c'}${mark.change.id}`"
+                        type="button"
+                        class="zone-plan-mark"
+                        :class="[
+                            `zone-plan-mark--${mark.status}`,
+                            {
+                                'zone-plan-mark--ghost': mark.ghost,
+                                'zone-plan-mark--overlapped': mark.overlapped,
+                                'zone-plan-mark--movable':
+                                    !mark.ghost && mark.change.movable,
+                                'zone-plan-mark--selected':
+                                    mark.change.id === selectedChangeId,
+                                'zone-plan-mark--dragging':
+                                    !mark.ghost &&
+                                    drag?.changeId === mark.change.id &&
+                                    drag.moved,
+                            },
+                        ]"
+                        :style="
+                            footprintStyle(
+                                mark.x,
+                                mark.y,
+                                mark.width,
+                                mark.height,
+                            )
+                        "
+                        :data-plan-change="mark.change.id"
+                        :aria-label="
+                            t(`zones.plan.kinds.${mark.change.kind}`) +
+                            ' · ' +
+                            changeName(mark.change)
+                        "
+                        :aria-pressed="mark.change.id === selectedChangeId"
+                        @pointerdown="onMarkPointerDown($event, mark)"
+                        @pointermove="onMarkPointerMove"
+                        @pointerup="onMarkPointerUp($event, mark)"
+                        @pointercancel="drag = null"
+                        @click="onMarkClick(mark)"
+                    >
+                        <span
+                            v-if="
+                                !mark.ghost &&
+                                (mark.status === 'applied' ||
+                                    mark.status === 'conflicted')
+                            "
+                            class="zone-plan-mark__badge"
+                            aria-hidden="true"
+                            >{{ t(`zones.plan.states.${mark.status}`) }}</span
+                        >
+                    </button>
+                    <div
+                        v-if="drag?.moved"
+                        class="zone-plan-mark zone-plan-mark--preview"
+                        :style="
+                            footprintStyle(
+                                drag.x,
+                                drag.y,
+                                drag.width,
+                                drag.height,
+                            )
+                        "
+                        aria-hidden="true"
+                    />
                 </div>
                 <!-- endregion -->
 
@@ -1284,7 +1582,21 @@ const temperatureLegend = computed(() => {
                     :style="hoverStyle"
                     aria-hidden="true"
                 >
-                    <template v-if="hoveredEntity">
+                    <template v-if="hoveredChange">
+                        <strong
+                            >{{ t(`zones.plan.kinds.${hoveredChange.kind}`) }} ·
+                            {{ changeName(hoveredChange) }}</strong
+                        >
+                        <span>{{
+                            t(
+                                `zones.plan.states.${planChangeStatus(hoveredChange)}`,
+                            )
+                        }}</span>
+                        <span class="zone-map__hover-detail">{{
+                            hoveredChange.note
+                        }}</span>
+                    </template>
+                    <template v-else-if="hoveredEntity">
                         <strong
                             >{{ hoveredEntity.name }} ·
                             {{
@@ -1379,6 +1691,19 @@ const temperatureLegend = computed(() => {
                 <i class="zone-map__swatch zone-map__swatch--unknown" />
                 {{ t('zones.layers.unknown') }}
             </span>
+            <template v-if="plan">
+                <span class="zone-map__key">
+                    <i class="zone-map__swatch zone-map__swatch--plan" />
+                    {{ t('zones.plan.legend.planned') }}
+                </span>
+                <span
+                    v-if="planMarks.some((mark) => mark.ghost)"
+                    class="zone-map__key"
+                >
+                    <i class="zone-map__swatch zone-map__swatch--plan-ghost" />
+                    {{ t('zones.plan.legend.removed') }}
+                </span>
+            </template>
             <span v-if="layer === 'problems'" class="zone-map__key">
                 <i class="zone-map__swatch zone-map__swatch--pin">!</i>
                 {{ t('zones.layers.problems') }}
@@ -1776,6 +2101,88 @@ const temperatureLegend = computed(() => {
 }
 /* endregion */
 
+/* region Plan: changes outlined over the planned layout, removed targets as hatched ghosts */
+.zone-map__plan {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.zone-plan-mark {
+    --mark: var(--color-oni-amber);
+    position: absolute;
+    padding: 0;
+    border: 2px solid var(--mark);
+    border-radius: 3px;
+    background: none;
+    box-shadow: 0 0 0 1px oklch(0% 0 0 / 0.45);
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.zone-plan-mark--movable {
+    cursor: grab;
+}
+
+.zone-plan-mark--dragging {
+    opacity: 0.45;
+    cursor: grabbing;
+}
+
+.zone-plan-mark--unchecked {
+    border-style: dashed;
+}
+
+.zone-plan-mark--applied {
+    --mark: var(--ok);
+}
+
+.zone-plan-mark--conflicted {
+    --mark: var(--bad);
+}
+
+.zone-plan-mark--ghost {
+    --mark: var(--bad);
+    border-style: dashed;
+    border-width: 1.5px;
+    background: repeating-linear-gradient(
+        135deg,
+        oklch(72% 0.17 25 / 0.5) 0 2px,
+        oklch(15% 0.02 230 / 0.35) 2px 6px
+    );
+}
+
+.zone-plan-mark--ghost.zone-plan-mark--overlapped {
+    background: none;
+}
+
+.zone-plan-mark--selected {
+    outline: 2px solid oklch(97% 0.012 85);
+    outline-offset: 2px;
+}
+
+.zone-plan-mark--preview {
+    border-style: dashed;
+    background: oklch(72% 0.145 52 / 0.25);
+    pointer-events: none;
+}
+
+.zone-plan-mark__badge {
+    position: absolute;
+    bottom: calc(100% + 3px);
+    left: -2px;
+    padding: 0 5px;
+    border-radius: 3px;
+    background: var(--mark);
+    color: oklch(15% 0.02 230);
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 16px;
+    white-space: nowrap;
+}
+/* endregion */
+
 /* region Hover card */
 .zone-map__hover {
     position: fixed;
@@ -1858,6 +2265,19 @@ const temperatureLegend = computed(() => {
         -45deg,
         var(--line) 0 1.5px,
         var(--ink-1) 1.5px 5px
+    );
+}
+
+.zone-map__swatch--plan {
+    border: 2px solid var(--color-oni-amber);
+}
+
+.zone-map__swatch--plan-ghost {
+    border: 1.5px dashed var(--bad);
+    background: repeating-linear-gradient(
+        135deg,
+        oklch(72% 0.17 25 / 0.5) 0 2px,
+        transparent 2px 5px
     );
 }
 
