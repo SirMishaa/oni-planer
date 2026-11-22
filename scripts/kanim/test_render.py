@@ -31,3 +31,13 @@ def test_the_first_element_of_a_frame_is_drawn_in_front():
     [frame] = render_anim(symbols, anim)
 
     assert frame.getpixel((frame.width // 2, frame.height // 2)) == (255, 0, 0, 255)
+
+
+def test_an_element_with_a_nan_transform_is_not_drawn():
+    symbols = {RED: _symbol((255, 0, 0, 255)), BLUE: _symbol((0, 0, 255, 255))}
+    broken = AnimElement(BLUE, 0, (float("nan"), 0, 0, 1), (0, 0), 0.0)
+    anim = Anim(name="idle_loop", rate=30, frames=[AnimFrame(0, 0, 16, 16, [broken, _element(RED)])])
+
+    [frame] = render_anim(symbols, anim)
+
+    assert frame.getpixel((frame.width // 2, frame.height // 2)) == (255, 0, 0, 255)

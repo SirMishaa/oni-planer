@@ -5,6 +5,7 @@ split across multiple builds, each with its own atlas, so the caller merges them
 before rendering. Large builds span several atlas pages ({build}_0, _1, ...): each
 build frame names its page in build_image_index.
 """
+import math
 from collections.abc import Callable
 
 from PIL import Image
@@ -43,6 +44,16 @@ def _tint(sprite: Image.Image, color: tuple[float, float, float, float]) -> Imag
     return Image.merge("RGBA", bands)
 
 
+def _is_finite(*values: float) -> bool:
+    return all(math.isfinite(v) for v in values)
+
+
+def _is_drawable(element, frame: BuildFrame) -> bool:
+    """Some baby kanims (SnailBaby) carry elements or build frames with NaN
+    transforms: the game draws nothing for them, and they would poison the canvas size."""
+    return _is_finite(*element.matrix, *element.translation, frame.pivot_x, frame.pivot_y, frame.pivot_w, frame.pivot_h)
+
+
 def render_anim(symbols: SymbolTable, anim: Anim, skip_hashes: frozenset[int] = frozenset()) -> list[Image.Image]:
     frames = anim.frames
     # Canvas must contain every transformed sprite, not just the declared frame
@@ -51,8 +62,9 @@ def render_anim(symbols: SymbolTable, anim: Anim, skip_hashes: frozenset[int] = 
     pts_x: list[float] = []
     pts_y: list[float] = []
     for fr in frames:
-        pts_x += [fr.x - fr.w / 2, fr.x + fr.w / 2]
-        pts_y += [fr.y - fr.h / 2, fr.y + fr.h / 2]
+        if _is_finite(fr.x, fr.y, fr.w, fr.h):
+            pts_x += [fr.x - fr.w / 2, fr.x + fr.w / 2]
+            pts_y += [fr.y - fr.h / 2, fr.y + fr.h / 2]
         for el in fr.elements:
             if el.symbol_hash in skip_hashes:
                 continue
@@ -60,6 +72,8 @@ def render_anim(symbols: SymbolTable, anim: Anim, skip_hashes: frozenset[int] = 
             if entry is None or not entry[0]:
                 continue
             bf = entry[0][min(el.frame_index, len(entry[0]) - 1)]
+            if not _is_drawable(el, bf):
+                continue
             sw, sh = max(1, int(round(bf.pivot_w))), max(1, int(round(bf.pivot_h)))
             ax, ay = sw / 2 - bf.pivot_x, sh / 2 - bf.pivot_y
             a, b, c, d = el.matrix
@@ -68,6 +82,8 @@ def render_anim(symbols: SymbolTable, anim: Anim, skip_hashes: frozenset[int] = 
                 lx, ly = u - ax, v - ay
                 pts_x.append(a * lx + c * ly + tx)
                 pts_y.append(b * lx + d * ly + ty)
+    if not pts_x:
+        return [Image.new("RGBA", (1, 1), (0, 0, 0, 0)) for _ in frames]
     pad = 8.0
     ox, oy = min(pts_x) - pad, min(pts_y) - pad
     cw = max(1, int(round(max(pts_x) + pad - ox)))
@@ -100,6 +116,8 @@ def render_anim(symbols: SymbolTable, anim: Anim, skip_hashes: frozenset[int] = 
             if not build_frames:
                 continue
             bf = build_frames[min(el.frame_index, len(build_frames) - 1)]
+            if not _is_drawable(el, bf):
+                continue
             atlas = atlas_page(bf.build_image_index)
             if atlas is None:
                 continue
