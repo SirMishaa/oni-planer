@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Models\Building;
 use App\Models\CritterMorph;
+use App\Models\CritterMorphDiet;
 use App\Models\CritterMorphOutput;
 use App\Models\Element;
 use App\Models\Food;
@@ -16,7 +17,10 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 
 #[Description('Convert OniExtract building renders and connection sprites to webp assets')]
-#[Signature('game:import-assets {--force : Reconvert files even when the destination is up to date}')]
+#[Signature('game:import-assets
+    {--force : Reconvert files even when the destination is up to date}
+    {--export-path= : OniExtract export containing the source images}
+    {--diet-items-only : Convert only item sprites referenced by critter diets}')]
 final class GameImportAssetsCommand extends Command
 {
     private const int CONNECTION_MASKS = 16;
@@ -25,13 +29,19 @@ final class GameImportAssetsCommand extends Command
 
     public function handle(AssetConverter $converter): int
     {
-        $export = (string) config('game.export_path');
+        $export = (string) ($this->option('export-path') ?: config('game.export_path'));
         $assets = (string) config('game.assets_path');
 
         if (! File::isDirectory($export.'/ui_image')) {
             $this->error("No ui_image directory in the export: {$export}.");
 
             return self::FAILURE;
+        }
+
+        $dietItems = $this->importDietItems($converter, $export, $assets);
+        $this->info("Converted {$dietItems} diet item icons.");
+        if ($this->option('diet-items-only')) {
+            return self::SUCCESS;
         }
 
         $buildings = 0;
@@ -127,6 +137,25 @@ final class GameImportAssetsCommand extends Command
         return $solidsWithoutAsset === [] && $missingRenderFiles === [] && $eggsWithoutImage === [] && $emptyEggImages === [] && $emptyCritterImages === []
             ? self::SUCCESS
             : self::FAILURE;
+    }
+
+    private function importDietItems(AssetConverter $converter, string $export, string $assets): int
+    {
+        $converted = 0;
+        $ids = CritterMorphDiet::query()->where('food_kind', 'item')->distinct()->pluck('consumed_element_id');
+
+        foreach ($ids as $id) {
+            if ($id === '' || basename($id) !== $id
+                || File::isFile("{$assets}/elements/{$id}.webp")
+                || File::isFile("{$assets}/foods/{$id}.webp")
+                || File::isFile("{$assets}/plants/{$id}.webp")) {
+                continue;
+            }
+
+            $converted += (int) $this->convert($converter, "{$export}/ui_image/{$id}.png", "{$assets}/items/{$id}.webp");
+        }
+
+        return $converted;
     }
 
     /**

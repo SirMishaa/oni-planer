@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Mcp\Servers\OniServer;
+use App\Mcp\Tools\LookupTool;
 use App\Models\Element;
 use App\Models\Plant;
 use App\Models\PlantVariant;
@@ -100,4 +102,14 @@ it('imports plant records, storing unbounded pressure as zero and dropping items
         ->and($flower->inputs)->toHaveCount(1)
         ->and($flower->outputs)->toHaveCount(0)
         ->and($importer->skippedReferences())->toBe(2);
+
+    OniServer::tool(LookupTool::class, ['query' => 'PrickleFlower', 'kind' => 'plant', 'details' => true])
+        ->assertOk()->assertSee([
+            'growing temperature 5.0 °C..30.0 °C',
+            'atmosphere Oxygen, ContaminatedOxygen',
+            'crop PrickleFruit 1 units/harvest',
+            'seed PrickleFlowerSeed (1 units per seed drop)',
+        ]);
+    OniServer::tool(LookupTool::class, ['query' => 'BogLily', 'kind' => 'plant'])
+        ->assertOk()->assertSee('pressure ignored');
 });

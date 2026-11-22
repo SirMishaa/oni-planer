@@ -10,6 +10,7 @@ import {
     watch,
 } from 'vue';
 import GameSprite from '@/components/viability/GameSprite.vue';
+import { useCodex } from '@/composables/useCodex';
 import { useCritterMotion } from '@/composables/useCritterMotion';
 import { useT } from '@/composables/useT';
 import { useZoneText } from '@/composables/useZoneText';
@@ -100,6 +101,8 @@ const emit = defineEmits<{
     /** The drawn cell size in CSS pixels, zoom included: the comparison draws the game's capture at it. */
     'cell-size': [px: number];
 }>();
+
+const codex = useCodex();
 
 // endregion
 
@@ -259,6 +262,7 @@ function onPanEnd(event: PointerEvent): void {
 
 function onClickCapture(event: MouseEvent): void {
     if (pan.moved) {
+        lastClickedEntity = null;
         pan.moved = false;
         event.stopPropagation();
         event.preventDefault();
@@ -546,6 +550,7 @@ const mapEntities = computed<MapEntity[]>(() => {
                 key: `b${building.instanceId ?? index}`,
                 instanceId: building.instanceId,
                 kind: 'building',
+                prefabId: building.prefabId,
                 name: building.name,
                 sprite: building.sprite,
                 x: building.x,
@@ -582,6 +587,7 @@ const mapEntities = computed<MapEntity[]>(() => {
             key: `p${plant.instanceId ?? index}`,
             instanceId: plant.instanceId,
             kind: 'plant',
+            prefabId: plant.prefabId,
             name: plant.name,
             sprite: plant.sprite,
             x: plant.x,
@@ -669,6 +675,19 @@ function select(entity: MapEntity): void {
         emit('select-change', changeId);
     } else if (entity.instanceId !== null) {
         emit('select', entity.instanceId);
+    }
+}
+
+let lastClickedEntity: string | null = null;
+
+function onEntityClick(event: MouseEvent, entity: MapEntity): void {
+    const isDoubleClick =
+        event.detail === 2 && lastClickedEntity === entity.key;
+    lastClickedEntity = event.detail === 1 ? entity.key : null;
+    select(entity);
+
+    if (isDoubleClick && entity.prefabId !== null) {
+        void codex.openForPrefab(entity.prefabId);
     }
 }
 
@@ -1439,7 +1458,7 @@ const temperatureLegend = computed(() => {
                             entity.instanceId !== null &&
                             entity.instanceId === selectedId
                         "
-                        @click="select(entity)"
+                        @click="onEntityClick($event, entity)"
                         @focus="onEntityFocus($event, entity)"
                         @blur="hover = null"
                     >

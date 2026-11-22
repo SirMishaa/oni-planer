@@ -21,6 +21,7 @@ type TextBlock = {
     type: 'text';
     style: string;
     text: string | Record<string, string>;
+    parts?: { text: string; sprite: string | null }[];
 };
 type ImageBlock = {
     type: 'image';
@@ -29,7 +30,13 @@ type ImageBlock = {
 };
 type DividerBlock = { type: 'divider' };
 type Block = TextBlock | ImageBlock | DividerBlock;
-type Container = { layout: string; lock_id: string | null; blocks: Block[] };
+type Container = {
+    layout: string;
+    lock_id: string | null;
+    blocks: Block[];
+    section_title?: string;
+    section_sprite?: string;
+};
 // endregion
 
 const codex = useCodex();
@@ -56,6 +63,14 @@ const {
 } = codex;
 
 const searchInput = ref<HTMLInputElement | null>(null);
+const scrollArea = ref<HTMLElement | null>(null);
+const expandedLists = ref(new Set<string>());
+const LIST_PREVIEW_SIZE = 5;
+
+watch(activeId, () => {
+    expandedLists.value.clear();
+    if (scrollArea.value) scrollArea.value.scrollTop = 0;
+});
 
 // region Tones
 const TONE_CHIP: Record<CodexTone, string> = {
@@ -124,9 +139,57 @@ const articleParent = computed(() =>
     article.value ? codex.parentOf(article.value.parent_codex_id) : null,
 );
 
+const articleVariants = computed(() =>
+    articleParent.value
+        ? codex.childrenOf(articleParent.value.codex_id)
+        : articleChildren.value,
+);
+
 const containers = computed<Container[]>(
     () => (article.value?.content ?? []) as Container[],
 );
+
+const factLists = computed(() =>
+    containers.value.map((container) => {
+        const lists = new Map<number, { start: number; end: number }>();
+        if (!container.section_title) return lists;
+
+        let start = 0;
+        while (start < container.blocks.length) {
+            let end = start;
+            while (end < container.blocks.length) {
+                const block = container.blocks[end];
+                if (!block || !isText(block) || !block.parts?.length) break;
+                end++;
+            }
+            if (end - start > LIST_PREVIEW_SIZE) {
+                const list = { start, end };
+                for (let i = start; i < end; i++) lists.set(i, list);
+            }
+            start = end + 1;
+        }
+        return lists;
+    }),
+);
+
+function visibleBlock(container: number, index: number): boolean {
+    const list = factLists.value[container]?.get(index);
+    return (
+        !list ||
+        index - list.start < LIST_PREVIEW_SIZE ||
+        expandedLists.value.has(`${container}:${list.start}`)
+    );
+}
+
+function listEndingAt(container: number, index: number) {
+    const list = factLists.value[container]?.get(index);
+    return list?.end === index + 1 ? list : null;
+}
+
+function toggleList(key: string): void {
+    if (expandedLists.value.has(key)) expandedLists.value.delete(key);
+    else expandedLists.value.add(key);
+}
 
 const panelStyle = computed(() => ({
     width: isDesktop.value ? `${width.value}px` : '100%',
@@ -423,7 +486,10 @@ onBeforeUnmount(stopResize);
             <!-- endregion -->
 
             <!-- region Body -->
-            <div class="codex-scroll relative flex-1 overflow-y-auto">
+            <div
+                ref="scrollArea"
+                class="codex-scroll relative flex-1 overflow-y-auto"
+            >
                 <Transition name="codex-mode" mode="out-in">
                     <div :key="bodyView" class="px-3.5 py-3.5">
                         <!-- region Home tiles -->
@@ -685,7 +751,11 @@ onBeforeUnmount(stopResize);
                                 </button>
                             </div>
 
-                            <article v-else-if="article" class="space-y-4">
+                            <article
+                                v-else-if="article"
+                                :key="article.codex_id"
+                                class="space-y-4"
+                            >
                                 <div class="space-y-2">
                                     <img
                                         v-if="article.image"
@@ -744,103 +814,208 @@ onBeforeUnmount(stopResize);
                                     </button>
                                 </div>
 
-                                <div
-                                    v-for="(container, ci) in containers"
-                                    :key="ci"
-                                    class="space-y-2.5"
-                                >
-                                    <template
-                                        v-for="(block, bi) in container.blocks"
-                                        :key="bi"
-                                    >
-                                        <p
-                                            v-if="isText(block)"
-                                            :class="textClasses(block.style)"
-                                            class="prose whitespace-pre-line dark:prose-invert"
-                                        >
-                                            {{ pickLocale(block.text) }}
-                                        </p>
-                                        <div
-                                            v-else-if="isImage(block)"
-                                            class="flex items-center gap-2 rounded-md border border-dashed border-[oklch(80%_0.02_60)] bg-[oklch(93%_0.012_75)] px-3 py-2 text-[11px] text-[oklch(55%_0.02_60)] dark:border-[oklch(34%_0.015_250)] dark:bg-[oklch(24%_0.014_250)] dark:text-[oklch(62%_0.015_65)]"
-                                        >
-                                            <svg
-                                                width="16"
-                                                height="16"
-                                                viewBox="0 0 18 18"
-                                                fill="none"
-                                            >
-                                                <rect
-                                                    x="2.5"
-                                                    y="3.5"
-                                                    width="13"
-                                                    height="11"
-                                                    rx="1.5"
-                                                    stroke="currentColor"
-                                                    stroke-width="1.3"
-                                                />
-                                                <circle
-                                                    cx="6.5"
-                                                    cy="7"
-                                                    r="1.2"
-                                                    stroke="currentColor"
-                                                    stroke-width="1.1"
-                                                />
-                                                <path
-                                                    d="M3.5 13l3.5-3.5 2.5 2 2.5-3 2.5 2.5"
-                                                    stroke="currentColor"
-                                                    stroke-width="1.2"
-                                                    stroke-linejoin="round"
-                                                />
-                                            </svg>
-                                            <span class="truncate">{{
-                                                block.sprite ?? 'image'
-                                            }}</span>
-                                        </div>
-                                        <hr
-                                            v-else
-                                            class="border-t border-[oklch(86%_0.015_60)] dark:border-[oklch(30%_0.014_250)]"
-                                        />
-                                    </template>
-                                </div>
-
-                                <div
-                                    v-if="articleChildren.length"
-                                    class="space-y-2 border-t border-[oklch(88%_0.012_60)] pt-3 dark:border-[oklch(28%_0.014_250)]"
+                                <section
+                                    v-if="articleVariants.length"
+                                    aria-label="Variantes"
+                                    class="space-y-1.5"
                                 >
                                     <h3
-                                        class="text-[10px] font-bold tracking-[0.14em] text-[oklch(48%_0.02_60)] uppercase dark:text-[oklch(64%_0.015_65)]"
+                                        class="text-[11px] font-semibold text-[oklch(32%_0.02_60)] dark:text-[oklch(82%_0.012_65)]"
                                     >
                                         Variantes
                                     </h3>
-                                    <div class="grid grid-cols-2 gap-2">
+                                    <div class="flex flex-wrap gap-1.5">
                                         <button
-                                            v-for="child in articleChildren"
-                                            :key="child.codex_id"
+                                            v-for="variant in articleVariants"
+                                            :key="variant.codex_id"
                                             type="button"
-                                            class="flex items-center gap-2 rounded-lg border border-[oklch(88%_0.012_60)] bg-[oklch(97%_0.008_75)] px-2 py-1.5 text-left text-[12px] font-medium text-[oklch(28%_0.02_60)] transition-colors hover:border-oni-amber-dim hover:bg-[oklch(94%_0.02_75)] dark:border-[oklch(30%_0.014_250)] dark:bg-[oklch(24%_0.012_250)] dark:text-[oklch(86%_0.012_65)] dark:hover:bg-[oklch(27%_0.016_250)]"
+                                            :aria-current="
+                                                variant.codex_id ===
+                                                article.codex_id
+                                                    ? 'true'
+                                                    : undefined
+                                            "
+                                            :disabled="
+                                                variant.codex_id ===
+                                                article.codex_id
+                                            "
+                                            class="inline-flex max-w-full items-center gap-1.5 rounded-md border border-[oklch(86%_0.02_60)] px-2 py-1 text-xs font-medium text-[oklch(32%_0.02_60)] enabled:hover:bg-[oklch(92%_0.03_60)] disabled:border-oni-amber-dim dark:border-[oklch(35%_0.014_250)] dark:text-[oklch(82%_0.012_65)] dark:enabled:hover:bg-[oklch(27%_0.016_250)]"
                                             @click="
                                                 codex.openArticle(
-                                                    child.codex_id,
+                                                    variant.codex_id,
                                                 )
                                             "
                                         >
                                             <img
-                                                v-if="child.image"
-                                                :src="child.image"
+                                                v-if="variant.image"
+                                                :src="variant.image"
                                                 alt=""
-                                                loading="lazy"
-                                                class="h-8 w-8 shrink-0 object-contain"
+                                                class="size-5 shrink-0 object-contain"
                                             />
-                                            <span class="truncate">{{
+                                            {{
                                                 pickLocale(
-                                                    child.title,
-                                                    child.codex_id,
+                                                    variant.title,
+                                                    variant.codex_id,
                                                 )
-                                            }}</span>
+                                            }}
                                         </button>
                                     </div>
-                                </div>
+                                </section>
+
+                                <component
+                                    :is="
+                                        container.section_title
+                                            ? 'details'
+                                            : 'div'
+                                    "
+                                    v-for="(container, ci) in containers"
+                                    :key="ci"
+                                    :open="
+                                        container.section_title
+                                            ? true
+                                            : undefined
+                                    "
+                                    class="space-y-2.5"
+                                    :class="
+                                        container.section_title
+                                            ? 'rounded-lg border border-shell-border px-3 py-2'
+                                            : undefined
+                                    "
+                                >
+                                    <summary
+                                        v-if="container.section_title"
+                                        class="cursor-pointer text-sm font-semibold text-[oklch(32%_0.02_60)] dark:text-[oklch(82%_0.012_65)]"
+                                        :class="{
+                                            'relative min-h-11 py-2.5 pr-12':
+                                                container.section_sprite,
+                                        }"
+                                    >
+                                        {{ container.section_title }}
+                                        <img
+                                            v-if="container.section_sprite"
+                                            :src="container.section_sprite"
+                                            alt=""
+                                            width="40"
+                                            height="40"
+                                            loading="lazy"
+                                            class="absolute top-0.5 right-0 size-10 rounded-full border border-[oklch(86%_0.02_60)] object-contain p-0.5 dark:border-[oklch(38%_0.02_250)]"
+                                        />
+                                    </summary>
+                                    <template
+                                        v-for="(block, bi) in container.blocks"
+                                        :key="bi"
+                                    >
+                                        <template v-if="visibleBlock(ci, bi)">
+                                            <p
+                                                v-if="isText(block)"
+                                                :class="
+                                                    textClasses(block.style)
+                                                "
+                                                class="prose whitespace-pre-line dark:prose-invert"
+                                            >
+                                                <template v-if="block.parts">
+                                                    <span
+                                                        v-for="(
+                                                            part, pi
+                                                        ) in block.parts"
+                                                        :key="pi"
+                                                        :class="
+                                                            part.sprite
+                                                                ? 'inline-flex max-w-full items-center gap-1.5 align-middle'
+                                                                : undefined
+                                                        "
+                                                    >
+                                                        <img
+                                                            v-if="part.sprite"
+                                                            :src="part.sprite"
+                                                            alt=""
+                                                            width="20"
+                                                            height="20"
+                                                            class="not-prose size-5 shrink-0 object-contain"
+                                                        />
+                                                        <span class="min-w-0">{{
+                                                            part.text
+                                                        }}</span>
+                                                    </span>
+                                                </template>
+                                                <template v-else>{{
+                                                    pickLocale(block.text)
+                                                }}</template>
+                                            </p>
+                                            <div
+                                                v-else-if="isImage(block)"
+                                                class="flex items-center gap-2 rounded-md border border-dashed border-[oklch(80%_0.02_60)] bg-[oklch(93%_0.012_75)] px-3 py-2 text-[11px] text-[oklch(55%_0.02_60)] dark:border-[oklch(34%_0.015_250)] dark:bg-[oklch(24%_0.014_250)] dark:text-[oklch(62%_0.015_65)]"
+                                            >
+                                                <svg
+                                                    width="16"
+                                                    height="16"
+                                                    viewBox="0 0 18 18"
+                                                    fill="none"
+                                                >
+                                                    <rect
+                                                        x="2.5"
+                                                        y="3.5"
+                                                        width="13"
+                                                        height="11"
+                                                        rx="1.5"
+                                                        stroke="currentColor"
+                                                        stroke-width="1.3"
+                                                    />
+                                                    <circle
+                                                        cx="6.5"
+                                                        cy="7"
+                                                        r="1.2"
+                                                        stroke="currentColor"
+                                                        stroke-width="1.1"
+                                                    />
+                                                    <path
+                                                        d="M3.5 13l3.5-3.5 2.5 2 2.5-3 2.5 2.5"
+                                                        stroke="currentColor"
+                                                        stroke-width="1.2"
+                                                        stroke-linejoin="round"
+                                                    />
+                                                </svg>
+                                                <span class="truncate">{{
+                                                    block.sprite ?? 'image'
+                                                }}</span>
+                                            </div>
+                                            <hr
+                                                v-else
+                                                class="border-t border-[oklch(86%_0.015_60)] dark:border-[oklch(30%_0.014_250)]"
+                                            />
+                                        </template>
+                                        <template
+                                            v-for="list in [
+                                                listEndingAt(ci, bi),
+                                            ]"
+                                            :key="`more-${bi}`"
+                                        >
+                                            <button
+                                                v-if="list"
+                                                type="button"
+                                                :aria-expanded="
+                                                    expandedLists.has(
+                                                        `${ci}:${list.start}`,
+                                                    )
+                                                "
+                                                class="block rounded px-1 py-0.5 text-xs font-semibold text-[oklch(32%_0.02_60)] underline underline-offset-2 hover:bg-[oklch(92%_0.03_60)] dark:text-[oklch(82%_0.012_65)] dark:hover:bg-[oklch(27%_0.016_250)]"
+                                                @click="
+                                                    toggleList(
+                                                        `${ci}:${list.start}`,
+                                                    )
+                                                "
+                                            >
+                                                {{
+                                                    expandedLists.has(
+                                                        `${ci}:${list.start}`,
+                                                    )
+                                                        ? 'Voir moins'
+                                                        : `Voir ${list.end - list.start - LIST_PREVIEW_SIZE} de plus`
+                                                }}
+                                            </button>
+                                        </template>
+                                    </template>
+                                </component>
 
                                 <div
                                     v-if="article.links.length"

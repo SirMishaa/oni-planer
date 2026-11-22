@@ -266,7 +266,7 @@ final class GameImportCommand extends Command
         new FoodImporter()->importRecords(new FoodReader($export)->records());
 
         $this->info('Indexing prefab names...');
-        new PrefabNameImporter($resolver, $catalog)->import(compact('buildings', 'critters', 'plants', 'geysers'));
+        new PrefabNameImporter($resolver, $catalog)->import(compact('buildings', 'critters', 'plants', 'geysers'), $export);
 
         $this->info('Importing duplicant data...');
         new DuplicantImporter($resolver)->importRecords(new DuplicantReader($export)->records());

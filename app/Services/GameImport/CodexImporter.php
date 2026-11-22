@@ -59,6 +59,7 @@ final readonly class CodexImporter
             );
         }
 
+        $this->addGeneratedBuildingEntries();
         $this->linkEntities();
     }
 
@@ -97,6 +98,31 @@ final readonly class CodexImporter
                 default => null,
             };
         });
+    }
+
+    private function addGeneratedBuildingEntries(): void
+    {
+        $knownIds = CodexEntry::query()->pluck('codex_id')
+            ->map(fn (string $id): string => $this->normalizeKey($id))->flip();
+
+        foreach (Building::query()->get(['building_id', 'name', 'dlc_id']) as $building) {
+            $id = $building->building_id;
+            $key = $this->normalizeKey($id);
+            if ($knownIds->has($key)) {
+                continue;
+            }
+            $nameKey = 'STRINGS.BUILDINGS.PREFABS.'.mb_strtoupper($id).'.NAME';
+
+            CodexEntry::query()->create([
+                'codex_id' => $id,
+                'category' => 'Buildings',
+                'title' => $building->getTranslations('name') ?: ['en' => $id],
+                'title_key' => $nameKey,
+                'content' => [],
+                'dlc_id' => $building->dlc_id,
+            ]);
+            $knownIds->put($key, true);
+        }
     }
 
     /**

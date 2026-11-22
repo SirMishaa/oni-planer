@@ -11,6 +11,7 @@ use App\Services\GameImport\OniExport\ModCatalog;
 use App\Services\GameImport\OniExport\OniExport;
 use App\Services\GameImport\PrefabNameImporter;
 use App\Services\GameImport\StringResolver;
+use Illuminate\Support\Facades\File;
 
 function importPrefabNames(array $critters = [], array $plants = [], array $buildings = [], array $geysers = [], ?ModCatalog $mods = null): void
 {
@@ -62,6 +63,40 @@ it('keys diet items that are not elements by looking them up in STRINGS', functi
 
     expect(nameKeyOf('DinosaurMeat'))->toBe('STRINGS.ITEMS.FOOD.DINOSAURMEAT.NAME')
         ->and(nameKeyOf('NoSuchThing'))->toBeNull();
+});
+
+it('indexes an exported seed by its seed name rather than guessing from its prefab id', function (): void {
+    $root = sys_get_temp_dir().'/oni-seed-'.uniqid();
+    File::ensureDirectoryExists($root.'/database');
+    try {
+        $key = 'CREATURES.SPECIES.SEEDS.TESTMEALWOOD.NAME';
+        $name = '<link="TESTMEALWOOD">Graine de test</link>';
+        $itemKey = 'ITEMS.INDUSTRIAL_PRODUCTS.CRAB_SHELL.VARIANT_WOOD.NAME';
+        $itemName = "<link=\"CRABWOODSHELL\">Mue d'Oakshell</link>";
+        File::put($root.'/seed.pot', "msgctxt \"STRINGS.$key\"\nmsgid \"Test Seed\"\nmsgstr \"\"\n\nmsgctxt \"STRINGS.$itemKey\"\nmsgid \"Oakshell Molt\"\nmsgstr \"\"\n");
+        File::put($root.'/database/items.json', json_encode(['seeds' => [
+            ['name' => 'UnrelatedPrefabSeed', 'nameString' => $name],
+            ['name' => 'UnknownSeed', 'nameString' => 'Unknown'],
+        ]], JSON_THROW_ON_ERROR));
+        File::put($root.'/database/po_string.json', json_encode([
+            'CREATURES' => [$key => $name, 'CREATURES.SPECIES.TESTMEALWOOD.NAME' => $name],
+            'ITEMS' => [$itemKey => $itemName],
+        ], JSON_THROW_ON_ERROR));
+        File::put($root.'/database/entities.json', json_encode(['entities' => [
+            ['name' => 'CrabWoodShell', 'nameString' => $itemName],
+            ['name' => 'UnreferencedShell', 'nameString' => $itemName],
+        ]], JSON_THROW_ON_ERROR));
+        CritterMorphDiet::factory()->create(['consumed_element_id' => 'CrabWoodShell']);
+
+        new PrefabNameImporter(new StringResolver($root.'/seed.pot'))->import([], new OniExport($root));
+
+        expect(nameKeyOf('UnrelatedPrefabSeed'))->toBe('STRINGS.'.$key)
+            ->and(nameKeyOf('UnknownSeed'))->toBeNull()
+            ->and(nameKeyOf('CrabWoodShell'))->toBe('STRINGS.'.$itemKey)
+            ->and(nameKeyOf('UnreferencedShell'))->toBeNull();
+    } finally {
+        File::deleteDirectory($root);
+    }
 });
 
 it('skips names whose key does not exist in the strings', function (): void {

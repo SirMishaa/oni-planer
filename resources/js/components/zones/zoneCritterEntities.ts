@@ -13,6 +13,7 @@ export type MapEntity = {
     key: string;
     instanceId: string | null;
     kind: 'plant' | 'building' | 'critter' | 'egg';
+    prefabId: string | null;
     name: string;
     sprite: string | null;
     /** The cell it stands on (its bottom-left cell for a footprint), in world cells. */
@@ -71,6 +72,7 @@ export function critterEntities(
         key: `c${critter.instanceId}`,
         instanceId: critter.instanceId,
         kind: 'critter',
+        prefabId: critter.prefabId,
         name: critter.name,
         sprite: critter.worldSprite ?? critter.sprite,
         x: Math.floor(critter.x),
@@ -90,6 +92,7 @@ export function critterEntities(
                 key: `e${egg.instanceId}`,
                 instanceId: egg.instanceId,
                 kind: 'egg',
+                prefabId: egg.spawns,
                 name: egg.name,
                 sprite: egg.sprite,
                 x,

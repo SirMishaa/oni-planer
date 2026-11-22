@@ -63,6 +63,7 @@ final readonly class BuildingImporter
                 'replaceable' => $raw['replaceable'] ?? false,
                 'placement_rect' => $raw['placement_rect'] ?? null,
                 'mod_id' => $raw['mod_id'] ?? null,
+                'codex_data' => $raw['codex_data'] ?? null,
             ]);
 
             /** @var list<array{material_category: string, amount: float}> $materials */

@@ -17,7 +17,7 @@ use Spatie\Translatable\HasTranslations;
 #[Fillable([
     'morph_id', 'critter_id', 'is_base', 'min_temp', 'max_temp',
     'calories_per_cycle', 'incubation_time', 'lifespan',
-    'overcrowding_threshold', 'name', 'mod_id',
+    'overcrowding_threshold', 'name', 'mod_id', 'codex_data',
 ])]
 final class CritterMorph extends Model
 {
@@ -49,6 +49,6 @@ final class CritterMorph extends Model
 
     public function casts(): array
     {
-        return ['is_base' => 'boolean', 'name' => 'array'];
+        return ['is_base' => 'boolean', 'name' => 'array', 'codex_data' => 'array'];
     }
 }

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use App\Models\Building;
 use App\Models\CodexEntry;
+use App\Models\Critter;
+use App\Models\CritterMorph;
+use App\Models\CritterMorphDiet;
 use App\Models\Element;
 use Illuminate\Support\Facades\File;
 
@@ -60,6 +63,68 @@ it('returns an article with its content blocks', function (): void {
         ->assertJsonPath('title', 'Electrolyzer')
         ->assertJsonPath('content.0.blocks.0', ['type' => 'text', 'style' => 'Body', 'text' => 'Splits water into oxygen and hydrogen.'])
         ->assertJsonPath('content.0.blocks.1', ['type' => 'divider']);
+});
+
+it('indexes linked map prefabs even when their article has a different id', function (): void {
+    $buildingArticle = CodexEntry::factory()->create(['codex_id' => 'PressArticle']);
+    $building = Building::factory()->create(['building_id' => 'Biochemistry_ExpellerPress']);
+    $buildingArticle->buildings()->attach($building);
+
+    $critterArticle = CodexEntry::factory()->create(['codex_id' => 'PacuSpecies']);
+    $critter = Critter::factory()->create(['critter_id' => 'PacuBeta']);
+    $critterArticle->critters()->attach($critter);
+    CritterMorph::factory()->create(['critter_id' => $critter->id, 'morph_id' => 'PacuBetaBaby']);
+
+    $entries = collect($this->getJson(route('codex.index'))->assertOk()->json())->keyBy('codex_id');
+
+    expect($entries['PressArticle']['prefabs'] ?? [])->toBe(['Biochemistry_ExpellerPress'])
+        ->and($entries['PacuSpecies']['prefabs'] ?? [])->toBe(['PacuBeta', 'PacuBetaBaby']);
+});
+
+it('adds adult variant diet and butchering blocks without borrowing facts across variants', function (): void {
+    config(['game.assets_path' => $this->publicDir]);
+    foreach (['plants/PlanktonCoral', 'foods/FishMeat', 'critters/PrehistoricPacu', 'critters/PacuBeta', 'critters/Pacu'] as $sprite) {
+        $path = $this->publicDir.'/'.$sprite.'.webp';
+        File::ensureDirectoryExists(dirname($path));
+        File::put($path, '');
+    }
+
+    $entry = CodexEntry::factory()->create(['codex_id' => 'PacuSpecies', 'content' => []]);
+    $base = Critter::factory()->create(['critter_id' => 'Pacu']);
+    $beta = Critter::factory()->create(['critter_id' => 'PacuBeta']);
+    $entry->critters()->attach([$base->id, $beta->id]);
+
+    CritterMorph::factory()->create(['critter_id' => $base->id, 'morph_id' => 'Pacu', 'is_base' => true]);
+    $morph = CritterMorph::factory()->create([
+        'critter_id' => $beta->id, 'morph_id' => 'PacuBeta', 'name' => ['en' => 'Beta Pacu'], 'is_base' => true,
+        'codex_data' => ['butcher_drops' => [['id' => 'FishMeat', 'mass_kg' => 1, 'kcal' => 1000]]],
+    ]);
+    CritterMorphDiet::factory()->create([
+        'critter_morph_id' => $morph->id, 'consumed_element_id' => 'PlanktonCoral',
+        'produced_element_id' => 'Lime', 'food_kind' => 'plant',
+        'codex_data' => ['amount' => 12.5, 'unit' => 'percent_growth_per_cycle', 'output_kg_per_cycle' => 5],
+    ]);
+    CritterMorph::factory()->create(['critter_id' => $beta->id, 'morph_id' => 'PacuBetaBaby', 'is_base' => false]);
+    $predator = Critter::factory()->create(['critter_id' => 'PrehistoricPacu']);
+    $predatorMorph = CritterMorph::factory()->create(['critter_id' => $predator->id, 'morph_id' => 'PrehistoricPacu', 'is_base' => true]);
+    CritterMorphDiet::factory()->create([
+        'critter_morph_id' => $predatorMorph->id, 'consumed_element_id' => 'PacuBeta', 'food_kind' => 'prey',
+    ]);
+
+    $this->getJson(route('codex.show', 'PacuSpecies'))
+        ->assertOk()
+        ->assertJsonCount(1, 'content')
+        ->assertJsonPath('content.0.section_title', 'Beta Pacu (PacuBeta)')
+        ->assertJsonPath('content.0.section_sprite', '/assets/game/critters/PacuBeta.webp')
+        ->assertJsonPath('content.0.blocks.1.text', 'PlanktonCoral 12,5 % de croissance/cycle → Lime 5 kg/cycle')
+        ->assertJsonPath('content.0.blocks.1.parts.0.sprite', '/assets/game/plants/PlanktonCoral.webp')
+        ->assertJsonPath('content.0.blocks.1.parts.1.text', ' → ')
+        ->assertJsonPath('content.0.blocks.1.parts.2', ['text' => 'Lime 5 kg/cycle', 'sprite' => null])
+        ->assertJsonPath('content.0.blocks.3.text', 'FishMeat : 1 kg, 1 000 kcal par découpe')
+        ->assertJsonPath('content.0.blocks.3.parts.0.sprite', '/assets/game/foods/FishMeat.webp')
+        ->assertJsonPath('content.0.blocks.5.text', 'Consommé par PrehistoricPacu')
+        ->assertJsonPath('content.0.blocks.5.parts.1.sprite', '/assets/game/critters/PrehistoricPacu.webp')
+        ->assertDontSee('PacuBetaBaby');
 });
 
 it('translates the article title and text blocks from their STRINGS keys', function (): void {

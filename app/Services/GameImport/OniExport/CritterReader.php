@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Log;
  * diet products and eggs owned by one (counted in {@see self::skippedReferences()}).
  * Whether a referenced id exists in the database is the importer's concern.
  *
- * @phpstan-type CritterDietRecord array{consumed_element_id: string, amount_per_cycle: float, produced_element_id: string|null, conversion_ratio: float|null, food_kind: 'item'|'plant'|'prey'}
+ * @phpstan-type CritterDietRecord array{consumed_element_id: string, amount_per_cycle: float, produced_element_id: string|null, conversion_ratio: float|null, food_kind: 'item'|'plant'|'prey', codex_data?: array{amount: float, unit: string, output_kg_per_cycle: float|null}}
  * @phpstan-type CritterOutputRecord array{element_id: string, amount_per_cycle: float, output_type: 'egg'}
  * @phpstan-type CritterRecord array{
  *     critter_id: string,
@@ -37,6 +37,7 @@ use Illuminate\Support\Facades\Log;
  *     name_localization_id: string|null,
  *     dlc_id: string|null,
  *     mod_id: int|null,
+ *     codex_data: array<string, mixed>,
  *     diets: list<CritterDietRecord>,
  *     outputs: list<CritterOutputRecord>,
  * }
@@ -44,6 +45,9 @@ use Illuminate\Support\Facades\Log;
 final class CritterReader
 {
     private const int SECONDS_PER_CYCLE = 600;
+
+    /** @var list<string> Base-game prefabs verified to use DirectlyEdiblePlant_Growth. */
+    private const array GROWTH_FOOD_PREFABS = ['KelpPlant', 'PlanktonCoral'];
 
     /**
      * Species whose variant family differs from the species tag without its
@@ -89,10 +93,19 @@ final class CritterReader
         $traits = $this->baseTraits();
         $incubationRates = $this->incubationRates();
         $nameKeys = $this->creatureNameKeys();
+        $entities = $this->export->json('entities.json')['entities'] ?? [];
+        $prefabs = array_column($entities, null, 'name');
+        $seedPrefabs = array_column($this->export->json('items.json')['seeds'] ?? [], null, 'name');
+        $foodPrefabs = array_flip(array_column($this->export->json('food.json')['foodInfoList'] ?? [], 'Id'));
+        $unitSeeds = array_filter(
+            array_diff_key($seedPrefabs, $foodPrefabs),
+            static fn (array $seed): bool => (float) ($seed['primaryElement']['Mass'] ?? 0) === 1.0,
+        );
+        $elements = $this->export->json('elements.json')['elementTable'] ?? [];
 
         $records = [];
 
-        foreach ($this->export->json('entities.json')['entities'] ?? [] as $entity) {
+        foreach ($entities as $entity) {
             $prefabId = (string) $entity['name'];
 
             if (! $this->isCreature($entity) || $this->catalog->isSkipped($prefabId)) {
@@ -124,7 +137,13 @@ final class CritterReader
                 'name_localization_id' => $nameKeys[(string) ($entity['nameString'] ?? '')] ?? null,
                 'dlc_id' => $entity['kPrefabID']['requiredDlcIds'][0] ?? null,
                 'mod_id' => $this->catalog->modIdFor($prefabId),
-                'diets' => $this->diets($entity['creatureCalorieMonitorDef']['diet']['infos'] ?? [], $caloriesPerCycle),
+                'codex_data' => [
+                    'survival_min_kelvin' => $temperature['temperatureColdDeadly'] ?? null,
+                    'survival_max_kelvin' => $temperature['temperatureHotDeadly'] ?? null,
+                    'conversions' => $this->conversions($entity['elementConverters'] ?? [], $elements),
+                    'butcher_drops' => $this->butcherDrops($extras[$prefabId]['butcherDrops'] ?? []),
+                ],
+                'diets' => $this->diets($entity['creatureCalorieMonitorDef']['diet']['infos'] ?? [], $caloriesPerCycle, $prefabs, $unitSeeds),
                 'outputs' => $this->eggOutputs($eggId, (float) ($fertility['baseFertileCycles'] ?? 0)),
             ];
         }
@@ -144,6 +163,31 @@ final class CritterReader
         Log::warning('Unknown critter diet foodType, read as item.', ['foodType' => $foodType]);
 
         return 'item';
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $drops
+     * @return list<array{id: string, prefab_multiplier: float, mass_kg: float|null, kcal: float|null}>
+     */
+    private function butcherDrops(array $drops): array
+    {
+        $records = [];
+        foreach ($drops as $drop) {
+            $id = $drop['prefabId'] ?? null;
+            $multiplier = $drop['prefabAmount'] ?? null;
+            if (! is_string($id) || $id === '' || ! is_numeric($multiplier) || (float) $multiplier <= 0 || $this->catalog->isSkipped($id)) {
+                continue;
+            }
+
+            $records[] = [
+                'id' => $id,
+                'prefab_multiplier' => (float) $multiplier,
+                'mass_kg' => is_numeric($drop['massKg'] ?? null) ? (float) $drop['massKg'] : null,
+                'kcal' => is_numeric($drop['calories'] ?? null) ? (float) $drop['calories'] / 1000 : null,
+            ];
+        }
+
+        return $records;
     }
 
     /** @param  array<string, mixed>  $entity */
@@ -173,9 +217,11 @@ final class CritterReader
 
     /**
      * @param  list<array<string, mixed>>  $infos
+     * @param  array<string, array<string, mixed>>  $prefabs
+     * @param  array<string, array<string, mixed>>  $unitSeeds
      * @return list<CritterDietRecord>
      */
-    private function diets(array $infos, float $caloriesPerCycle): array
+    private function diets(array $infos, float $caloriesPerCycle, array $prefabs, array $unitSeeds): array
     {
         $diets = [];
 
@@ -197,17 +243,92 @@ final class CritterReader
                     continue;
                 }
 
+                $foodType = (int) ($info['foodType'] ?? 0);
+                $amount = $caloriesPerKg > 0 ? $caloriesPerCycle / $caloriesPerKg : 0.0;
+                $rate = $caloriesPerKg > 0
+                    ? $this->codexDietRate($foodType, $consumedId, $prefabs[$consumedId] ?? [], isset($unitSeeds[$consumedId]), $amount, $info['producedConversionRate'] ?? null)
+                    : null;
+
                 $diets[] = [
                     'consumed_element_id' => $consumedId,
-                    'amount_per_cycle' => $caloriesPerKg > 0 ? $this->round($caloriesPerCycle / $caloriesPerKg) : 0.0,
+                    'amount_per_cycle' => $this->round($amount),
                     'produced_element_id' => is_string($producedId) && $producedId !== '' ? $producedId : null,
                     'conversion_ratio' => isset($info['producedConversionRate']) ? $this->round((float) $info['producedConversionRate']) : null,
-                    'food_kind' => self::foodKind((int) ($info['foodType'] ?? 0)),
+                    'food_kind' => self::foodKind($foodType),
+                    ...($rate === null ? [] : ['codex_data' => $rate]),
                 ];
             }
         }
 
         return $diets;
+    }
+
+    /**
+     * @param  array<string, mixed>  $prefab
+     * @return array{amount: float, unit: string, output_kg_per_cycle: float|null}|null
+     */
+    private function codexDietRate(int $foodType, string $id, array $prefab, bool $isUnitSeed, float $amount, mixed $conversionRate): ?array
+    {
+        $cropSeconds = (float) ($prefab['cropVal']['cropDuration'] ?? 0);
+        $mass = (float) ($prefab['primaryElement']['Mass'] ?? 0);
+        $output = is_numeric($conversionRate) ? $this->round($amount * (float) $conversionRate) : null;
+
+        return match (true) {
+            $foodType === 0 && $isUnitSeed => [
+                'amount' => $this->round($amount),
+                'unit' => 'units_per_cycle',
+                'output_kg_per_cycle' => $output,
+            ],
+            $foodType === 1 && in_array($id, self::GROWTH_FOOD_PREFABS, true) && $cropSeconds > 0 => [
+                'amount' => $this->round($amount * self::SECONDS_PER_CYCLE / $cropSeconds * 100),
+                'unit' => 'percent_growth_per_cycle',
+                'output_kg_per_cycle' => $output,
+            ],
+            $foodType === 3 && $mass > 0 => [
+                'amount' => $this->round($amount / $mass),
+                'unit' => 'prey_per_cycle',
+                'output_kg_per_cycle' => $output,
+            ],
+            default => null,
+        };
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $converters
+     * @param  array<int|string, array<string, mixed>>  $elements
+     * @return list<array{inputs: array<string, float>, outputs: array<string, float>, unresolved: bool}>
+     */
+    private function conversions(array $converters, array $elements): array
+    {
+        $records = [];
+        foreach ($converters as $converter) {
+            $inputs = [];
+            $outputs = [];
+            $unresolved = false;
+            foreach ($converter['consumedElements'] ?? [] as $input) {
+                $id = $input['Tag']['Name'] ?? null;
+                $rate = $input['MassConsumptionRate'] ?? null;
+                if (is_string($id) && $id !== '' && is_numeric($rate)) {
+                    $inputs[$id] = ($inputs[$id] ?? 0) + (float) $rate;
+                } else {
+                    $unresolved = true;
+                }
+            }
+            foreach ($converter['outputElements'] ?? [] as $output) {
+                $id = $elements[$output['elementHash'] ?? '']['id'] ?? null;
+                $rate = $output['massGenerationRate'] ?? null;
+                if (is_string($id) && $id !== '' && is_numeric($rate)) {
+                    $outputs[$id] = ($outputs[$id] ?? 0) + (float) $rate;
+                } else {
+                    $unresolved = true;
+                }
+            }
+            if ($inputs !== [] || $outputs !== [] || $unresolved) {
+                $records[] = ['inputs' => $inputs, 'outputs' => $outputs, 'unresolved' => $unresolved];
+            }
+        }
+
+        return $records;
     }
 
     /** @return list<CritterOutputRecord> */

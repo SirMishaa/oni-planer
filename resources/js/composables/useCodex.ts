@@ -138,6 +138,7 @@ const articleLoading = ref(false);
 const articleError = ref(false);
 
 let hydrated = false;
+let indexRequest: Promise<void> | null = null;
 
 function hydrate(): void {
     if (hydrated || typeof window === 'undefined') return;
@@ -163,7 +164,14 @@ function hydrate(): void {
 
 // region Fetching
 async function ensureIndex(): Promise<void> {
-    if (index.value || indexLoading.value) return;
+    if (index.value) return;
+    indexRequest ??= loadIndex().finally(() => {
+        indexRequest = null;
+    });
+    await indexRequest;
+}
+
+async function loadIndex(): Promise<void> {
     indexLoading.value = true;
     indexError.value = false;
     try {
@@ -177,6 +185,17 @@ async function ensureIndex(): Promise<void> {
     } finally {
         indexLoading.value = false;
     }
+}
+
+async function openForPrefab(prefabId: string): Promise<void> {
+    await ensureIndex();
+    const matches =
+        index.value?.filter((item) => item.prefabs.includes(prefabId)) ?? [];
+    const entry =
+        matches.find((item) => item.codex_id === prefabId) ??
+        matches.find((item) => item.parent_codex_id !== null) ??
+        matches[0];
+    if (entry) await openArticle(entry.codex_id);
 }
 
 async function openArticle(codexId: string): Promise<void> {
@@ -413,6 +432,7 @@ export function useCodex() {
         openCategory,
         goBack,
         openArticle,
+        openForPrefab,
         ensureIndex,
         setWidth,
     };

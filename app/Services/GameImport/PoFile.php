@@ -32,9 +32,9 @@ final readonly class PoFile
      *
      * @return array<string, string>
      */
-    public function sources(): array
+    public function sources(bool $stripMarkup = true): array
     {
-        return $this->column('id');
+        return $this->column('id', $stripMarkup);
     }
 
     /**
@@ -116,12 +116,12 @@ final readonly class PoFile
     }
 
     /** @return array<string, string> */
-    private function column(string $field): array
+    private function column(string $field, bool $stripMarkup = true): array
     {
         $values = [];
         foreach ($this->entries as $context => $entry) {
             if ($entry[$field] !== '') {
-                $values[$context] = self::stripMarkup($entry[$field]);
+                $values[$context] = $stripMarkup ? self::stripMarkup($entry[$field]) : $entry[$field];
             }
         }
 

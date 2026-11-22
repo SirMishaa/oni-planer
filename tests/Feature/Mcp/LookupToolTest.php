@@ -13,7 +13,9 @@ use App\Models\CritterMorphDiet;
 use App\Models\CritterMorphOutput;
 use App\Models\Element;
 use App\Models\ElementThermalProperty;
+use App\Models\Plant;
 use App\Models\PrefabName;
+use App\Models\Recipe;
 use Illuminate\Support\Facades\File;
 
 beforeEach(function (): void {
@@ -55,6 +57,19 @@ it('finds an element by its French name, accents optional', function (): void {
     OniServer::tool(LookupTool::class, ['query' => 'oxygene'])->assertOk()->assertSee('element Oxygène / Oxygen (Oxygen)');
 });
 
+it('resolves a machine shown in game by its French name, English name or id ahead of its linked Codex article', function (): void {
+    $building = Building::factory()->create(['building_id' => 'FarmStation']);
+    $article = CodexEntry::factory()->create(['codex_id' => 'FarmStation', 'title' => ['en' => 'Farm Station']]);
+    $article->buildings()->attach($building);
+
+    foreach (['Station agricole', 'Farm Station', 'FarmStation'] as $query) {
+        OniServer::tool(LookupTool::class, ['query' => $query])
+            ->assertOk()
+            ->assertSee('building Station agricole / Farm Station (FarmStation)')
+            ->assertDontSee('exact matches');
+    }
+});
+
 it('lists several matches', function (): void {
     Element::factory()->create(['element_id' => 'ContaminatedOxygen', 'state' => 'gas', 'name' => ['en' => 'Polluted Oxygen']]);
 
@@ -76,6 +91,82 @@ it('details a building with its size, power and materials', function (): void {
         ->assertSee('materials: Metal 400 kg');
 });
 
+it('adds the imported building description and effect only on request', function (): void {
+    Building::factory()->create([
+        'building_id' => 'PilotFarmStation',
+        'description' => ['en' => 'Used to tend crops.'],
+        'effect' => ['en' => 'Produces Micronutrient Fertilizer.'],
+    ]);
+
+    OniServer::tool(LookupTool::class, ['query' => 'PilotFarmStation', 'kind' => 'building'])
+        ->assertOk()->assertDontSee('Micronutrient Fertilizer');
+
+    OniServer::tool(LookupTool::class, ['query' => 'PilotFarmStation', 'kind' => 'building', 'details' => true])
+        ->assertOk()->assertSee('Used to tend crops.')->assertSee('Produces Micronutrient Fertilizer.');
+});
+
+it('separates building room descriptors, staffed operations and manual Codex links', function (): void {
+    Building::factory()->create([
+        'building_id' => 'PilotFarmStation',
+        'codex_data' => [
+            'room' => ['id' => 'Farm', 'mode' => 'Required'],
+            'tinker' => ['input_id' => 'Fertilizer', 'input_kg' => 5, 'output_id' => 'FarmStationTools', 'skill_perk' => 'CanFarmTinker'],
+            'manual_conversions' => [
+                ['label' => 'Example link', 'input_id' => 'Dirt', 'output_id' => 'Fertilizer'],
+            ],
+        ],
+    ]);
+
+    OniServer::tool(LookupTool::class, ['query' => 'PilotFarmStation', 'kind' => 'building', 'details' => true])
+        ->assertOk()->assertSee([
+            'room descriptor: Farm (Required)',
+            'staffed operation: Fertilizer 5 kg/use → FarmStationTools 1 unit/use · skill CanFarmTinker',
+            'manual Codex conversion: Dirt → Fertilizer (Example link)',
+        ])->assertDontSee('kg/cycle');
+});
+
+it('reads the stored Codex text and linked entities on request', function (): void {
+    $entry = CodexEntry::factory()->create([
+        'codex_id' => 'PacuSpecies',
+        'content' => [['blocks' => [['type' => 'text', 'text' => ['en' => 'An aquatic creature.']]]]],
+    ]);
+    $critter = Critter::factory()->create(['critter_id' => 'Pacu']);
+    $entry->critters()->attach($critter);
+
+    OniServer::tool(LookupTool::class, ['query' => 'PacuSpecies', 'kind' => 'codex', 'details' => true])
+        ->assertOk()->assertSee('An aquatic creature.')->assertSee('critter Pacu');
+});
+
+it('links a resource to its recipe consumers and producers without exchanging their roles', function (): void {
+    $builder = Building::factory()->create(['building_id' => 'PilotFabricator']);
+    Element::factory()->create(['element_id' => 'PilotProduct']);
+    $recipe = Recipe::query()->create(['building_id' => $builder->id, 'duration' => 10, 'fabricators' => ['PilotFabricator'], 'name' => ['en' => 'Pilot recipe']]);
+    $recipe->items()->create(['element_id' => 'Oxygen', 'role' => 'input', 'amount' => 10]);
+    $recipe->items()->create(['element_id' => 'PilotProduct', 'role' => 'output', 'amount' => 2]);
+
+    OniServer::tool(LookupTool::class, ['query' => 'Oxygen', 'kind' => 'element', 'details' => true])
+        ->assertOk()->assertSee('recipe consumed at PilotFabricator')->assertDontSee('recipe produced at PilotFabricator');
+    OniServer::tool(LookupTool::class, ['query' => 'PilotProduct', 'kind' => 'element', 'details' => true])
+        ->assertOk()->assertSee('recipe produced at PilotFabricator')->assertDontSee('recipe consumed at PilotFabricator');
+});
+
+it('labels Starnacle growth and resource quantities without inventing environmental limits', function (): void {
+    Element::factory()->create(['element_id' => 'Coquina']);
+    Element::factory()->create(['element_id' => 'Phosphorite']);
+    $plant = Plant::query()->create(['plant_id' => 'PlanktonCoral', 'name' => ['en' => 'Starnacle']]);
+    $variant = $plant->variants()->create(['variant_id' => 'PlanktonCoral', 'name' => ['en' => 'Starnacle'], 'is_base' => true, 'min_temp' => 273.15, 'max_temp' => 373.15, 'min_pressure' => 0, 'max_pressure' => 0, 'growth_time' => 4]);
+    $variant->inputs()->create(['input_type' => 'fertilizer', 'element_id' => 'Coquina', 'amount_per_cycle' => 20]);
+    $variant->outputs()->create(['output_type' => 'resource', 'element_id' => 'Phosphorite', 'amount_per_harvest' => 80]);
+
+    OniServer::tool(LookupTool::class, ['query' => 'PlanktonCoral', 'kind' => 'plant'])
+        ->assertOk()
+        ->assertSee('growth 4 cycles')
+        ->assertSee('Coquina 20 kg/cycle')
+        ->assertSee('Phosphorite 80 per harvest')
+        ->assertDontSee('Phosphorite 80 kg/harvest')
+        ->assertDontSee(['growth 4 s', '0..0 kg', 'atmosphere any']);
+});
+
 it('details a critter with its morphs, diets and outputs', function (): void {
     $critter = Critter::factory()->create(['critter_id' => 'Hatch', 'variant_family' => 'Hatch', 'name' => ['en' => 'Hatch']]);
     $morph = CritterMorph::factory()->create(['critter_id' => $critter->id, 'morph_id' => 'Hatch', 'name' => ['en' => 'Hatch']]);
@@ -90,6 +181,40 @@ it('details a critter with its morphs, diets and outputs', function (): void {
         ->assertSee('morph Hatch')
         ->assertSee('eats SandStone 140 kg/cycle → Carbon ×0.5')
         ->assertSee('egg HatchEgg');
+});
+
+it('does not present intermediate plant and prey diet values as mass', function (): void {
+    $actor = Critter::factory()->create(['critter_id' => 'ParrotFish', 'description' => ['en' => 'An aquatic creature that eats Starnacle.']]);
+    $morph = CritterMorph::factory()->create(['critter_id' => $actor->id, 'morph_id' => 'ParrotFish']);
+    CritterMorphDiet::factory()->create(['critter_morph_id' => $morph->id, 'consumed_element_id' => 'PlanktonCoral', 'food_kind' => 'plant', 'amount_per_cycle' => 0.5]);
+    CritterMorphDiet::factory()->create(['critter_morph_id' => $morph->id, 'consumed_element_id' => 'Pacu', 'food_kind' => 'prey', 'amount_per_cycle' => 200]);
+    CritterMorphOutput::factory()->create(['critter_morph_id' => $morph->id, 'element_id' => 'ParrotFishEgg', 'output_type' => 'egg', 'amount_per_cycle' => 0.05]);
+
+    OniServer::tool(LookupTool::class, ['query' => 'ParrotFish', 'kind' => 'critter'])
+        ->assertOk()->assertSee(['PlanktonCoral (plant; rate unavailable)', 'Pacu (prey; rate unavailable)', 'ParrotFishEgg 0.05 eggs/cycle'])
+        ->assertDontSee(['0.5 kg/cycle', '200 kg/cycle']);
+
+    OniServer::tool(LookupTool::class, ['query' => 'ParrotFish', 'kind' => 'critter', 'details' => true])
+        ->assertOk()->assertSee(['description: An aquatic creature that eats Starnacle.', 'comfort ']);
+});
+
+it('keeps variant details separate and links adult consumers in the reverse direction', function (): void {
+    $pacu = Critter::factory()->create(['critter_id' => 'Pacu', 'variant_family' => 'Pacu']);
+    $beta = Critter::factory()->create(['critter_id' => 'PacuBeta', 'variant_family' => 'Pacu']);
+    $cleaner = Critter::factory()->create(['critter_id' => 'PacuCleaner', 'variant_family' => 'Pacu']);
+    $jawbo = Critter::factory()->create(['critter_id' => 'PrehistoricPacu']);
+    CritterMorph::factory()->create(['critter_id' => $pacu->id, 'morph_id' => 'Pacu']);
+    CritterMorph::factory()->create(['critter_id' => $beta->id, 'morph_id' => 'PacuBeta']);
+    CritterMorph::factory()->create(['critter_id' => $cleaner->id, 'morph_id' => 'PacuCleaner']);
+    $adult = CritterMorph::factory()->create(['critter_id' => $jawbo->id, 'morph_id' => 'PrehistoricPacu', 'is_base' => true]);
+    $juvenile = CritterMorph::factory()->create(['critter_id' => $jawbo->id, 'morph_id' => 'PrehistoricPacuBaby', 'is_base' => false]);
+    foreach ([$adult, $juvenile] as $morph) {
+        CritterMorphDiet::factory()->create(['critter_morph_id' => $morph->id, 'consumed_element_id' => 'PacuBeta', 'food_kind' => 'prey']);
+    }
+
+    OniServer::tool(LookupTool::class, ['query' => 'PacuBeta', 'kind' => 'critter', 'details' => true])
+        ->assertOk()->assertSee(['morph PacuBeta', 'family adults: Pacu, PacuBeta, PacuCleaner', 'consumed by PrehistoricPacu (prey)'])
+        ->assertDontSee(['morph PacuCleaner', 'consumed by PrehistoricPacuBaby']);
 });
 
 it('lists only the exact matches when several kinds share an id', function (): void {

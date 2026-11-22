@@ -17,7 +17,7 @@ use Spatie\Translatable\HasTranslations;
 #[Fillable([
     'variant_id', 'plant_id', 'is_base', 'min_temp', 'max_temp',
     'min_pressure', 'max_pressure', 'atmosphere_element_id',
-    'light_required', 'growth_time', 'name', 'mod_id',
+    'light_required', 'growth_time', 'name', 'mod_id', 'codex_data',
 ])]
 final class PlantVariant extends Model
 {
@@ -53,6 +53,6 @@ final class PlantVariant extends Model
 
     public function casts(): array
     {
-        return ['is_base' => 'boolean', 'light_required' => 'boolean', 'name' => 'array'];
+        return ['is_base' => 'boolean', 'light_required' => 'boolean', 'name' => 'array', 'codex_data' => 'array'];
     }
 }

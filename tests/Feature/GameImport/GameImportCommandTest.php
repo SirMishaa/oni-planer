@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Mcp\Servers\OniServer;
+use App\Mcp\Tools\LookupTool;
 use App\Models\Building;
 use App\Models\Element;
 use App\Models\Food;
@@ -49,6 +51,82 @@ beforeEach(function (): void {
 
 afterEach(function (): void {
     File::deleteDirectory($this->workDir);
+});
+
+it('verifies the Codex pilot against a local OniExtract export', function (): void {
+    $export = getenv('ONI_TEST_EXPORT_PATH') ?: base_path('game-data/oniextract/current');
+    $game = base_path('game-data/OxygenNotIncluded_Data');
+    $mods = base_path('game-data/mods');
+
+    config(['game.supported_mods' => ['*']]);
+    $this->artisan('game:import', ($this->importOptions)([
+        '--game-path' => $game,
+        '--export-path' => $export,
+        '--mods-path' => $mods,
+    ]))->assertSuccessful();
+
+    OniServer::tool(LookupTool::class, ['query' => 'PacuBeta', 'kind' => 'critter', 'details' => true])
+        ->assertOk()->assertSee(['PacuAlgae', 'PacuPlate', 'source mod:', 'SaltWater 0.2 kg/s → Water 0.2 kg/s'])
+        ->assertDontSee('DirtyWater 0.2 kg/s');
+    OniServer::tool(LookupTool::class, ['query' => 'PacuCleaner', 'kind' => 'critter', 'details' => true])
+        ->assertOk()->assertSee('DirtyWater 0.2 kg/s → Water 0.2 kg/s')->assertDontSee('SaltWater 0.2 kg/s');
+    OniServer::tool(LookupTool::class, ['query' => 'Pacu', 'kind' => 'critter'])
+        ->assertOk()->assertSee('PlanktonCoralSeed 1 units/cycle → ToxicSand 3 kg/cycle');
+    OniServer::tool(LookupTool::class, ['query' => 'PlanktonCoral', 'kind' => 'plant', 'details' => true])
+        ->assertOk()->assertSee(['growth 4 cycles', 'pressure ignored', '25.0 °C..45.0 °C', 'Water, SaltWater', 'Coquina 20 kg/cycle', 'Phosphorite 80 kg/harvest', 'consumed by ParrotFish (plant)']);
+    OniServer::tool(LookupTool::class, ['query' => 'ParrotFish', 'kind' => 'critter', 'details' => true])
+        ->assertOk()->assertSee(['PlanktonCoral 12.5 % growth/cycle → Lime 5 kg/cycle', 'consumed by PrehistoricPacu (prey)']);
+    OniServer::tool(LookupTool::class, ['query' => 'PrehistoricPacu', 'kind' => 'critter'])
+        ->assertOk()->assertSee('ParrotFish 1 prey/cycle → Rust 60 kg/cycle');
+    if (getenv('ONI_TEST_BUTCHER_DROPS') === '1') {
+        OniServer::tool(LookupTool::class, ['query' => 'ParrotFish', 'kind' => 'critter', 'details' => true])
+            ->assertOk()->assertSee('butchering: FishMeat 1 kg, 1000 kcal per event');
+        OniServer::tool(LookupTool::class, ['query' => 'PacuBeta', 'kind' => 'critter', 'details' => true])
+            ->assertOk()->assertSee('butchering: FishMeat 1 kg, 1000 kcal per event')
+            ->assertDontSee('PrehistoricPacuFillet');
+        OniServer::tool(LookupTool::class, ['query' => 'PrehistoricPacu', 'kind' => 'critter', 'details' => true])
+            ->assertOk()->assertSee('butchering: PrehistoricPacuFillet 12 kg, 12000 kcal per event');
+        $beakonArticle = $this->getJson(route('codex.show', 'ParrotFishSpecies'))->assertOk();
+        $beakonFacts = collect($beakonArticle->json('content'))->firstWhere('section_title', 'Beakon (ParrotFish)');
+        expect(collect($beakonFacts['blocks'] ?? [])->pluck('text')->all())->toContain(
+            'Produits de découpe',
+            'Fish Fillet : 1 kg, 1 000 kcal par découpe',
+            'Starnacle 12,5 % de croissance/cycle → Lime 5 kg/cycle',
+        );
+    }
+    OniServer::tool(LookupTool::class, ['query' => 'FarmStation', 'kind' => 'building', 'details' => true])
+        ->assertOk()->assertSee(['size 2x3', 'Metal 400 kg', 'effect:', 'exported skill perk: CanFarmTinker']);
+    $this->getJson(route('codex.show', 'FarmStation'))->assertOk()
+        ->assertJsonPath('category', 'Buildings')
+        ->assertJsonPath('links.0.key', 'FarmStation');
+    if (getenv('ONI_TEST_BUILDING_CODEX') === '1') {
+        OniServer::tool(LookupTool::class, ['query' => 'FarmStation', 'kind' => 'building', 'details' => true])
+            ->assertOk()->assertSee('staffed operation: Fertilizer 5 kg/use → FarmStationTools 1 unit/use · skill CanFarmTinker');
+    }
+})->skip(fn (): bool => getenv('ONI_TEST_REAL_EXPORT') !== '1', 'Requires the local game data and mod export.');
+
+it('imports structured building Codex descriptors from the export sidecar', function (): void {
+    $path = $this->workDir.'/export/database/planner_extras.json';
+    $extras = json_decode(File::get($path), true, flags: JSON_THROW_ON_ERROR);
+    $extras['buildings']['Electrolyzer'] += [
+        'room' => ['id' => 'FixtureRoom', 'mode' => 'Recommended'],
+        'tinker' => ['inputId' => 'Water', 'inputKg' => 5, 'outputId' => 'Oxygen', 'skillPerk' => 'FixtureSkill'],
+        'manualConversions' => [[
+            'label' => 'Fixture conversion',
+            'input' => ['id' => 'Water', 'amount' => 1, 'customFormatting' => true],
+            'output' => ['id' => 'Oxygen', 'amount' => 1, 'customFormatting' => false],
+        ]],
+    ];
+    File::put($path, json_encode($extras, JSON_THROW_ON_ERROR));
+
+    $this->artisan('game:import', ($this->importOptions)())->assertSuccessful();
+
+    OniServer::tool(LookupTool::class, ['query' => 'Electrolyzer', 'kind' => 'building', 'details' => true])
+        ->assertOk()->assertSee([
+            'room descriptor: FixtureRoom (Recommended)',
+            'staffed operation: Water 5 kg/use → Oxygen 1 unit/use · skill FixtureSkill',
+            'manual Codex conversion: Water → Oxygen (Fixture conversion)',
+        ]);
 });
 
 it('aborts before truncating when the export is missing', function (): void {

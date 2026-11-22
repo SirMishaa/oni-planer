@@ -8,11 +8,13 @@ use Spatie\LaravelData\Data;
 
 final class CodexListItemData extends Data
 {
+    /** @param list<string> $prefabs */
     public function __construct(
         public string $codex_id,
         public string $category,
         public ?string $parent_codex_id,
         public string $title,
         public ?string $image,
+        public array $prefabs,
     ) {}
 }

@@ -69,6 +69,7 @@ final readonly class CritterImporter
                 'overcrowding_threshold' => $raw['overcrowding_threshold'] ?? 0,
                 'name' => $nameJson,
                 'mod_id' => $modId,
+                'codex_data' => $raw['codex_data'] ?? null,
             ]);
 
             if (($raw['is_base'] ?? false) === true) {
@@ -89,6 +90,7 @@ final readonly class CritterImporter
                     'produced_element_id' => $diet['produced_element_id'] ?? null,
                     'conversion_ratio' => $diet['conversion_ratio'] ?? null,
                     'food_kind' => $diet['food_kind'] ?? 'item',
+                    'codex_data' => $diet['codex_data'] ?? null,
                 ]);
             }
 

@@ -26,7 +26,7 @@ use Spatie\Translatable\HasTranslations;
     'tags', 'name', 'description', 'effect', 'dlc_id',
     'subcategory', 'ports', 'build_location_rule', 'permitted_rotations',
     'object_layer', 'scene_layer', 'overlay', 'is_foundation', 'is_tile',
-    'is_utility', 'sim_cell_occupier', 'drag_build', 'replaceable', 'placement_rect', 'mod_id',
+    'is_utility', 'sim_cell_occupier', 'drag_build', 'replaceable', 'placement_rect', 'mod_id', 'codex_data',
 ])]
 final class Building extends Model
 {
@@ -79,6 +79,7 @@ final class Building extends Model
             'effect' => 'array',
             'ports' => 'array',
             'placement_rect' => 'array',
+            'codex_data' => 'array',
             'scene_layer' => 'integer',
             'is_foundation' => 'boolean',
             'is_tile' => 'boolean',

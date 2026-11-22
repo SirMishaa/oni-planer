@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Mcp\Servers\OniServer;
+use App\Mcp\Tools\LookupTool;
 use App\Models\Critter;
 use App\Models\CritterMorph;
 use App\Models\Mod;
@@ -11,6 +13,7 @@ use App\Services\GameImport\OniExport\ModCatalog;
 use App\Services\GameImport\OniExport\OniExport;
 use App\Services\GameImport\StringResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
 uses(RefreshDatabase::class);
@@ -128,6 +131,65 @@ it('reads how a critter eats each diet line', function (): void {
     expect($critters['Hatch']['diets'][0]['food_kind'])->toBe('item')
         ->and($critters['HatchBaby']['diets'][0]['food_kind'])->toBe('item')
         ->and($critters['HatchHard']['diets'][0]['food_kind'])->toBe('plant');
+});
+
+it('imports Codex quantities and conversions without replacing ranching diet values', function (): void {
+    $root = sys_get_temp_dir().'/oni-critter-codex-'.uniqid();
+    File::copyDirectory(base_path('tests/Fixtures/OniExport'), $root);
+
+    try {
+        $path = $root.'/database/entities.json';
+        $data = json_decode(File::get($path), true, flags: JSON_THROW_ON_ERROR);
+        $data['entities'][] = ['name' => 'PlanktonCoral', 'cropVal' => ['cropDuration' => 2400], 'kPrefabID' => ['tags' => []]];
+        $data['entities'][0]['primaryElement']['Mass'] = 200;
+        $data['entities'][0]['critterTemperatureMonitorDef']['temperatureColdDeadly'] = 253.15;
+        $data['entities'][0]['critterTemperatureMonitorDef']['temperatureHotDeadly'] = 373.15;
+        $data['entities'][0]['elementConverters'] = [[
+            'consumedElements' => [['Tag' => ['Name' => 'SaltWater'], 'MassConsumptionRate' => 0.2]],
+            'outputElements' => [['elementHash' => 1836671383, 'massGenerationRate' => 0.2]],
+        ]];
+        $data['entities'][0]['creatureCalorieMonitorDef']['diet']['infos'] = array_map(
+            fn (array $example): array => [
+                'consumedTags' => [['Name' => $example[0]]],
+                'foodType' => $example[1],
+                'caloriesPerKg' => $example[2],
+                'producedConversionRate' => $example[3],
+                'producedElement' => ['Name' => $example[4]],
+            ],
+            [['PlanktonCoral', 1, 1400000, 10, 'Lime'], ['Hatch', 3, 3500, 0.3, 'Rust'], ['PlanktonCoral', 2, 1400000, 10, 'Lime']],
+        );
+        File::put($path, json_encode($data, JSON_THROW_ON_ERROR));
+        $extrasPath = $root.'/database/planner_extras.json';
+        $extras = json_decode(File::get($extrasPath), true, flags: JSON_THROW_ON_ERROR);
+        $extras['entities']['Hatch']['butcherDrops'] = [
+            ['prefabId' => 'FishMeat', 'prefabAmount' => 1, 'massKg' => 1, 'calories' => 1000000],
+        ];
+        File::put($extrasPath, json_encode($extras, JSON_THROW_ON_ERROR));
+        File::put($root.'/database/elements.json', json_encode(['elementTable' => [1836671383 => ['id' => 'Water']]], JSON_THROW_ON_ERROR));
+
+        $export = new OniExport($root);
+        $catalog = ModCatalog::fromExport($export, $root.'/mods', ['3557584850']);
+        $catalog->persist();
+        new CritterImporter(new StringResolver(base_path('tests/Fixtures/GameImport/strings.pot')))
+            ->importRecords(new CritterReader($export, $catalog)->records());
+
+        $diets = CritterMorph::query()->where('morph_id', 'Hatch')->sole()->diets()->orderBy('id')->get();
+        expect((float) $diets[0]->amount_per_cycle)->toBe(0.5)
+            ->and((float) $diets[1]->amount_per_cycle)->toBe(200.0)
+            ->and($diets[2]->getAttributes()['codex_data'] ?? null)->toBeNull();
+
+        OniServer::tool(LookupTool::class, ['kind' => 'critter', 'query' => 'Hatch', 'details' => true])
+            ->assertOk()->assertSee([
+                'PlanktonCoral 12.5 % growth/cycle → Lime 5 kg/cycle',
+                'Hatch 1 prey/cycle → Rust 60 kg/cycle',
+                'PlanktonCoral (plant; rate unavailable)',
+                'survival -20.0 °C..100.0 °C',
+                'SaltWater 0.2 kg/s → Water 0.2 kg/s',
+                'butchering: FishMeat 1 kg, 1000 kcal per event',
+            ]);
+    } finally {
+        File::deleteDirectory($root);
+    }
 });
 
 it('maps every export food type to a food kind', function (int $foodType, string $kind): void {

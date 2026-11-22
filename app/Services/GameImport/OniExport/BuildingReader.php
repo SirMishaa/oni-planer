@@ -44,6 +44,7 @@ use App\Enums\PermittedRotations;
  *     replaceable: bool,
  *     placement_rect: array{x: float, y: float, w: float, h: float}|null,
  *     mod_id: int|null,
+ *     codex_data: array<string, mixed>,
  * }
  */
 final class BuildingReader
@@ -123,7 +124,8 @@ final class BuildingReader
                 continue;
             }
 
-            $records[] = $this->record($def, $extras[$buildingId] ?? null, $menuPlacement[$buildingId] ?? null, $objectLayerNames);
+            $skillPerk = $file['requiredSkillPerkMap'][$buildingId] ?? null;
+            $records[] = $this->record($def, $extras[$buildingId] ?? null, $menuPlacement[$buildingId] ?? null, $objectLayerNames, is_string($skillPerk) && $skillPerk !== '' ? $skillPerk : null);
         }
 
         return $records;
@@ -170,7 +172,7 @@ final class BuildingReader
      * @param  list<string>  $objectLayerNames
      * @return BuildingRecord
      */
-    private function record(array $def, ?array $extras, ?array $placement, array $objectLayerNames): array
+    private function record(array $def, ?array $extras, ?array $placement, array $objectLayerNames, ?string $skillPerk): array
     {
         $buildingId = (string) $def['name'];
         $wattage = $def['energyConsumer']['baseWattageRating'] ?? null;
@@ -203,6 +205,23 @@ final class BuildingReader
             'replaceable' => (bool) $def['replaceable'],
             'placement_rect' => $this->placementRect($def['uiImageRect'] ?? null),
             'mod_id' => $this->mods->modIdFor($buildingId),
+            'codex_data' => [
+                'skill_perk' => $skillPerk,
+                'room' => isset($extras['room']['id'], $extras['room']['mode']) ? $extras['room'] : null,
+                'tinker' => isset($extras['tinker']['inputId'], $extras['tinker']['inputKg'], $extras['tinker']['outputId']) ? [
+                    'input_id' => $extras['tinker']['inputId'],
+                    'input_kg' => $extras['tinker']['inputKg'],
+                    'output_id' => $extras['tinker']['outputId'],
+                    'skill_perk' => $extras['tinker']['skillPerk'] ?? null,
+                ] : null,
+                'manual_conversions' => array_map(static fn (array $conversion): array => [
+                    'label' => $conversion['label'] ?? null,
+                    'input_id' => $conversion['input']['id'] ?? null,
+                    'output_id' => $conversion['output']['id'] ?? null,
+                    'input' => $conversion['input'] ?? null,
+                    'output' => $conversion['output'] ?? null,
+                ], $extras['manualConversions'] ?? []),
+            ],
         ];
     }
 

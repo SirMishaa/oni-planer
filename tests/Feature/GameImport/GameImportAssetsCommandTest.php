@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Building;
 use App\Models\CritterMorph;
+use App\Models\CritterMorphDiet;
 use App\Models\CritterMorphOutput;
 use App\Models\Element;
 use App\Models\Food;
@@ -77,6 +78,20 @@ it('converts building renders and connection sprites to webp', function (): void
         ->and($this->assets.'/connections/cells.json')->toBeFile()
         ->and($this->assets.'/buildings/NoRender.webp')->not->toBeFile()
         ->and($this->assets.'/buildings/Unimported.webp')->not->toBeFile();
+});
+
+it('can convert only the item sprites referenced by diets', function (): void {
+    CritterMorphDiet::factory()->create([
+        'food_kind' => 'item',
+        'consumed_element_id' => 'MushroomSeed',
+        'produced_element_id' => null,
+    ]);
+    writePng($this->export.'/ui_image/MushroomSeed.png');
+
+    $this->artisan('game:import-assets', ['--diet-items-only' => true, '--export-path' => $this->export])->assertSuccessful();
+
+    expect(getimagesize($this->assets.'/items/MushroomSeed.webp')['mime'])->toBe('image/webp')
+        ->and($this->assets.'/buildings/Tile.webp')->not->toBeFile();
 });
 
 it('skips up to date files unless forced', function (): void {

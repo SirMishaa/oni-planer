@@ -14,12 +14,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[GameData]
 #[Fillable([
     'critter_morph_id', 'consumed_element_id', 'amount_per_cycle',
-    'produced_element_id', 'conversion_ratio', 'food_kind',
+    'produced_element_id', 'conversion_ratio', 'food_kind', 'codex_data',
 ])]
 final class CritterMorphDiet extends Model
 {
     /** @use HasFactory<CritterMorphDietFactory> */
     use HasFactory;
+
+    public function casts(): array
+    {
+        return ['codex_data' => 'array'];
+    }
 
     /** @return BelongsTo<Element, $this> */
     public function consumedElement(): BelongsTo

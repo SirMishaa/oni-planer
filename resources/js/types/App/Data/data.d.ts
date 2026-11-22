@@ -66,6 +66,7 @@ export type CodexListItemData = {
     parent_codex_id: string | null;
     title: string;
     image: string | null;
+    prefabs: string[];
 };
 export type ColonyStatusData = {
     state: 'never' | 'no_colony' | 'ok' | 'newer_schema';

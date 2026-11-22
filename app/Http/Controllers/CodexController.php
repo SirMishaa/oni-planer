@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Data\CodexArticleData;
 use App\Data\CodexListItemData;
 use App\Models\CodexEntry;
+use App\Services\CodexFacts;
 use App\Services\GameText;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
@@ -20,7 +21,9 @@ final class CodexController
                 'buildings:id,building_id',
                 'elements:id,element_id',
                 'critters:id,critter_id',
+                'critters.morphs:id,critter_id,morph_id',
                 'plants:id,plant_id',
+                'plants.variants:id,plant_id,variant_id',
                 'geyserTypes:id,geyser_id',
             ])
             ->orderBy('category')
@@ -32,18 +35,27 @@ final class CodexController
                 'parent_codex_id' => $entry->parent_codex_id,
                 'title' => $this->title($entry),
                 'image' => $this->imageFor($entry),
+                'prefabs' => array_values(array_unique([
+                    ...$entry->buildings->pluck('building_id')->all(),
+                    ...$entry->critters->pluck('critter_id')->all(),
+                    ...$entry->critters->flatMap(fn ($critter) => $critter->morphs->pluck('morph_id'))->all(),
+                    ...$entry->plants->pluck('plant_id')->all(),
+                    ...$entry->plants->flatMap(fn ($plant) => $plant->variants->pluck('variant_id'))->all(),
+                ])),
             ]));
 
         return response()->json($entries);
     }
 
-    public function show(CodexEntry $codexEntry): JsonResponse
+    public function show(CodexEntry $codexEntry, CodexFacts $facts): JsonResponse
     {
         $codexEntry->load([
-            'buildings:id,building_id,name',
+            'buildings:id,building_id,name,description,effect,codex_data',
             'elements:id,element_id,name',
             'critters:id,critter_id,name',
+            'critters.baseMorph.diets',
             'plants:id,plant_id,name',
+            'plants.baseVariant.inputs',
             'geyserTypes:id,geyser_id,name',
         ]);
 
@@ -53,7 +65,7 @@ final class CodexController
             'parent_codex_id' => $codexEntry->parent_codex_id,
             'title' => $this->title($codexEntry),
             'icon_asset' => $codexEntry->icon_asset,
-            'content' => $this->translatedContent($codexEntry->content ?? []),
+            'content' => [...$this->translatedContent($codexEntry->content ?? []), ...$facts->containers($codexEntry)],
             'image' => $this->imageFor($codexEntry),
             'links' => $this->links($codexEntry),
         ]));

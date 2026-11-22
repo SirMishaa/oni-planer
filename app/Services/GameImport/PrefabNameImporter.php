@@ -9,6 +9,8 @@ use App\Models\CritterMorphOutput;
 use App\Models\Element;
 use App\Models\PrefabName;
 use App\Services\GameImport\OniExport\ModCatalog;
+use App\Services\GameImport\OniExport\OniExport;
+use Illuminate\Support\Facades\File;
 
 /**
  * Records the STRINGS name key of every prefab id the UI displays: elements,
@@ -22,7 +24,7 @@ final readonly class PrefabNameImporter
     /**
      * @param  array{buildings?: list<array<string, mixed>>, critters?: list<array<string, mixed>>, plants?: list<array<string, mixed>>, geysers?: list<array<string, mixed>>}  $recordsByDomain  reader records per domain
      */
-    public function import(array $recordsByDomain): void
+    public function import(array $recordsByDomain, ?OniExport $export = null): void
     {
         $buildings = $recordsByDomain['buildings'] ?? [];
         $critters = $recordsByDomain['critters'] ?? [];
@@ -36,7 +38,6 @@ final readonly class PrefabNameImporter
             ...$this->idToKey($plants, 'plant_id'),
             ...$this->idToKey($geysers, 'geyser_id'),
         ];
-
         $modIds = [
             ...Element::query()->whereNotNull('mod_id')->pluck('mod_id', 'element_id')->all(),
             ...$this->recordModIds($buildings, 'building_id'),
@@ -59,6 +60,65 @@ final readonly class PrefabNameImporter
         }
 
         PrefabName::query()->upsert($rows, ['prefab_id'], ['name_key', 'mod_id']);
+
+        if ($export !== null) {
+            $this->importMissingExportNames($export);
+        }
+    }
+
+    public function importMissingExportNames(OniExport $export): int
+    {
+        $known = PrefabName::query()->pluck('name_key', 'prefab_id')->all();
+        $references = CritterMorphDiet::query()->pluck('consumed_element_id')
+            ->merge(CritterMorphDiet::query()->whereNotNull('produced_element_id')->pluck('produced_element_id'))
+            ->merge(CritterMorphOutput::query()->pluck('element_id'))
+            ->unique()->flip();
+
+        $strings = $export->json('po_string.json');
+        $seedKeys = [];
+        $entityKeys = [];
+        foreach (['CREATURES', 'ITEMS'] as $group) {
+            foreach ($strings[$group] ?? [] as $key => $text) {
+                if (! is_string($text) || ! str_ends_with($key, '.NAME') || ! $this->stringResolver->has('STRINGS.'.$key)) {
+                    continue;
+                }
+                if (str_starts_with($key, 'CREATURES.SPECIES.SEEDS.')) {
+                    $seedKeys[$text][] = 'STRINGS.'.$key;
+                } elseif (str_starts_with($key, 'CREATURES.SPECIES.') || str_starts_with($key, 'ITEMS.')) {
+                    $entityKeys[$text][] = 'STRINGS.'.$key;
+                }
+            }
+        }
+
+        $seeds = File::isFile($export->path.'/database/items.json') ? ($export->json('items.json')['seeds'] ?? []) : [];
+        $entities = File::isFile($export->path.'/database/entities.json') ? ($export->json('entities.json')['entities'] ?? []) : [];
+        $rows = [];
+        foreach ([[$seeds, $seedKeys, false], [$entities, $entityKeys, true]] as [$prefabs, $keysByText, $referencedOnly]) {
+            foreach ($prefabs as $prefab) {
+                $id = $prefab['name'] ?? null;
+                $text = $prefab['nameString'] ?? null;
+                if (! is_string($id) || $id === '' || ! is_string($text)
+                    || isset($known[$id]) || isset($rows[$id])
+                    || ($referencedOnly && ! $references->has($id)) || $this->mods?->isSkipped($id)) {
+                    continue;
+                }
+
+                $matches = $keysByText[$text] ?? [];
+                if (count($matches) !== 1) {
+                    continue;
+                }
+
+                $rows[$id] = [
+                    'prefab_id' => $id,
+                    'name_key' => $matches[0],
+                    'mod_id' => $this->mods?->modIdFor($id),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+        }
+
+        return PrefabName::query()->insertOrIgnore(array_values($rows));
     }
 
     /**

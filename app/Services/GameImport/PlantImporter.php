@@ -60,6 +60,7 @@ final class PlantImporter
                 'atmosphere_element_id' => $raw['atmosphere_element_id'] ?? null,
                 'light_required' => $raw['light_required'] ?? false,
                 'growth_time' => $raw['growth_time'],
+                'codex_data' => $raw['codex_data'] ?? null,
                 'name' => $nameJson,
                 'mod_id' => $modId,
             ]);

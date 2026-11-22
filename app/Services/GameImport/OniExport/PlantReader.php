@@ -37,6 +37,7 @@ namespace App\Services\GameImport\OniExport;
  *     dlc_id: string|null,
  *     mod_id: int|null,
  *     kanim: string|null,
+ *     codex_data: array<string, mixed>,
  *     inputs: list<PlantInputRecord>,
  *     outputs: list<PlantOutputRecord>,
  * }
@@ -59,6 +60,7 @@ final class PlantReader
 
         $extras = $this->export->json('planner_extras.json')['entities'] ?? [];
         $foodIds = array_flip(array_column($this->export->json('food.json')['foodInfoList'] ?? [], 'Id'));
+        $elementIds = array_flip(array_column($this->export->json('elements.json')['elementTable'] ?? [], 'id'));
         $nameKeys = $this->nameKeysByText();
 
         $records = [];
@@ -73,6 +75,8 @@ final class PlantReader
             $pressure = $entity['pressureVulnerable'] ?? null;
             $isPressureSensitive = (bool) ($pressure['pressure_sensitive'] ?? false);
             $temperature = $entity['temperatureVulnerable'];
+            $seedId = $entity['seedInfo']['seedId'] ?? null;
+            $crops = $this->cropOutputs($entity['cropVal'] ?? [], $foodIds);
 
             $records[] = [
                 'plant_id' => $prefabId,
@@ -90,13 +94,31 @@ final class PlantReader
                 'dlc_id' => $entity['kPrefabID']['requiredDlcIds'][0] ?? null,
                 'mod_id' => $this->catalog->modIdFor($prefabId),
                 'kanim' => $extras[$prefabId]['kanim'] ?? null,
+                'codex_data' => [
+                    'growing_min_kelvin' => $temperature['temperatureWarningLow'] ?? null,
+                    'growing_max_kelvin' => $temperature['temperatureWarningHigh'] ?? null,
+                    'pressure_sensitive' => $pressure['pressure_sensitive'] ?? null,
+                    'min_pressure_kg' => $isPressureSensitive ? $this->boundedPressure($pressure['pressureWarning_Low'] ?? null) : null,
+                    'max_pressure_kg' => $isPressureSensitive ? $this->boundedPressure($pressure['pressureWarning_High'] ?? null) : null,
+                    'safe_media' => array_values(array_filter($pressure['safe_atmospheres'] ?? [], 'is_string')),
+                    'prefers_darkness' => $entity['illuminationVulnerable']['prefersDarkness'] ?? null,
+                    'crops' => array_map(static fn (array $crop): array => [
+                        'id' => $crop['element_id'],
+                        'amount' => $crop['amount_per_harvest'],
+                        'unit' => $crop['output_type'] === 'food' ? 'units' : (isset($elementIds[$crop['element_id']]) ? 'kg' : null),
+                    ], $crops),
+                    'seed' => is_string($seedId) && $seedId !== '' && ! $this->catalog->isSkipped($seedId) ? [
+                        'id' => $seedId,
+                        'units_per_drop' => $entity['seedInfo']['newSeedsProduced'] ?? null,
+                    ] : null,
+                ],
                 'inputs' => [
                     ...$this->inputs($entity['irrigationDef'] ?? null, 'irrigation'),
                     ...$this->inputs($entity['fertilizationDef'] ?? null, 'fertilizer'),
                 ],
                 'outputs' => [
-                    ...$this->output($entity['cropVal']['cropId'] ?? null, (float) ($entity['cropVal']['numProduced'] ?? 0), isset($foodIds[$entity['cropVal']['cropId'] ?? '']) ? 'food' : 'resource'),
-                    ...$this->output($entity['seedInfo']['seedId'] ?? null, (float) ($entity['seedInfo']['newSeedsProduced'] ?? 0), 'resource'),
+                    ...$crops,
+                    ...$this->output($seedId, (float) ($entity['seedInfo']['newSeedsProduced'] ?? 0), 'resource'),
                 ],
             ];
         }
@@ -108,6 +130,23 @@ final class PlantReader
     public function skippedReferences(): int
     {
         return $this->skippedReferences;
+    }
+
+    /**
+     * @param  array<string, mixed>  $crop
+     * @param  array<string, int>  $foodIds
+     * @return list<PlantOutputRecord>
+     */
+    private function cropOutputs(array $crop, array $foodIds): array
+    {
+        $products = $crop['products'] ?? [['cropId' => $crop['cropId'] ?? null, 'quantity' => $crop['numProduced'] ?? 0]];
+        $outputs = [];
+        foreach ($products as $product) {
+            $id = $product['cropId'] ?? null;
+            $outputs = [...$outputs, ...$this->output($id, (float) ($product['quantity'] ?? 0), isset($foodIds[$id]) ? 'food' : 'resource')];
+        }
+
+        return $outputs;
     }
 
     /** @param  array<string, mixed>  $entity */

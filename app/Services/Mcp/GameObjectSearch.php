@@ -64,6 +64,9 @@ final class GameObjectSearch
         $exact = array_values(array_filter($matches, fn (array $match): bool => $match[0] === 0));
 
         $kept = $exact !== [] ? $exact : $matches;
+        if ($kind === null && $exact !== []) {
+            $kept = $this->withoutLinkedCodexDuplicates($kept);
+        }
 
         return ['matches' => array_column(array_slice($kept, 0, self::MAX_RESULTS), 1), 'total' => count($kept)];
     }
@@ -94,6 +97,44 @@ final class GameObjectSearch
     private static function normalise(string $text): string
     {
         return Str::lower(mb_trim(Str::ascii($text)));
+    }
+
+    /**
+     * A linked Codex article is not a second object when both match exactly.
+     * Keep unrelated exact matches available for disambiguation.
+     *
+     * @param  list<array{int, array{kind: string, id: string, nameFr: string, nameEn: string}}>  $matches
+     * @return list<array{int, array{kind: string, id: string, nameFr: string, nameEn: string}}>
+     */
+    private function withoutLinkedCodexDuplicates(array $matches): array
+    {
+        $objects = [];
+        foreach ($matches as [, $match]) {
+            $objects[$match['kind']][] = $match['id'];
+        }
+
+        return array_values(array_filter($matches, static function (array $result) use ($objects): bool {
+            [, $match] = $result;
+            if ($match['kind'] !== 'codex') {
+                return true;
+            }
+
+            $relations = [
+                'element' => ['elements', 'elements.element_id'],
+                'building' => ['buildings', 'buildings.building_id'],
+                'critter' => ['critters', 'critters.critter_id'],
+                'plant' => ['plants', 'plants.plant_id'],
+            ];
+            foreach ($relations as $kind => [$relation, $column]) {
+                $ids = $objects[$kind] ?? [];
+                if ($ids !== [] && CodexEntry::query()->where('codex_id', $match['id'])
+                    ->whereHas($relation, fn ($query) => $query->whereIn($column, $ids))->exists()) {
+                    return false;
+                }
+            }
+
+            return true;
+        }));
     }
 
     /**
