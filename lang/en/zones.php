@@ -125,6 +125,35 @@ return [
         'unknown' => 'Not read by the game',
         'no_terrain' => 'The game has not sent the terrain yet: cells stay hatched.',
     ],
+    'plan' => [
+        'mode' => [
+            'label' => 'View',
+            'current' => 'Current',
+            'suggestion' => 'Suggestion',
+        ],
+        'heading' => 'Suggestion',
+        'changes' => ':count change|:count changes',
+        'hint' => 'Drag an add on the map to move it.',
+        'kinds' => [
+            'add' => 'Add',
+            'remove' => 'Remove',
+            'replace' => 'Replace',
+        ],
+        'states' => [
+            'pending' => 'pending',
+            'applied' => 'applied',
+            'conflicted' => 'conflicted',
+            'unchecked' => 'unchecked',
+        ],
+        'replaces' => 'Replaces :name',
+        'moved' => 'Moved by you',
+        'delete' => 'Delete',
+        'dismiss' => 'Close',
+        'legend' => [
+            'planned' => 'Planned change',
+            'removed' => 'Removed by the plan',
+        ],
+    ],
     'map' => [
         'label' => 'Map of the zone :name',
         'zone_edge' => 'Zone edge',

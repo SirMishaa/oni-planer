@@ -125,6 +125,35 @@ return [
         'unknown' => 'Non lu par le jeu',
         'no_terrain' => "Le jeu n'a pas encore envoyé le terrain : les cases restent hachurées.",
     ],
+    'plan' => [
+        'mode' => [
+            'label' => 'Vue',
+            'current' => 'Actuel',
+            'suggestion' => 'Suggestion',
+        ],
+        'heading' => 'Suggestion',
+        'changes' => ':count changement|:count changements',
+        'hint' => 'Glissez un ajout sur la carte pour le déplacer.',
+        'kinds' => [
+            'add' => 'Ajout',
+            'remove' => 'Retrait',
+            'replace' => 'Remplacement',
+        ],
+        'states' => [
+            'pending' => 'en attente',
+            'applied' => 'appliqué',
+            'conflicted' => 'en conflit',
+            'unchecked' => 'non vérifié',
+        ],
+        'replaces' => 'Remplace :name',
+        'moved' => 'Déplacé par vous',
+        'delete' => 'Supprimer',
+        'dismiss' => 'Fermer',
+        'legend' => [
+            'planned' => 'Changement prévu',
+            'removed' => 'Retiré par le plan',
+        ],
+    ],
     'map' => [
         'label' => 'Carte de la zone :name',
         'zone_edge' => 'Bord de la zone',

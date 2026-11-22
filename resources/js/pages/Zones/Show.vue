@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { Link, router } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
 import ZoneController from '@/actions/App/Http/Controllers/ZoneController';
+import ZonePlanChangeController from '@/actions/App/Http/Controllers/ZonePlanChangeController';
 import GameSprite from '@/components/viability/GameSprite.vue';
 import ZoneCaptures from '@/components/zones/ZoneCaptures.vue';
 import ZoneCaptureView from '@/components/zones/ZoneCaptureView.vue';
@@ -11,6 +12,7 @@ import ZoneLivePanel from '@/components/zones/ZoneLivePanel.vue';
 import ZoneMap from '@/components/zones/ZoneMap.vue';
 import type { ZoneMapLayer } from '@/components/zones/zoneMapPainter';
 import ZonePanel from '@/components/zones/ZonePanel.vue';
+import ZonePlanPanel from '@/components/zones/ZonePlanPanel.vue';
 import { createLiveStats } from '@/composables/liveStats';
 import { useFormat } from '@/composables/useFormat';
 import { useT } from '@/composables/useT';
@@ -41,6 +43,8 @@ const props = defineProps<{
     linkSeenAt: ZoneShowData['linkSeenAt'];
     population: ZoneShowData['population'];
     feeding: ZoneShowData['feeding'];
+    plan: ZoneShowData['plan'];
+    planMap: ZoneShowData['planMap'];
     critters: ZoneShowData['critters'];
     eggs: ZoneShowData['eggs'];
     crittersAt: ZoneShowData['crittersAt'];
@@ -251,6 +255,103 @@ function showOnMap(instanceId: string): void {
 }
 
 // endregion
+
+// region Plan
+
+type PlanMode = 'current' | 'suggestion';
+
+const planModeKey = computed(() => `zone-plan-mode:${props.zone.id}`);
+
+function readPlanMode(): PlanMode {
+    try {
+        return localStorage.getItem(planModeKey.value) === 'suggestion'
+            ? 'suggestion'
+            : 'current';
+    } catch {
+        return 'current';
+    }
+}
+
+/** Remembered per zone; storage may be missing (private window): the switch still works for the visit. */
+const planMode = ref<PlanMode>(readPlanMode());
+
+watch(planMode, (mode) => {
+    try {
+        localStorage.setItem(planModeKey.value, mode);
+    } catch {
+        // Not remembered: nothing else to do.
+    }
+});
+
+/** The planned layout is drawn only while a plan exists: a deleted plan falls back to the game as is. */
+const showingPlan = computed(
+    () =>
+        planMode.value === 'suggestion' &&
+        props.plan !== null &&
+        props.planMap !== null,
+);
+const shownMap = computed(() =>
+    showingPlan.value ? props.planMap : props.map,
+);
+
+const selectedChangeId = ref<number | null>(null);
+const planError = ref<string | null>(null);
+const busyChangeId = ref<number | null>(null);
+
+function selectChange(changeId: number): void {
+    selectedChangeId.value =
+        selectedChangeId.value === changeId ? null : changeId;
+}
+
+/** The server's reason (`position` for a move, `change` for a delete), else the first one it gave. */
+function planFailure(errors: Record<string, string>): void {
+    planError.value =
+        errors.position ?? errors.change ?? Object.values(errors)[0] ?? null;
+}
+
+function moveChange(changeId: number, x: number, y: number): void {
+    planError.value = null;
+    router.patch(
+        ZonePlanChangeController.update.url({
+            zone: props.zone.id,
+            change: changeId,
+        }),
+        { x, y },
+        {
+            only: ['plan', 'planMap'],
+            preserveScroll: true,
+            preserveState: true,
+            onError: planFailure,
+        },
+    );
+}
+
+function deleteChange(changeId: number): void {
+    planError.value = null;
+    busyChangeId.value = changeId;
+    router.delete(
+        ZonePlanChangeController.destroy.url({
+            zone: props.zone.id,
+            change: changeId,
+        }),
+        {
+            only: ['plan', 'planMap'],
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                if (selectedChangeId.value === changeId) {
+                    selectedChangeId.value = null;
+                }
+            },
+            onError: planFailure,
+            onFinish: () => {
+                busyChangeId.value = null;
+            },
+        },
+    );
+}
+
+// endregion
 </script>
 
 <template>
@@ -366,6 +467,24 @@ function showOnMap(instanceId: string): void {
                             t(`zones.layers.${item.key}`)
                         }}
                     </button>
+                    <div
+                        v-if="plan"
+                        class="zone-plan-mode"
+                        role="group"
+                        :aria-label="t('zones.plan.mode.label')"
+                        data-test="zone-plan-mode"
+                    >
+                        <button
+                            v-for="mode in ['current', 'suggestion'] as const"
+                            :key="mode"
+                            type="button"
+                            class="zone-layer"
+                            :aria-pressed="planMode === mode"
+                            @click="planMode = mode"
+                        >
+                            {{ t(`zones.plan.mode.${mode}`) }}
+                        </button>
+                    </div>
                     <button
                         v-if="latestCapture"
                         type="button"
@@ -392,7 +511,7 @@ function showOnMap(instanceId: string): void {
                         }"
                     >
                         <ZoneMap
-                            :map="map"
+                            :map="shownMap ?? map"
                             :terrain="mapTerrain"
                             :plants="mapPlants"
                             :entities="knownEntities"
@@ -403,7 +522,11 @@ function showOnMap(instanceId: string): void {
                             :layer="layer"
                             :selected-id="selectedId"
                             :zone-name="zone.name"
+                            :plan="showingPlan ? plan : null"
+                            :selected-change-id="selectedChangeId"
                             @select="selectedId = $event"
+                            @select-change="selectChange"
+                            @move-change="moveChange"
                             @cell-size="mapCellPx = $event"
                         />
                         <figure
@@ -426,23 +549,35 @@ function showOnMap(instanceId: string): void {
                         {{ t('zones.show.no_layout') }}
                     </p>
 
-                    <ZonePanel
-                        :entities="entities"
-                        :problems="problems"
-                        :counts="counts"
-                        :cell-count="zone.cellCount"
-                        :plants-known="plantsKnown"
-                        :building-states-known="buildingStatesKnown"
-                        :population="population"
-                        :crest="crest"
-                        :selected="selected"
-                        :selected-building="selectedBuilding"
-                        :selected-critter="selectedCritter"
-                        :selected-egg="selectedEgg"
-                        :grid-width="map?.gridWidth ?? null"
-                        @select="selectedId = $event"
-                        @flock="showInFlock"
-                    />
+                    <div class="zone-side">
+                        <ZonePlanPanel
+                            v-if="showingPlan && plan"
+                            :plan="plan"
+                            :selected-change-id="selectedChangeId"
+                            :error="planError"
+                            :busy-change-id="busyChangeId"
+                            @select="selectChange"
+                            @delete="deleteChange"
+                            @dismiss-error="planError = null"
+                        />
+                        <ZonePanel
+                            :entities="entities"
+                            :problems="problems"
+                            :counts="counts"
+                            :cell-count="zone.cellCount"
+                            :plants-known="plantsKnown"
+                            :building-states-known="buildingStatesKnown"
+                            :population="population"
+                            :crest="crest"
+                            :selected="selected"
+                            :selected-building="selectedBuilding"
+                            :selected-critter="selectedCritter"
+                            :selected-egg="selectedEgg"
+                            :grid-width="map?.gridWidth ?? null"
+                            @select="selectedId = $event"
+                            @flock="showInFlock"
+                        />
+                    </div>
                 </div>
             </section>
             <!-- endregion -->
@@ -682,6 +817,23 @@ function showOnMap(instanceId: string): void {
 
 .zone-layer--compare {
     margin-left: auto;
+}
+
+/* The Actuel / Suggestion switch: a segmented pair set apart from the layers. */
+.zone-plan-mode {
+    display: inline-flex;
+    gap: 2px;
+    margin-left: 10px;
+    padding: 2px;
+    border-radius: 8px;
+    background: var(--ink-1);
+}
+
+.zone-side {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    min-width: 0;
 }
 
 .zone-empty {
