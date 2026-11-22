@@ -31,6 +31,7 @@ final class ZonePlanChangeFactory extends Factory
             'target_cell' => null,
             'note' => 'Plan note',
             'moved_by_player' => false,
+            'deleted_by_player' => false,
         ];
     }
 

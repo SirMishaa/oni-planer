@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\DB;
  * Brings a zone plan in line with the layout the game just sent: adds the game has built become
  * applied (and back to pending when their building disappears), checked adds that no longer fit
  * become conflicted (pending again once they fit), removes whose target is gone are dropped, and
- * a plan left without changes is deleted. Unchecked changes are left alone.
+ * a plan left without changes is deleted. Unchecked changes are left alone, and the changes the
+ * player deleted are never read nor revived (a plan holding only those is kept for the assistant).
  */
 final readonly class ReconcileZonePlan
 {
@@ -86,7 +87,7 @@ final readonly class ReconcileZonePlan
                 }
             }
 
-            if ($kept->isEmpty()) {
+            if ($kept->isEmpty() && ! $plan->deletedChanges()->exists()) {
                 $plan->delete();
                 $changed = true;
             }

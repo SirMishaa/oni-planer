@@ -27,9 +27,15 @@ final class ZonePlan extends Model
         return $this->belongsTo(Zone::class);
     }
 
-    /** @return HasMany<ZonePlanChange, $this> ordered by position */
+    /** @return HasMany<ZonePlanChange, $this> the changes of the plan, ordered by position; those the player deleted are left out */
     public function changes(): HasMany
     {
-        return $this->hasMany(ZonePlanChange::class)->orderBy('position');
+        return $this->hasMany(ZonePlanChange::class)->where('deleted_by_player', false)->orderBy('position');
+    }
+
+    /** @return HasMany<ZonePlanChange, $this> the changes the player deleted, ordered by position */
+    public function deletedChanges(): HasMany
+    {
+        return $this->hasMany(ZonePlanChange::class)->where('deleted_by_player', true)->orderBy('position');
     }
 }

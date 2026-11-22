@@ -42,3 +42,23 @@ it('orders changes by position and says whether they add or remove', function ()
         ->and($first->orientation)->toBe('Neutral')
         ->and($plan->zone->plan->is($plan))->toBeTrue();
 });
+
+it('leaves the changes the player deleted out of the plan changes', function (): void {
+    $plan = ZonePlan::factory()->create();
+    $kept = ZonePlanChange::factory()->for($plan, 'plan')->create();
+    $deleted = ZonePlanChange::factory()->for($plan, 'plan')->create(['position' => 2, 'deleted_by_player' => true]);
+
+    expect($plan->changes()->pluck('id')->all())->toBe([$kept->id])
+        ->and($plan->deletedChanges()->pluck('id')->all())->toBe([$deleted->id])
+        ->and($kept->fresh()->deleted_by_player)->toBeFalse();
+});
+
+it('touches the plan when a change is saved', function (): void {
+    $plan = ZonePlan::factory()->create();
+    $change = ZonePlanChange::factory()->for($plan, 'plan')->create();
+    $plan->forceFill(['updated_at' => now()->subHour()])->saveQuietly();
+
+    $change->update(['note' => 'Moved']);
+
+    expect($plan->fresh()->updated_at->greaterThan(now()->subMinute()))->toBeTrue();
+});

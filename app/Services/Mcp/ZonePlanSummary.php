@@ -12,7 +12,8 @@ use App\Services\Zones\ZoneGeometry;
 /**
  * The text of a zone plan for the assistant: a title line, then one line per change in order
  * (`#id kind prefab @ w(x,y) orientation · state · checked · "note"`, the target for removes
- * and replaces), world coordinates throughout.
+ * and replaces), world coordinates throughout. The changes the player deleted follow apart,
+ * marked "deleted by player".
  */
 final class ZonePlanSummary
 {
@@ -20,7 +21,8 @@ final class ZonePlanSummary
     public function lines(Zone $zone, ?ZonePlan $plan): array
     {
         $changes = $plan?->changes()->get();
-        if ($plan === null || $changes === null || $changes->isEmpty()) {
+        $deleted = $plan?->deletedChanges()->get();
+        if ($plan === null || $changes === null || $deleted === null || ($changes->isEmpty() && $deleted->isEmpty())) {
             return [sprintf('No plan for zone #%d "%s".', $zone->id, $zone->name)];
         }
 
@@ -30,6 +32,13 @@ final class ZonePlanSummary
 
         foreach ($changes as $change) {
             $lines[] = $this->line($change, $layout, $gridWidth);
+        }
+
+        if ($deleted->isNotEmpty()) {
+            $lines[] = 'Deleted by the player (left out of the plan; write_zone_plan replaces them along with the rest):';
+            foreach ($deleted as $change) {
+                $lines[] = $this->line($change, $layout, $gridWidth);
+            }
         }
 
         $lines[] = 'unchecked = a layer the game does not send (wire, pipe, logic…): drawn, never validated nor applied.';
@@ -58,7 +67,7 @@ final class ZonePlanSummary
             $change->id,
             $change->kind->value,
             implode(', ', $parts),
-            $change->state->value,
+            $change->deleted_by_player ? 'deleted by player' : $change->state->value,
             $change->checked ? 'checked' : 'unchecked',
             $change->moved_by_player ? ' · moved by player' : '',
             $change->note,

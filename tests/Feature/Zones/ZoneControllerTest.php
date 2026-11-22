@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Data\ZoneShowData;
+use App\Enums\ZonePlanChangeState;
 use App\Models\Building;
 use App\Models\Colony;
 use App\Models\Zone;
@@ -193,6 +194,32 @@ it('sends the plan and the map of the planned layout', function (): void {
             ->where('plan.changes.1.note', 'Power')
             ->where('planMap.buildings', fn ($buildings) => collect($buildings)->pluck('instanceId')->all() === ['plan:'.$add->id])
             ->where('map.buildings.0.instanceId', '7001'));
+});
+
+it('leaves the changes the player deleted out of the plan and the planned map', function (): void {
+    Building::factory()->create(['building_id' => 'ManualGenerator', 'width' => 2, 'height' => 2, 'build_location_rule' => 'Anywhere']);
+    $zone = Zone::factory()->sodicaneFarm()->create();
+    $plan = ZonePlan::factory()->for($zone)->create();
+    ZonePlanChange::factory()->add()->for($plan, 'plan')->create(['position' => 1, 'anchor_cell' => 10 * ZoneFactory::GRID_WIDTH + 1, 'deleted_by_player' => true]);
+    $applied = ZonePlanChange::factory()->add()->for($plan, 'plan')->create(['position' => 2, 'anchor_cell' => 10 * ZoneFactory::GRID_WIDTH + 5, 'state' => ZonePlanChangeState::Applied]);
+
+    $this->get(route('zones.show', $zone))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('plan.changes', 1)
+            ->where('plan.changes.0.id', $applied->id)
+            ->where('plan.changes.0.movable', false)
+            ->where('planMap.buildings', fn ($buildings) => collect($buildings)->pluck('instanceId')->all() === ['7001']));
+});
+
+it('sends no plan while every change of it was deleted by the player', function (): void {
+    $zone = Zone::factory()->sodicaneFarm()->create();
+    $plan = ZonePlan::factory()->for($zone)->create();
+    ZonePlanChange::factory()->add()->for($plan, 'plan')->create(['deleted_by_player' => true]);
+
+    $this->get(route('zones.show', $zone))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('plan', null)
+            ->where('planMap', null));
 });
 
 it('reloads the plan props on a plan event', function (): void {

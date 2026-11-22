@@ -88,13 +88,33 @@ it('refuses a move outside the zone box', function (): void {
     expect($add->fresh()->anchor_cell)->toBe(editCell(105, 201));
 });
 
-it('puts a moved applied add back to pending', function (): void {
+it('refuses to move an add the game has built', function (): void {
     [$zone, $plan] = editPlan();
     $add = editAdd($plan, 'PlanterBox', 105, 201, ['state' => ZonePlanChangeState::Applied]);
 
+    $this->patch(route('zones.plan.changes.update', [$zone, $add]), ['x' => 106, 'y' => 201])->assertSessionHasErrors('position');
+
+    expect($add->fresh()->state)->toBe(ZonePlanChangeState::Applied)
+        ->and($add->fresh()->anchor_cell)->toBe(editCell(105, 201));
+});
+
+it('refuses a move on a zone whose layout has not arrived', function (): void {
+    [$zone, $plan] = editPlan();
+    $add = editAdd($plan, 'PlanterBox', 105, 201);
+    $zone->update(['layout' => null]);
+
+    $this->patch(route('zones.plan.changes.update', [$zone, $add]), ['x' => 106, 'y' => 201])
+        ->assertSessionHasErrors(['position' => 'The layout of this zone has not arrived from the game yet: nothing to move against.']);
+});
+
+it('moves the plan updated time when a change moves', function (): void {
+    [$zone, $plan] = editPlan();
+    $add = editAdd($plan, 'PlanterBox', 105, 201);
+    $plan->forceFill(['updated_at' => now()->subHour()])->saveQuietly();
+
     $this->patch(route('zones.plan.changes.update', [$zone, $add]), ['x' => 106, 'y' => 201])->assertRedirect();
 
-    expect($add->fresh()->state)->toBe(ZonePlanChangeState::Pending);
+    expect($plan->fresh()->updated_at->greaterThan(now()->subMinute()))->toBeTrue();
 });
 
 it('does not move a remove', function (): void {
@@ -104,16 +124,35 @@ it('does not move a remove', function (): void {
     $this->patch(route('zones.plan.changes.update', [$zone, $remove]), ['x' => 106, 'y' => 201])->assertSessionHasErrors('position');
 });
 
-it('deletes an add and the plan once empty', function (): void {
+it('marks a deleted change as deleted by the player and keeps the plan', function (): void {
     Event::fake([ZoneUpdated::class]);
     [$zone, $plan] = editPlan();
     $add = editAdd($plan, 'PlanterBox', 105, 201);
 
     $this->delete(route('zones.plan.changes.destroy', [$zone, $add]))->assertRedirect();
 
-    expect(ZonePlanChange::query()->find($add->id))->toBeNull()
-        ->and(ZonePlan::query()->find($plan->id))->toBeNull();
+    expect($add->fresh()->deleted_by_player)->toBeTrue()
+        ->and($plan->fresh())->not->toBeNull()
+        ->and($plan->changes()->count())->toBe(0);
     Event::assertDispatched(ZoneUpdated::class, fn (ZoneUpdated $event): bool => $event->kind === 'plan');
+});
+
+it('answers 404 for a change the player already deleted', function (): void {
+    [$zone, $plan] = editPlan();
+    $add = editAdd($plan, 'PlanterBox', 105, 201, ['deleted_by_player' => true]);
+
+    $this->patch(route('zones.plan.changes.update', [$zone, $add]), ['x' => 106, 'y' => 201])->assertNotFound();
+    $this->delete(route('zones.plan.changes.destroy', [$zone, $add]))->assertNotFound();
+});
+
+it('moves an add onto the spot of a change the player deleted', function (): void {
+    [$zone, $plan] = editPlan();
+    editAdd($plan, 'PlanterBox', 106, 201, ['deleted_by_player' => true]);
+    $add = editAdd($plan, 'PlanterBox', 105, 201, ['position' => 2]);
+
+    $this->patch(route('zones.plan.changes.update', [$zone, $add]), ['x' => 106, 'y' => 201])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($add->fresh()->anchor_cell)->toBe(editCell(106, 201));
 });
 
 it('refuses to delete a remove another add depends on', function (): void {
@@ -145,14 +184,4 @@ it('refuses a move that leaves another add without its support', function (): vo
     expect($tile->fresh()->anchor_cell)->toBe(editCell(105, 201))
         ->and($tile->fresh()->moved_by_player)->toBeFalse()
         ->and($planter->fresh()->anchor_cell)->toBe(editCell(105, 202));
-});
-
-it('keeps a refused applied add applied where it was', function (): void {
-    [$zone, $plan] = editPlan();
-    $add = editAdd($plan, 'PlanterBox', 105, 201, ['state' => ZonePlanChangeState::Applied]);
-
-    $this->patch(route('zones.plan.changes.update', [$zone, $add]), ['x' => 114, 'y' => 201])->assertSessionHasErrors('position');
-
-    expect($add->fresh()->state)->toBe(ZonePlanChangeState::Applied)
-        ->and($add->fresh()->anchor_cell)->toBe(editCell(105, 201));
 });

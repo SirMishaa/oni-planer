@@ -206,3 +206,25 @@ it('keeps an add pending on the cells a planned remove frees, tile entries inclu
 
     expect($planter->fresh()->state)->toBe(ZonePlanChangeState::Pending);
 });
+
+it('leaves the changes the player deleted alone and keeps a plan made only of them', function (): void {
+    [$zone, $plan] = reconcilePlan();
+    $deleted = reconcileAdd($plan, 'FarmStation', 114, 201, ['deleted_by_player' => true]);
+    $remove = ZonePlanChange::factory()->remove()->for($plan, 'plan')->create(['position' => 2, 'target_instance_id' => '9999', 'target_cell' => null, 'deleted_by_player' => true]);
+
+    app(ReconcileZonePlan::class)->handle($zone);
+
+    expect($deleted->fresh()->state)->toBe(ZonePlanChangeState::Pending)
+        ->and($remove->fresh())->not->toBeNull()
+        ->and($plan->fresh())->not->toBeNull();
+});
+
+it('lets a change the player deleted free its spot for the others', function (): void {
+    [$zone, $plan] = reconcilePlan();
+    reconcileAdd($plan, 'PlanterBox', 105, 201, ['deleted_by_player' => true]);
+    $planter = reconcileAdd($plan, 'PlanterBox', 105, 201, ['position' => 2]);
+
+    app(ReconcileZonePlan::class)->handle($zone);
+
+    expect($planter->fresh()->state)->toBe(ZonePlanChangeState::Pending);
+});

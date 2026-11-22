@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Actions\Zones\ReconcileZonePlan;
+use App\Enums\ZonePlanChangeKind;
 use App\Enums\ZonePlanChangeState;
 use App\Events\ZoneUpdated;
 use App\Http\Requests\MoveZonePlanChangeRequest;
@@ -24,12 +25,18 @@ final readonly class ZonePlanChangeController
         private ReconcileZonePlan $reconcile,
     ) {}
 
-    /** Moves a planned add; nothing changes when it, or a change that relied on its old spot, no longer stands. */
+    /**
+     * Moves a planned add the game has not built; nothing changes when it, or a change that relied
+     * on its old spot, no longer stands.
+     */
     public function update(MoveZonePlanChangeRequest $request, Zone $zone, ZonePlanChange $change): RedirectResponse
     {
         $plan = $this->plan($zone, $change);
-        if (! $change->adds() || $change->anchor_cell === null) {
+        if ($change->kind !== ZonePlanChangeKind::Add || $change->anchor_cell === null) {
             throw ValidationException::withMessages(['position' => 'Only a planned add can be moved.']);
+        }
+        if ($change->state === ZonePlanChangeState::Applied) {
+            throw ValidationException::withMessages(['position' => 'The game has built this add: it can no longer be moved.']);
         }
 
         $layout = is_array($zone->layout) ? $zone->layout : [];
@@ -38,7 +45,10 @@ final readonly class ZonePlanChangeController
         $x = $request->integer('x');
         $y = $request->integer('y');
 
-        if ($gridWidth <= 0 || ! $this->insideBox($box, $x, $y)) {
+        if ($gridWidth <= 0) {
+            throw ValidationException::withMessages(['position' => 'The layout of this zone has not arrived from the game yet: nothing to move against.']);
+        }
+        if (! $this->insideBox($box, $x, $y)) {
             throw ValidationException::withMessages(['position' => "({$x}, {$y}) is outside the zone box."]);
         }
 
@@ -50,7 +60,6 @@ final readonly class ZonePlanChangeController
             $change->forceFill([
                 'anchor_cell' => $y * $gridWidth + $x,
                 'moved_by_player' => true,
-                'state' => $change->state === ZonePlanChangeState::Applied ? ZonePlanChangeState::Pending : $change->state,
             ])->save();
 
             $problem = $this->placement->problem($zone, $plan, $change);
@@ -69,7 +78,10 @@ final readonly class ZonePlanChangeController
         return back();
     }
 
-    /** Deletes a change, unless another planned add stands only thanks to it. */
+    /**
+     * Deletes a change from the plan, unless another planned add stands only thanks to it. The
+     * change stays stored as deleted by the player, so the assistant sees it; the plan is kept.
+     */
     public function destroy(Zone $zone, ZonePlanChange $change): RedirectResponse
     {
         $plan = $this->plan($zone, $change);
@@ -81,22 +93,17 @@ final readonly class ZonePlanChangeController
             ]);
         }
 
-        DB::transaction(function () use ($plan, $change): void {
-            $change->delete();
-            if (! $plan->changes()->exists()) {
-                $plan->delete();
-            }
-        });
+        $change->forceFill(['deleted_by_player' => true])->save();
 
         ZoneUpdated::dispatch($zone->zone_guid, $zone->colony_guid, 'plan');
 
         return back();
     }
 
-    /** The plan of the zone the change belongs to; 404 for a change of another zone or a gone zone. */
+    /** The plan of the zone the change belongs to; 404 for a change of another zone, a gone zone or a deleted change. */
     private function plan(Zone $zone, ZonePlanChange $change): ZonePlan
     {
-        abort_if($zone->archived_at !== null || $zone->transient, 404);
+        abort_if($zone->archived_at !== null || $zone->transient || $change->deleted_by_player, 404);
         $plan = $change->plan;
         abort_unless($plan->zone_id === $zone->id, 404);
 

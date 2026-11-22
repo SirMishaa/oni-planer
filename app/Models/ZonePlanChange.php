@@ -16,15 +16,24 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * One change of a zone plan. Adds and replaces carry `prefab_id`, `anchor_cell` and `orientation`;
  * removes and replaces target an existing building by `target_instance_id` or `target_cell`.
  * Changes whose `object_layer` is not checked (`checked = false`) are drawn but never validated or applied.
+ * A change the player deleted (`deleted_by_player`) stays stored but is left out of the plan's
+ * changes: only the assistant's plan summary lists it.
  */
 #[Fillable([
     'zone_plan_id', 'position', 'kind', 'state', 'prefab_id', 'anchor_cell', 'orientation', 'object_layer',
-    'checked', 'target_instance_id', 'target_cell', 'note', 'moved_by_player',
+    'checked', 'target_instance_id', 'target_cell', 'note', 'moved_by_player', 'deleted_by_player',
 ])]
 final class ZonePlanChange extends Model
 {
     /** @use HasFactory<ZonePlanChangeFactory> */
     use HasFactory;
+
+    /**
+     * A moved or deleted change moves the plan's `updated_at`.
+     *
+     * @var list<string>
+     */
+    protected $touches = ['plan'];
 
     public function casts(): array
     {
@@ -36,6 +45,7 @@ final class ZonePlanChange extends Model
             'checked' => 'boolean',
             'target_cell' => 'integer',
             'moved_by_player' => 'boolean',
+            'deleted_by_player' => 'boolean',
         ];
     }
 

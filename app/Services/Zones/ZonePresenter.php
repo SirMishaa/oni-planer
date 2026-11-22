@@ -25,6 +25,7 @@ use App\Data\ZoneTileData;
 use App\Enums\BuildLocationRule;
 use App\Enums\UplinkMessageType;
 use App\Enums\ZonePlanChangeKind;
+use App\Enums\ZonePlanChangeState;
 use App\Models\Building;
 use App\Models\Colony;
 use App\Models\CritterMorph;
@@ -216,7 +217,7 @@ final class ZonePresenter
             'plan' => fn (): ?ZonePlanData => $this->plan($zone, $placed ? $layout : null, $gridWidth),
             'planMap' => function () use ($zone, $layout, $gridWidth, $position, $placed): ?ZoneMapData {
                 $changes = $zone->plan?->changes()->get();
-                if (! $placed || $changes === null) {
+                if (! $placed || $changes === null || $changes->isEmpty()) {
                     return null;
                 }
 
@@ -480,7 +481,8 @@ final class ZonePresenter
     }
 
     /**
-     * The zone's plan with each change placed on the map; null when the zone has no plan.
+     * The zone's plan with each change placed on the map; null when the zone has no plan or the
+     * player deleted every change of it (deleted changes are only for the assistant).
      *
      * @param  array<string, mixed>|null  $layout
      */
@@ -492,6 +494,10 @@ final class ZonePresenter
         }
 
         $changes = $plan->changes()->get();
+        if ($changes->isEmpty()) {
+            return null;
+        }
+
         $definitions = $this->planLayout->definitions($changes);
         $buildings = [];
         foreach (self::listOrNull($layout['buildings'] ?? null) ?? [] as $building) {
@@ -535,7 +541,7 @@ final class ZonePresenter
                     height: $footprint[3] ?? null,
                     orientation: $change->orientation,
                     target: $change->removes() ? $this->planTarget($change, $buildings, $tiles, $gridWidth) : null,
-                    movable: $change->kind === ZonePlanChangeKind::Add,
+                    movable: $change->kind === ZonePlanChangeKind::Add && $change->state !== ZonePlanChangeState::Applied,
                 );
             })->all(),
         );
