@@ -1,8 +1,8 @@
 {
-    "types\/App\/Data\/data.d.ts": "4bfcc05219d9554b656b126df50e790d",
+    "types\/App\/Data\/data.d.ts": "a6df2ce6a35e3205d7834ac3b636306e",
     "types\/App\/Data\/GameRules\/data.d.ts": "3c9504d73e406310af049134ee345aaa",
     "types\/App\/Data\/Viability\/data.d.ts": "8e9d38448055cdf378b19442b82ccf15",
-    "types\/App\/Enums\/data.d.ts": "2b22d45f09d5cbe9b8a20521d9844f6a",
+    "types\/App\/Enums\/data.d.ts": "00d5f4e64a65ac06ef5c30a30ab914ba",
     "types\/Illuminate\/data.d.ts": "c49cb82ab295a835fb8553e262cc508a",
     "types\/Spatie\/LaravelData\/data.d.ts": "ee4628e9e001e85b7867e5940ed12619"
 }

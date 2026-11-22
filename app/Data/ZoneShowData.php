@@ -53,6 +53,10 @@ final class ZoneShowData extends Data
         public ?string $crittersAt = null,
         /** @var list<ZoneFeedingData>|null what each flock band eats and produces and how long its stock lasts (derived); null until the game sent the critters */
         public ?array $feeding = null,
+        /** The zone's plan, null when it has none. */
+        public ?ZonePlanData $plan = null,
+        /** The map of the zone once the plan is built (planned buildings carry the instance id `plan:{changeId}`); null with no plan or no layout. */
+        public ?ZoneMapData $planMap = null,
         /** @var array<string, list<string>> the props each `ZoneUpdated` kind changes, {@see ZonePresenter::PROPS_BY_KIND} */
         public array $liveProps = [],
         /** @var array{channel: 'uplink', event: '.zone.updated'} Echo subscription of the live updates */

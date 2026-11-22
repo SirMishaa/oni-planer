@@ -14,6 +14,8 @@ use App\Data\ZoneData;
 use App\Data\ZoneEggData;
 use App\Data\ZoneEntityData;
 use App\Data\ZoneMapData;
+use App\Data\ZonePlanChangeData;
+use App\Data\ZonePlanData;
 use App\Data\ZonePlantData;
 use App\Data\ZoneShowData;
 use App\Data\ZoneSpriteRectData;
@@ -22,6 +24,7 @@ use App\Data\ZoneTerrainElementData;
 use App\Data\ZoneTileData;
 use App\Enums\BuildLocationRule;
 use App\Enums\UplinkMessageType;
+use App\Enums\ZonePlanChangeKind;
 use App\Models\Building;
 use App\Models\Colony;
 use App\Models\CritterMorph;
@@ -29,7 +32,10 @@ use App\Models\Element;
 use App\Models\UplinkCommand;
 use App\Models\Zone;
 use App\Models\ZoneCapture;
+use App\Models\ZonePlanChange;
 use App\Services\GameText;
+use App\Services\Zones\Plans\PlanFootprint;
+use App\Services\Zones\Plans\ZonePlanLayout;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Carbon\Exceptions\InvalidFormatException;
@@ -68,6 +74,7 @@ final class ZonePresenter
             'buildingStatesKnown', 'population', 'critters', 'crittersAt', 'feeding',
         ],
         'capture' => ['captures', 'captureRequest'],
+        'plan' => ['plan', 'planMap'],
     ];
 
     /**
@@ -78,7 +85,7 @@ final class ZonePresenter
      */
     private const array ALL_LIVE_PROPS = [
         'zone', 'map', 'mapTerrain', 'mapPlants', 'entities', 'problems', 'borderEntities', 'counts',
-        'plantsKnown', 'buildingStatesKnown', 'captures', 'captureRequest', 'population', 'critters', 'crittersAt', 'eggs', 'feeding',
+        'plantsKnown', 'buildingStatesKnown', 'captures', 'captureRequest', 'population', 'critters', 'crittersAt', 'eggs', 'feeding', 'plan', 'planMap',
     ];
 
     /**
@@ -116,6 +123,7 @@ final class ZonePresenter
         private readonly GameText $text,
         private readonly ZonePopulation $population,
         private readonly ZoneFeeding $feeding,
+        private readonly ZonePlanLayout $planLayout,
     ) {}
 
     /** Root-relative URL of a game sprite, or null when it was not imported. */
@@ -205,6 +213,15 @@ final class ZonePresenter
                 fastGameSeconds: $zone->fast_game_seconds,
             ),
             'map' => fn (): ?ZoneMapData => $placed ? $this->layoutMap($layout, $gridWidth, $position) : null,
+            'plan' => fn (): ?ZonePlanData => $this->plan($zone, $placed ? $layout : null, $gridWidth),
+            'planMap' => function () use ($zone, $layout, $gridWidth, $position, $placed): ?ZoneMapData {
+                $changes = $zone->plan?->changes()->get();
+                if (! $placed || $changes === null) {
+                    return null;
+                }
+
+                return $this->layoutMap($this->planLayout->apply($layout, $changes, $this->planLayout->definitions($changes)), $gridWidth, $position);
+            },
             'entities' => $entities,
             'problems' => $problems,
             'borderEntities' => fn (): array => array_map(fn (array $building): ZoneEntityData => $this->buildingEntity($building, $anchorsByInstance(), $position, passage: true), $fastBuildings()[1]),
@@ -460,6 +477,104 @@ final class ZonePresenter
                 self::TEMPERATURE_BANDS,
             ),
         );
+    }
+
+    /**
+     * The zone's plan with each change placed on the map; null when the zone has no plan.
+     *
+     * @param  array<string, mixed>|null  $layout
+     */
+    private function plan(Zone $zone, ?array $layout, int $gridWidth): ?ZonePlanData
+    {
+        $plan = $zone->plan;
+        if ($plan === null) {
+            return null;
+        }
+
+        $changes = $plan->changes()->get();
+        $definitions = $this->planLayout->definitions($changes);
+        $buildings = [];
+        foreach (self::listOrNull($layout['buildings'] ?? null) ?? [] as $building) {
+            $instanceId = self::stringOrNull($building['instanceId'] ?? null);
+            if ($instanceId !== null) {
+                $buildings[$instanceId] = $building;
+            }
+        }
+        $tiles = [];
+        foreach (self::listOrNull($layout['tiles'] ?? null) ?? [] as $tile) {
+            if (is_numeric($tile['cell'] ?? null)) {
+                $tiles[(int) $tile['cell']] = $tile;
+            }
+        }
+
+        return new ZonePlanData(
+            updatedAt: $plan->updated_at->toIso8601String(),
+            changes: $changes->map(function (ZonePlanChange $change) use ($definitions, $buildings, $tiles, $gridWidth): ZonePlanChangeData {
+                $footprint = null;
+                if ($change->adds() && $change->prefab_id !== null && $change->anchor_cell !== null && $gridWidth > 0) {
+                    $definition = $definitions[$change->prefab_id] ?? ['width' => 1, 'height' => 1, 'isTile' => false];
+                    $footprint = [
+                        $change->anchor_cell % $gridWidth,
+                        intdiv($change->anchor_cell, $gridWidth),
+                        ...PlanFootprint::size($definition['width'], $definition['height'], $change->orientation),
+                    ];
+                }
+
+                return new ZonePlanChangeData(
+                    id: $change->id,
+                    kind: $change->kind->value,
+                    state: $change->state->value,
+                    checked: $change->checked,
+                    movedByPlayer: $change->moved_by_player,
+                    note: (string) $change->note,
+                    prefabId: $change->prefab_id,
+                    name: $change->prefab_id === null ? null : $this->text->name($change->prefab_id),
+                    x: $footprint[0] ?? null,
+                    y: $footprint[1] ?? null,
+                    width: $footprint[2] ?? null,
+                    height: $footprint[3] ?? null,
+                    orientation: $change->orientation,
+                    target: $change->removes() ? $this->planTarget($change, $buildings, $tiles, $gridWidth) : null,
+                    movable: $change->kind === ZonePlanChangeKind::Add,
+                );
+            })->all(),
+        );
+    }
+
+    /**
+     * What a removal or replacement takes out, read from the real layout; null when it is gone.
+     *
+     * @param  array<string, array<mixed>>  $buildings  real layout buildings by instance id
+     * @param  array<int, array<mixed>>  $tiles  real layout tiles by cell
+     * @return array{x: int, y: int, width: int, height: int, label: string}|null
+     */
+    private function planTarget(ZonePlanChange $change, array $buildings, array $tiles, int $gridWidth): ?array
+    {
+        $building = $change->target_instance_id === null ? null : ($buildings[$change->target_instance_id] ?? null);
+        if ($building !== null && is_numeric($building['anchorCell'] ?? null) && $gridWidth > 0) {
+            $anchor = (int) $building['anchorCell'];
+
+            return [
+                'x' => $anchor % $gridWidth,
+                'y' => intdiv($anchor, $gridWidth),
+                'width' => self::int($building['width'] ?? null, 1),
+                'height' => self::int($building['height'] ?? null, 1),
+                'label' => $this->text->name(self::string($building['prefabId'] ?? null)).' #'.$change->target_instance_id,
+            ];
+        }
+
+        $tile = $change->target_cell === null ? null : ($tiles[$change->target_cell] ?? null);
+        if ($tile !== null && $gridWidth > 0) {
+            return [
+                'x' => $change->target_cell % $gridWidth,
+                'y' => intdiv($change->target_cell, $gridWidth),
+                'width' => 1,
+                'height' => 1,
+                'label' => $this->text->name(self::string($tile['prefabId'] ?? null)),
+            ];
+        }
+
+        return null;
     }
 
     /** @return list<ZoneCaptureData> */
