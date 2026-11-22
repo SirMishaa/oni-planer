@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * A named set of cells defined in the game and sent by the mod, one row per
@@ -55,6 +56,12 @@ final class Zone extends Model
     public function versions(): HasMany
     {
         return $this->hasMany(ZoneVersion::class);
+    }
+
+    /** @return HasOne<ZonePlan, $this> */
+    public function plan(): HasOne
+    {
+        return $this->hasOne(ZonePlan::class);
     }
 
     /** @return HasMany<ZoneCapture, $this> newest first */
