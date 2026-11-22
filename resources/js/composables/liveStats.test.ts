@@ -21,6 +21,14 @@ describe('liveStats', () => {
         expect(stats.zone.layout.count).toBe(0);
     });
 
+    it('counts the plan events Claude and the player send', () => {
+        const stats = createLiveStats(0);
+
+        recordZoneEvent(stats, 'plan', 2_000);
+
+        expect(stats.zone.plan).toEqual({ count: 1, lastAt: 2_000 });
+    });
+
     it('counts another zone relayed message as skipped, not received', () => {
         const stats = createLiveStats(0);
 

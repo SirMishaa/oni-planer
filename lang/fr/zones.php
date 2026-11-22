@@ -57,6 +57,7 @@ return [
                 'slow' => 'État lent',
                 'fast' => 'État rapide',
                 'capture' => 'Captures',
+                'plan' => 'Suggestion',
                 'list' => 'Liste',
             ],
             'reloads' => 'Rechargements',

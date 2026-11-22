@@ -55,6 +55,7 @@ export function createLiveStats(now: number = Date.now()): LiveStats {
             slow: { count: 0, lastAt: null },
             fast: { count: 0, lastAt: null },
             capture: { count: 0, lastAt: null },
+            plan: { count: 0, lastAt: null },
         },
         reloads: { count: 0, failed: 0, lastMs: null, totalMs: 0 },
         trips: relayCounters(),
