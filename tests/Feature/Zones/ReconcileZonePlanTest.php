@@ -155,3 +155,13 @@ it('follows the game when a zone layout is stored and tells open pages', functio
     expect($add->fresh()->state)->toBe(ZonePlanChangeState::Applied);
     Event::assertDispatched(ZoneUpdated::class, fn (ZoneUpdated $event): bool => $event->kind === 'plan' && $event->zoneGuid === 'zone-sodicane');
 });
+
+it('keeps a checked add pending over an unchecked one', function (): void {
+    [$zone, $plan] = reconcilePlan();
+    reconcileAdd($plan, 'Wire', 105, 201, ['object_layer' => 'Wire', 'checked' => false]);
+    $planter = reconcileAdd($plan, 'PlanterBox', 105, 201, ['position' => 2]);
+
+    app(ReconcileZonePlan::class)->handle($zone);
+
+    expect($planter->fresh()->state)->toBe(ZonePlanChangeState::Pending);
+});

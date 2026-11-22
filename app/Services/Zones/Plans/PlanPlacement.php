@@ -71,7 +71,8 @@ final class PlanPlacement
     }
 
     /**
-     * Why a change cannot stand among the given plan changes, or null when it can.
+     * Why a change cannot stand among the given plan changes, or null when it can. Unchecked
+     * changes (wires, pipes, logic…) live on other layers and never block a checked one.
      *
      * @param  iterable<ZonePlanChange>  $changes
      */
@@ -88,7 +89,7 @@ final class PlanPlacement
             return null;
         }
 
-        $changes = collect($changes);
+        $changes = collect($changes)->filter(fn (ZonePlanChange $other): bool => $other->checked)->values();
         $definitions = $this->planLayout->definitions($changes->concat([$change]));
         $context = $this->withoutTarget($this->planLayout->apply($layout, $changes, $definitions, exceptChangeId: $change->id), $change);
 

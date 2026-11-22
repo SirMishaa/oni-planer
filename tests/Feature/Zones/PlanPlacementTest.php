@@ -134,3 +134,11 @@ it('accepts an add over a building the plan removes and lists it as dependent on
         ->and(array_map(fn (ZonePlanChange $change): int => $change->id, app(PlanPlacement::class)->dependents($zone, $plan, $remove)))->toBe([$add->id])
         ->and(app(PlanPlacement::class)->dependents($zone, $plan, $elsewhere))->toBe([]);
 });
+
+it('lets an unchecked change under a checked add', function (): void {
+    [$zone, $plan] = placementPlan();
+    placementAdd($plan, 'Wire', 105, 201, ['object_layer' => 'Wire', 'checked' => false]);
+    $feeder = placementAdd($plan, 'FishFeeder', 105, 201, ['position' => 2]);
+
+    expect(app(PlanPlacement::class)->problem($zone, $plan, $feeder))->toBeNull();
+});
