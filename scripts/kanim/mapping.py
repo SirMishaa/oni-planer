@@ -1,15 +1,14 @@
 """Resolve which kanim to render for each entity natural key.
 
-worklist.json (generated from the app DB) has shape:
-    [{"category": "critters", "key": "Hatch", "kanim": "hatch"}, ...]
-where `kanim` is the snake_case default base name; OVERRIDES corrects the few
-entities whose kanim base differs.
+The worklist is read from the synced OniExtract export (entities.json,
+planner_extras.json, geyser.json), one row per entity:
+    {"category": "critters", "key": "HatchBaby", "kanim": "baby_hatch", "exact_kanim": "baby_hatch", "morph": "Hatch"}
+`exact_kanim` is the kanim the game loads; OVERRIDES corrects the few
+entities whose curated kanim base differs.
 """
 import json
-import sqlite3
+import os
 from pathlib import Path
-
-WORKLIST = Path(__file__).resolve().parent / "worklist.json"
 
 # natural key -> actual kanim base name, for entities whose kanim is not the
 # snake_case id and is not caught by the normalized (separator-stripped) match.
@@ -130,51 +129,79 @@ EXTRA_BUILD_BASES: dict[str, list[str]] = {
 }
 
 
-ROOT = Path(__file__).resolve().parents[2]
-DATABASE = ROOT / "database" / "database.sqlite"
+ROOT = Path(os.environ.get("KANIM_DATA_ROOT") or Path(__file__).resolve().parents[2])
 EXPORT_DATABASE = ROOT / "game-data" / "oniextract" / "current" / "database"
 
 
-def _imported_ids(table: str, id_column: str) -> list[str]:
-    """Ids of the plants/geysers actually imported into the app DB."""
-    if not DATABASE.exists():
-        return []
-    with sqlite3.connect(DATABASE) as connection:
-        return [row[0] for row in connection.execute(f"SELECT {id_column} FROM {table} ORDER BY {id_column}")]
+def _export_json(name: str, export: Path) -> dict:
+    path = export / name
+    return json.loads(path.read_text()) if path.exists() else {}
 
 
-def _export_kanims(category: str) -> dict[str, str]:
-    """id -> exact kanim base the game loads, read from the synced OniExtract export."""
-    if category == "plants":
-        path = EXPORT_DATABASE / "planner_extras.json"
-        if not path.exists():
-            return {}
-        entities = json.loads(path.read_text()).get("entities", {})
-        return {key: entity["kanim"] for key, entity in entities.items() if entity.get("kanim")}
-    path = EXPORT_DATABASE / "geyser.json"
-    if not path.exists():
-        return {}
-    geysers = json.loads(path.read_text()).get("geysers", [])
-    return {geyser["geyserType"]["id"]: geyser["anim"] for geyser in geysers if geyser.get("anim")}
+def _tags(entity: dict) -> set[str]:
+    return {tag.get("Name") for tag in (entity.get("kPrefabID") or {}).get("tags") or []}
 
 
-def _export_rows(category: str, table: str, id_column: str) -> list[dict[str, str]]:
-    """Plants/geysers present in the DB, with the exact kanim from the export (no name guessing)."""
-    kanims = _export_kanims(category)
+def _is_creature(entity: dict) -> bool:
+    """The game:import rule (CritterReader): a temperature monitor and a CreatureBrain tag."""
+    return entity.get("critterTemperatureMonitorDef") is not None and "CreatureBrain" in _tags(entity)
+
+
+def _kanim_base(kanim: str) -> str:
+    """Kanim file -> anim/build base: adults load a build-only "{x}_build_kanim"
+    whose anims live in "{x}_anim" (pacu_build_kanim -> pacu); babies load
+    "baby_{x}_kanim" directly (baby_pacu)."""
+    return kanim.removesuffix("_kanim").removesuffix("_build")
+
+
+def _critter_rows(entities: list[dict], extras: dict) -> list[dict[str, str]]:
+    """Every creature of the export, adults and babies, with the kanim the game loads.
+
+    A baby keeps its adult in "morph": baby kanims carry the same prefixed ui anims
+    and symbols (trp_ui, king_*) as the adult's, so MORPH_UI_ANIM / MORPH_SYMBOL_PREFIX
+    apply to it under its adult's key. Curated OVERRIDES win over the export. Mod
+    creatures are left out: their kanims ship with the mod, not in the game bundles.
+    """
     rows = []
-    for key in _imported_ids(table, id_column):
-        # Plant ids are prefab ids; geyser ids are geyserType ids (kanims keyed accordingly).
-        kanim = kanims.get(key)
-        if kanim:
-            base = kanim.removesuffix("_kanim")
-            rows.append({"category": category, "key": key, "kanim": base, "exact_kanim": base})
+    for entity in entities:
+        key = str(entity["name"])
+        extra = extras.get(key) or {}
+        if not _is_creature(entity) or "sourceMod" in extra or not extra.get("kanim"):
+            continue
+        adult = ((entity.get("babyMonitorDef") or {}).get("adultPrefab") or {}).get("Name")
+        base = OVERRIDES.get(key) or _kanim_base(extra["kanim"])
+        rows.append({"category": "critters", "key": key, "kanim": base, "exact_kanim": base, "morph": adult or key})
     return rows
 
 
-def load_worklist() -> list[dict[str, str]]:
-    """Critters come from the curated worklist.json (morph overrides live here);
-    plants and geysers come from the imported DB ids plus the export's exact kanims."""
-    curated = json.loads(WORKLIST.read_text())
-    exact = [*_export_rows("plants", "plants", "plant_id"), *_export_rows("geysers", "geyser_types", "geyser_id")]
-    exact_categories = {row["category"] for row in exact}
-    return [*(row for row in curated if row["category"] not in exact_categories), *exact]
+def _plant_rows(entities: list[dict], extras: dict) -> list[dict[str, str]]:
+    """Every plant of the export (PlantReader rule: a Plant tag), with its exact kanim."""
+    rows = []
+    for entity in entities:
+        key = str(entity["name"])
+        extra = extras.get(key) or {}
+        if "Plant" not in _tags(entity) or "sourceMod" in extra or not extra.get("kanim"):
+            continue
+        base = extra["kanim"].removesuffix("_kanim")
+        rows.append({"category": "plants", "key": key, "kanim": base, "exact_kanim": base})
+    return rows
+
+
+def _geyser_rows(geysers: list[dict]) -> list[dict[str, str]]:
+    """Every geyser type of the export, keyed by geyserType id like the geyser_types table."""
+    rows = []
+    for geyser in geysers:
+        if not geyser.get("anim"):
+            continue
+        base = geyser["anim"].removesuffix("_kanim")
+        rows.append({"category": "geysers", "key": geyser["geyserType"]["id"], "kanim": base, "exact_kanim": base})
+    return rows
+
+
+def load_worklist(export: Path = EXPORT_DATABASE) -> list[dict[str, str]]:
+    """Critters, plants and geysers to render, read from the synced OniExtract export
+    (the same entities game:import reads), each with the exact kanim the game loads."""
+    entities = _export_json("entities.json", export).get("entities", [])
+    extras = _export_json("planner_extras.json", export).get("entities", {})
+    geysers = _export_json("geyser.json", export).get("geysers", [])
+    return [*_critter_rows(entities, extras), *_plant_rows(entities, extras), *_geyser_rows(geysers)]

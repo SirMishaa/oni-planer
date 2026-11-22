@@ -3,9 +3,13 @@
 Usage:
     uv run --with UnityPy --with Pillow python -m scripts.kanim.extract [--key Hatch] [--missing] [--world] [--verbose]
 
+From a git worktree, set KANIM_DATA_ROOT to the main checkout: game-data/ and
+public/assets/game/ are gitignored and only exist there.
+
 --world renders only the critters' map sprites (<key>_world.webp, one frame each),
 without touching the portraits and idle loops.
 """
+import os
 import re
 import sys
 from pathlib import Path
@@ -18,7 +22,9 @@ from scripts.kanim.build import parse_build
 from scripts.kanim.mapping import EXTRA_BUILD_BASES, MORPH_SYMBOL_PREFIX, MORPH_UI_ANIM, OVERRIDES, load_worklist, morph_symbol_prefix
 from scripts.kanim.render import encode_webp, render_anim
 
-REPO = Path(__file__).resolve().parents[2]
+# The checkout whose gitignored game-data/ is read and public/assets/game/ written:
+# this one by default, the main checkout (KANIM_DATA_ROOT) when run from a git worktree.
+REPO = Path(os.environ.get("KANIM_DATA_ROOT") or Path(__file__).resolve().parents[2])
 GAME_DATA = REPO / "game-data/OxygenNotIncluded_Data"
 ASSETS = GAME_DATA / "sharedassets0.assets"
 # Base game first so its kanims win normalized-name collisions; DLC critters
@@ -108,6 +114,8 @@ def _is_rendered(row: dict[str, str]) -> bool:
     files = [out_dir / f"{row['key']}.webp"]
     if row["category"] in PORTRAIT_CATEGORIES:
         files.append(out_dir / f"{row['key']}_idle.webp")
+    if row["category"] == "critters":
+        files.append(out_dir / f"{row['key']}_world.webp")
     return all(f.exists() and f.stat().st_size > 0 for f in files)
 
 
@@ -139,9 +147,11 @@ def _apply_symbol_prefix(symbols: dict, names: dict[int, str], prefix: str) -> d
     return out
 
 
-def _pick_critter_anim(data: AnimData, key: str):
-    """Front-facing portrait: the morph's own ui anim, else the base ui, else idle."""
-    preferred = MORPH_UI_ANIM.get(key)
+def _pick_critter_anim(data: AnimData, morph: str):
+    """Front-facing portrait: the morph's own ui anim, else the base ui, else idle.
+
+    `morph` is the adult key for a baby, whose kanim carries the adult's prefixed ui anims."""
+    preferred = MORPH_UI_ANIM.get(morph)
     for name in (preferred, "ui"):
         if name is None:
             continue
@@ -152,12 +162,12 @@ def _pick_critter_anim(data: AnimData, key: str):
     return _pick_idle(data)
 
 
-def _render_world(key: str, data: AnimData, symbols: dict, names: dict[int, str], skip: frozenset[int], out_dir: Path, verbose: bool) -> str | None:
-    """Renders <key>_world.webp; returns why it could not, or None."""
+def _render_world(key: str, morph: str, data: AnimData, symbols: dict, names: dict[int, str], skip: frozenset[int], out_dir: Path, verbose: bool) -> str | None:
+    """Renders <key>_world.webp in the colours of `morph` (the adult key for a baby); returns why it could not, or None."""
     anim = pick_world_anim(data)
     if anim is None:
         return f"no {WORLD_ANIM} anim"
-    prefix = morph_symbol_prefix(key)
+    prefix = morph_symbol_prefix(morph)
     world_symbols = _apply_symbol_prefix(symbols, names, prefix) if prefix else symbols
     still = first_frame(anim)
     referenced = {e.symbol_hash for e in still.frames[0].elements if e.symbol_hash not in skip}
@@ -271,8 +281,9 @@ def main() -> None:
         # The map sprite: frame 0 of the anim the game draws the critter with, in its
         # morph colours. Facing.SetFacing mirrors it (KAnimControllerBase.FlipX) when
         # the critter faces left, so it is authored facing right like every world anim.
+        morph = row.get("morph", row["key"])
         if row["category"] == "critters":
-            reason = _render_world(row["key"], data, symbols, names, skip, out_dir, verbose)
+            reason = _render_world(row["key"], morph, data, symbols, names, skip, out_dir, verbose)
             if reason is None:
                 ok += world_only
             else:
@@ -281,13 +292,13 @@ def main() -> None:
         if world_only:
             continue
 
-        anim = _pick_critter_anim(data, row["key"]) if row["category"] in PORTRAIT_CATEGORIES else _pick_idle(data)
+        anim = _pick_critter_anim(data, morph) if row["category"] in PORTRAIT_CATEGORIES else _pick_idle(data)
         if anim is None:
             print(f"  MISS  {row['category']}/{row['key']} (no usable anim)")
             miss += 1
             continue
 
-        prefix = MORPH_SYMBOL_PREFIX.get(row["key"])
+        prefix = MORPH_SYMBOL_PREFIX.get(morph)
         portrait_symbols = _apply_symbol_prefix(symbols, names, prefix) if prefix else symbols
 
         # A portrait is a still: frame 0 only, even when it fell back to an idle loop
@@ -316,7 +327,7 @@ def main() -> None:
             prefs = PLANT_IDLE_PREFERENCES if row["category"] == "plants" else IDLE_PREFERENCES
             idle = _pick_idle(data, prefs)
             if idle is not None:
-                idle_prefix = morph_symbol_prefix(row["key"])
+                idle_prefix = morph_symbol_prefix(morph)
                 idle_symbols = _apply_symbol_prefix(symbols, names, idle_prefix) if idle_prefix else symbols
                 idle_frames = render_anim(idle_symbols, idle, skip)
                 encode_webp(idle_frames, idle.rate, out_dir / f"{row['key']}_idle.webp")
