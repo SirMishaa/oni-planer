@@ -177,18 +177,7 @@ final class PlanPlacement
      */
     private function withoutTarget(array $context, ZonePlanChange $change): array
     {
-        if (! $change->removes()) {
-            return $context;
-        }
-
-        if ($change->target_instance_id !== null) {
-            $context['buildings'] = array_values(array_filter($context['buildings'], fn (array $building): bool => (string) ($building['instanceId'] ?? '') !== $change->target_instance_id));
-        }
-        if ($change->target_cell !== null) {
-            $context['tiles'] = array_values(array_filter($context['tiles'], fn (array $tile): bool => ($tile['cell'] ?? null) !== $change->target_cell));
-        }
-
-        return $context;
+        return $change->removes() ? ZonePlanLayout::withoutTarget($context, $change) : $context;
     }
 
     /**

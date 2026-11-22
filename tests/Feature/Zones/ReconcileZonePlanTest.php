@@ -35,6 +35,9 @@ function reconcilePlan(): array
         ['PlanterBox', 1, 1, 'OnFloor', 'Unrotatable'],
         ['Tile', 1, 1, 'Tile', 'Unrotatable'],
         ['FarmTile', 1, 1, 'Tile', 'FlipV'],
+        ['Door', 1, 2, 'Tile', 'R90'],
+        ['PressureDoor', 1, 2, 'Tile', 'R90'],
+        ['FishFeeder', 1, 3, 'Anywhere', 'Unrotatable'],
     ] as [$id, $width, $height, $rule, $rotations]) {
         Building::factory()->create([
             'building_id' => $id,
@@ -159,6 +162,44 @@ it('follows the game when a zone layout is stored and tells open pages', functio
 it('keeps a checked add pending over an unchecked one', function (): void {
     [$zone, $plan] = reconcilePlan();
     reconcileAdd($plan, 'Wire', 105, 201, ['object_layer' => 'Wire', 'checked' => false]);
+    $planter = reconcileAdd($plan, 'PlanterBox', 105, 201, ['position' => 2]);
+
+    app(ReconcileZonePlan::class)->handle($zone);
+
+    expect($planter->fresh()->state)->toBe(ZonePlanChangeState::Pending);
+});
+
+it('marks a door applied when the game sends it as a building', function (): void {
+    [$zone, $plan] = reconcilePlan();
+    $door = reconcileAdd($plan, 'Door', 105, 201);
+    reconcileBuild($zone, ['instanceId' => '8002', 'prefabId' => 'Door', 'anchorCell' => reconcileCell(105, 201), 'width' => 1, 'height' => 2, 'orientation' => 'Neutral']);
+
+    app(ReconcileZonePlan::class)->handle($zone);
+
+    expect($door->fresh()->state)->toBe(ZonePlanChangeState::Applied);
+});
+
+it('marks a pressure door applied when the game sends it as one tile per cell', function (): void {
+    [$zone, $plan] = reconcilePlan();
+    $door = reconcileAdd($plan, 'PressureDoor', 105, 201);
+    $layout = $zone->layout;
+    $layout['tiles'][] = ['cell' => reconcileCell(105, 201), 'prefabId' => 'PressureDoor'];
+    $layout['tiles'][] = ['cell' => reconcileCell(105, 202), 'prefabId' => 'PressureDoor'];
+    $zone->update(['layout' => $layout]);
+
+    app(ReconcileZonePlan::class)->handle($zone);
+
+    expect($door->fresh()->state)->toBe(ZonePlanChangeState::Applied);
+});
+
+it('keeps an add pending on the cells a planned remove frees, tile entries included', function (): void {
+    [$zone, $plan] = reconcilePlan();
+    reconcileBuild($zone, ['instanceId' => '8001', 'prefabId' => 'FishFeeder', 'anchorCell' => reconcileCell(105, 201), 'width' => 1, 'height' => 3, 'orientation' => 'Neutral']);
+    $layout = $zone->layout;
+    $layout['tiles'][] = ['cell' => reconcileCell(105, 201), 'prefabId' => 'FishFeeder'];
+    $zone->update(['layout' => $layout]);
+
+    ZonePlanChange::factory()->remove()->for($plan, 'plan')->create(['target_instance_id' => '8001', 'target_cell' => null]);
     $planter = reconcileAdd($plan, 'PlanterBox', 105, 201, ['position' => 2]);
 
     app(ReconcileZonePlan::class)->handle($zone);

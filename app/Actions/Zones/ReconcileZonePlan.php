@@ -62,7 +62,7 @@ final readonly class ReconcileZonePlan
                     continue;
                 }
 
-                $built = $this->isBuilt($layout, $change, $definitions);
+                $built = $this->isBuilt($layout, $change);
                 if ($built && ! $targetStands) {
                     $change->state = ZonePlanChangeState::Applied;
                 } elseif ($change->state === ZonePlanChangeState::Applied) {
@@ -96,25 +96,15 @@ final readonly class ReconcileZonePlan
     }
 
     /**
-     * Whether the real layout holds the change's building: same prefab, anchor cell and
-     * orientation, or for a tile the same prefab on the same cell.
+     * Whether the real layout holds the change's building: a building of the same prefab, anchor
+     * cell and orientation, or a tile entry of the same prefab on the anchor cell (the game sends
+     * 1x1 tiles, pressure doors and wide farm tiles as tiles, one per cell).
      *
      * @param  array<string, mixed>  $layout
-     * @param  array<string, array{width: int, height: int, isTile: bool}>  $definitions
      */
-    private function isBuilt(array $layout, ZonePlanChange $change, array $definitions): bool
+    private function isBuilt(array $layout, ZonePlanChange $change): bool
     {
         if ($change->prefab_id === null || $change->anchor_cell === null) {
-            return false;
-        }
-
-        if ($definitions[$change->prefab_id]['isTile'] ?? false) {
-            foreach ((array) ($layout['tiles'] ?? []) as $tile) {
-                if (($tile['cell'] ?? null) === $change->anchor_cell && ($tile['prefabId'] ?? null) === $change->prefab_id) {
-                    return true;
-                }
-            }
-
             return false;
         }
 
@@ -122,6 +112,12 @@ final readonly class ReconcileZonePlan
             if (($building['prefabId'] ?? null) === $change->prefab_id
                 && (int) ($building['anchorCell'] ?? -1) === $change->anchor_cell
                 && ($building['orientation'] ?? 'Neutral') === $change->orientation) {
+                return true;
+            }
+        }
+
+        foreach ((array) ($layout['tiles'] ?? []) as $tile) {
+            if (($tile['cell'] ?? null) === $change->anchor_cell && ($tile['prefabId'] ?? null) === $change->prefab_id) {
                 return true;
             }
         }

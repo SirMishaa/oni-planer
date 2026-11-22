@@ -111,3 +111,15 @@ it('leaves out the excepted change', function (): void {
 
     expect(array_column($layout['buildings'], 'instanceId'))->toBe(['b1', 'plan:9']);
 });
+
+it('frees the tile entries of a building removed by instance id', function (): void {
+    $layout = planBaseLayout();
+    $layout['buildings'][] = ['instanceId' => 'f1', 'anchorCell' => 33, 'prefabId' => 'FishFeeder', 'width' => 1, 'height' => 3];
+    $layout['tiles'][] = ['cell' => 33, 'prefabId' => 'FishFeeder'];
+    $layout['tiles'][] = ['cell' => 34, 'prefabId' => 'FishFeeder'];
+
+    $layout = (new ZonePlanLayout)->apply($layout, [planChange(1, ZonePlanChangeKind::Remove, ['target_instance_id' => 'f1'])], PLAN_DEFINITIONS);
+
+    expect(array_column($layout['buildings'], 'instanceId'))->toBe(['b1'])
+        ->and(array_column($layout['tiles'], 'cell'))->toBe([5, 6, 34]);
+});

@@ -33,6 +33,8 @@ function placementPlan(): array
         ['CeilingLight', 1, 1, 'OnCeiling', 'Unrotatable'],
         ['GasPump', 2, 2, 'Anywhere', 'R360'],
         ['Tile', 1, 1, 'Tile', 'Unrotatable'],
+        ['Door', 1, 2, 'Tile', 'R90'],
+        ['PressureDoor', 1, 2, 'Tile', 'R90'],
     ] as [$id, $width, $height, $rule, $rotations]) {
         Building::factory()->create([
             'building_id' => $id,
@@ -141,4 +143,26 @@ it('lets an unchecked change under a checked add', function (): void {
     $feeder = placementAdd($plan, 'FishFeeder', 105, 201, ['position' => 2]);
 
     expect(app(PlanPlacement::class)->problem($zone, $plan, $feeder))->toBeNull();
+});
+
+it('takes a door of the Tile rule as a building over its whole footprint', function (string $door): void {
+    [$zone, $plan] = placementPlan();
+    $planned = placementAdd($plan, $door, 105, 201);
+    $planter = placementAdd($plan, 'PlanterBox', 105, 202, ['position' => 2]);
+
+    expect(app(PlanPlacement::class)->problem($zone, $plan, $planter))
+        ->toBe("PlanterBox at w(105,202): w(105,202) overlaps #plan:{$planned->id} {$door}.");
+})->with(['Door', 'PressureDoor']);
+
+it('frees every cell of a removed building the game also sends as a tile', function (): void {
+    [$zone, $plan] = placementPlan();
+    $layout = $zone->layout;
+    $layout['buildings'][] = ['instanceId' => '8001', 'prefabId' => 'FishFeeder', 'anchorCell' => placementCell(105, 201), 'width' => 1, 'height' => 3, 'orientation' => 'Neutral'];
+    $layout['tiles'][] = ['cell' => placementCell(105, 201), 'prefabId' => 'FishFeeder'];
+    $zone->update(['layout' => $layout]);
+
+    ZonePlanChange::factory()->remove()->for($plan, 'plan')->create(['target_instance_id' => '8001', 'target_cell' => null]);
+    $planter = placementAdd($plan, 'PlanterBox', 105, 201, ['position' => 2]);
+
+    expect(app(PlanPlacement::class)->problem($zone, $plan, $planter))->toBeNull();
 });
