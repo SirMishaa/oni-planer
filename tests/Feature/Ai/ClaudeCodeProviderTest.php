@@ -345,6 +345,7 @@ it('passes the bash, MCP wildcard and every deny rule', function (): void {
             'Bash(dotnet *)',
             'Bash(php *)',
             'Bash(vendor/bin/phpstan *)',
+            'mcp__oni__write_zone_plan',
         ]);
 });
 

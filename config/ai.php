@@ -103,6 +103,8 @@ return [
                 'Bash(dotnet *)',
                 'Bash(php *)',
                 'Bash(vendor/bin/phpstan *)',
+                // The in-game chat may read zone plans but never write them: plans are proposed from a coding session.
+                'mcp__oni__write_zone_plan',
             ],
             'models' => [
                 'text' => [

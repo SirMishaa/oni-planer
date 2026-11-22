@@ -30,9 +30,15 @@ final class ZoneMapRenderer
     /**
      * @param  array{x: int, y: int, width: int, height: int}|null  $rect  world coordinates, bottom-left origin
      * @param  list<string>  $layers  subset of ['terrain', 'occupancy']
+     * @param  array<string, mixed>|null  $layoutOverride  a layout drawn in place of the zone's own (the planned layout); its buildings may carry `planState` and `planChecked`
      */
-    public function render(Zone $zone, Colony $colony, ?array $rect, array $layers): string
+    public function render(Zone $zone, Colony $colony, ?array $rect, array $layers, ?array $layoutOverride = null): string
     {
+        if ($layoutOverride !== null) {
+            $zone = clone $zone;
+            $zone->layout = $layoutOverride;
+        }
+
         $this->assigned = [];
         $layout = $zone->layout;
         $gridWidth = (int) ($layout['gridWidth'] ?? 0);
@@ -210,14 +216,24 @@ final class ZoneMapRenderer
             }
 
             $glyph = $this->glyph('building:'.$building['prefabId'], MapGlyphs::BUILDINGS[$building['prefabId']] ?? null, MapGlyphs::BUILDING_POOL, array_values(MapGlyphs::BUILDINGS));
+            $instanceId = (string) ($building['instanceId'] ?? '?');
+            $planned = str_starts_with($instanceId, 'plan:');
+            $unchecked = $planned && ($building['planChecked'] ?? true) === false;
             foreach ($cells as $cell) {
-                $grid[$cell] = $glyph;
+                if (! $unchecked || ! isset($grid[$cell])) {
+                    $grid[$cell] = $glyph;
+                }
             }
             [$x, $y] = ZoneGeometry::xy($building['anchorCell'], $gridWidth);
-            $instanceId = (string) ($building['instanceId'] ?? '?');
             $groups[$glyph.' '.$building['prefabId']][] = [
                 'size' => sprintf('%dx%d', $width, $height),
-                'text' => sprintf('#%s %s%s%s', $instanceId, McpFormat::world($x, $y), ($building['orientation'] ?? 'Neutral') !== 'Neutral' ? ' '.$building['orientation'] : '', $this->buildingState($states[$instanceId] ?? null)),
+                'text' => sprintf(
+                    '%s %s%s%s',
+                    $planned ? 'plan#'.mb_substr($instanceId, 5) : '#'.$instanceId,
+                    McpFormat::world($x, $y),
+                    ($building['orientation'] ?? 'Neutral') !== 'Neutral' ? ' '.$building['orientation'] : '',
+                    $planned ? ' '.($building['planState'] ?? 'pending').($unchecked ? ' unchecked' : '') : $this->buildingState($states[$instanceId] ?? null),
+                ),
             ];
         }
 
