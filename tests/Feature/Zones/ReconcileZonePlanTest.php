@@ -5,14 +5,18 @@ declare(strict_types=1);
 use App\Actions\Uplink\StoreZoneLayout;
 use App\Actions\Zones\ReconcileZonePlan;
 use App\Enums\ZonePlanChangeState;
+use App\Events\Uplink\ZoneLayoutStored;
 use App\Events\ZoneUpdated;
+use App\Listeners\Zones\ReconcilePlanOnLayout;
 use App\Models\Building;
 use App\Models\Element;
 use App\Models\Zone;
 use App\Models\ZonePlan;
 use App\Models\ZonePlanChange;
 use Database\Factories\ZoneFactory;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Exceptions;
 
 /** The cell of a world position on the sample grid. */
 function reconcileCell(int $x, int $y): int
@@ -227,4 +231,15 @@ it('lets a change the player deleted free its spot for the others', function ():
     app(ReconcileZonePlan::class)->handle($zone);
 
     expect($planter->fresh()->state)->toBe(ZonePlanChangeState::Pending);
+});
+
+it('reports a failing reconcile instead of failing the layout job', function (): void {
+    Exceptions::fake();
+    [$zone, $plan] = reconcilePlan();
+    $add = reconcileAdd($plan, 'PlanterBox', 105, 201);
+    DB::table('zone_plan_changes')->where('id', $add->id)->update(['kind' => 'unknown']);
+
+    app(ReconcilePlanOnLayout::class)->handle(new ZoneLayoutStored('colony-1', 'zone-sodicane'));
+
+    Exceptions::assertReported(ValueError::class);
 });

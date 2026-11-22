@@ -30,7 +30,7 @@ final class ZoneMapRenderer
     /**
      * @param  array{x: int, y: int, width: int, height: int}|null  $rect  world coordinates, bottom-left origin
      * @param  list<string>  $layers  subset of ['terrain', 'occupancy']
-     * @param  array<string, mixed>|null  $layoutOverride  a layout drawn in place of the zone's own (the planned layout); its buildings may carry `planState` and `planChecked`
+     * @param  array<string, mixed>|null  $layoutOverride  a layout drawn in place of the zone's own (the planned layout); its buildings may carry `planState`, `planChecked` and `planNote`
      */
     public function render(Zone $zone, Colony $colony, ?array $rect, array $layers, ?array $layoutOverride = null): string
     {
@@ -228,11 +228,12 @@ final class ZoneMapRenderer
             $groups[$glyph.' '.$building['prefabId']][] = [
                 'size' => sprintf('%dx%d', $width, $height),
                 'text' => sprintf(
-                    '%s %s%s%s',
+                    '%s %s%s%s%s',
                     $planned ? 'plan#'.mb_substr($instanceId, 5) : '#'.$instanceId,
                     McpFormat::world($x, $y),
                     ($building['orientation'] ?? 'Neutral') !== 'Neutral' ? ' '.$building['orientation'] : '',
                     $planned ? ' '.($building['planState'] ?? 'pending').($unchecked ? ' unchecked' : '') : $this->buildingState($states[$instanceId] ?? null),
+                    $planned && is_string($building['planNote'] ?? null) ? sprintf(' "%s"', $building['planNote']) : '',
                 ),
             ];
         }

@@ -8,11 +8,13 @@ use App\Actions\Zones\ReconcileZonePlan;
 use App\Events\Uplink\ZoneLayoutStored;
 use App\Events\ZoneUpdated;
 use App\Models\Zone;
+use Throwable;
 
 /**
  * Follows the game on a zone plan each time its layout is stored, and tells open pages when the
  * plan changed. Broadcasts on its own: listener order is not guaranteed, so it cannot rely on the
- * layout broadcast coming after it.
+ * layout broadcast coming after it. A failing reconcile is reported, never thrown: the layout is
+ * stored already and the plan catches up on the next one.
  */
 final readonly class ReconcilePlanOnLayout
 {
@@ -26,7 +28,19 @@ final readonly class ReconcilePlanOnLayout
             ->whereHas('plan')
             ->first();
 
-        if ($zone !== null && $this->reconcile->handle($zone)) {
+        if ($zone === null) {
+            return;
+        }
+
+        try {
+            $changed = $this->reconcile->handle($zone);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return;
+        }
+
+        if ($changed) {
             ZoneUpdated::dispatch($event->zoneGuid, $event->colonyGuid, 'plan');
         }
     }

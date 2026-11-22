@@ -58,15 +58,15 @@ it('draws the planned layout with the plan instances and the removed targets', f
     $zone = Zone::factory()->sodicaneFarm()->create(['colony_guid' => $colony->guid, 'name' => 'Sodicane']);
     Building::factory()->create(['building_id' => 'CreatureFeeder', 'width' => 1, 'height' => 1, 'object_layer' => 'Building', 'build_location_rule' => 'Anywhere']);
     $plan = ZonePlan::factory()->for($zone)->create();
-    $add = ZonePlanChange::factory()->add()->for($plan, 'plan')->create(['prefab_id' => 'CreatureFeeder', 'anchor_cell' => 201 * 606 + 117, 'position' => 1]);
-    $remove = ZonePlanChange::factory()->remove()->for($plan, 'plan')->create(['target_instance_id' => '7001', 'target_cell' => null, 'position' => 2]);
+    $add = ZonePlanChange::factory()->add()->for($plan, 'plan')->create(['prefab_id' => 'CreatureFeeder', 'anchor_cell' => 201 * 606 + 117, 'position' => 1, 'note' => 'Feed the pen']);
+    $remove = ZonePlanChange::factory()->remove()->for($plan, 'plan')->create(['target_instance_id' => '7001', 'target_cell' => null, 'position' => 2, 'note' => 'Station moves out']);
 
     OniServer::tool(ZoneMapTool::class, ['zone' => 'Sodicane', 'rect' => ['x' => 113, 'y' => 200, 'width' => 6, 'height' => 3], 'layers' => ['occupancy'], 'plan' => true])
         ->assertOk()
         ->assertSee('O  1 |....C.|')
-        ->assertSee(sprintf('plan#%d w(117,201) pending', $add->id))
+        ->assertSee(sprintf('plan#%d w(117,201) pending "Feed the pen"', $add->id))
         ->assertSee('Removed by the plan:')
-        ->assertSee(sprintf('#7001 FarmStation w(114,201) (plan#%d pending)', $remove->id));
+        ->assertSee(sprintf('#7001 FarmStation w(114,201) (plan#%d pending "Station moves out")', $remove->id));
 
     OniServer::tool(ZoneMapTool::class, ['zone' => 'Sodicane', 'rect' => ['x' => 113, 'y' => 200, 'width' => 6, 'height' => 3], 'layers' => ['occupancy']])
         ->assertOk()

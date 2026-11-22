@@ -24,7 +24,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[Name('zone_map')]
-#[Description('Where things are in a zone: two aligned text grids, T (terrain: tiles and elements) and O (occupancy: buildings over their footprint, plants and critters in lowercase), one char per cell, rows labelled with their local y and a column ruler. The legend names every glyph and lists each building (id, world anchor, size, state), plant and critter. Boxes over 40x25 need a rect. With plan: true it draws the zone as its plan would leave it: planned buildings listed as plan#id with their state, removed targets listed apart.')]
+#[Description('Where things are in a zone: two aligned text grids, T (terrain: tiles and elements) and O (occupancy: buildings over their footprint, plants and critters in lowercase), one char per cell, rows labelled with their local y and a column ruler. The legend names every glyph and lists each building (id, world anchor, size, state), plant and critter. Boxes over 40x25 need a rect. With plan: true it draws the zone as its plan would leave it: planned buildings listed as plan#id with their state and note, removed targets listed apart.')]
 #[IsReadOnly]
 final class ZoneMapTool extends Tool
 {
@@ -86,8 +86,8 @@ final class ZoneMapTool extends Tool
     }
 
     /**
-     * The real layout with the plan applied, planned buildings carrying their change state and
-     * whether they are checked.
+     * The real layout with the plan applied, planned buildings carrying their change state, whether
+     * they are checked and their note.
      *
      * @param  Collection<int, ZonePlanChange>  $changes  keyed by id
      * @param  array<string, array{width: int, height: int, isTile: bool}>  $definitions
@@ -103,6 +103,7 @@ final class ZoneMapTool extends Tool
             if ($change !== null) {
                 $layout['buildings'][$index]['planState'] = $change->state->value;
                 $layout['buildings'][$index]['planChecked'] = $change->checked;
+                $layout['buildings'][$index]['planNote'] = $change->note;
             }
         }
 
@@ -126,7 +127,7 @@ final class ZoneMapTool extends Tool
         $removed = [];
         $laid = [];
         foreach ($changes as $change) {
-            $label = sprintf('plan#%d %s', $change->id, $change->state->value);
+            $label = sprintf('plan#%d %s "%s"', $change->id, $change->state->value, $change->note);
             if ($change->removes() && $change->target_instance_id !== null && ($building = $buildings->get($change->target_instance_id)) !== null) {
                 [$x, $y] = ZoneGeometry::xy((int) ($building['anchorCell'] ?? 0), $gridWidth);
                 $removed[] = sprintf(' #%s %s %s (%s)', $change->target_instance_id, $building['prefabId'] ?? '?', McpFormat::world($x, $y), $label);
