@@ -31,8 +31,8 @@ Le panneau **Suggestion** liste chaque changement avec sa raison en une phrase. 
 
 ## Déplacer ou supprimer
 
-- **Déplacer** : glisse un ajout sur la carte. Il n'atterrit que sur une position où il tient (dans la zone, sans chevaucher, sur un sol ou sous un plafond s'il en faut un). Un changement déplacé par toi est marqué **Déplacé par vous**. Si le déplacement ferait tenir moins bien un autre changement, il est refusé et rien ne bouge.
-- **Supprimer** : le bouton **Supprimer** retire un changement. Si d'autres changements ne tiennent que grâce à lui, le planner refuse et te le dit.
+- **Déplacer** : glisse un ajout sur la carte. Il n'atterrit que sur une position où il tient (dans la zone, sans chevaucher, sur un sol ou sous un plafond s'il en faut un). Un changement déplacé par toi est marqué **Déplacé par vous**. Si le déplacement ferait tenir moins bien un autre changement, il est refusé et rien ne bouge. Un ajout déjà **appliqué** ne se déplace plus.
+- **Supprimer** : le bouton **Supprimer** retire un changement de la suggestion. Si d'autres changements ne tiennent que grâce à lui, le planner refuse et te le dit. Claude voit ce que tu as supprimé quand il relit la suggestion, jusqu'à ce qu'il en écrive une nouvelle.
 
 Ces deux actions passent par <Route name="zones.plan.changes.update" /> et <Route name="zones.plan.changes.destroy" />.
 
@@ -47,7 +47,9 @@ Ces deux actions passent par <Route name="zones.plan.changes.update" /> et <Rout
 
 <Accordion title="Comment la suggestion suit ta partie">
 
-Chaque fois que le jeu envoie le plan de la zone, le planner relit la suggestion : un ajout construit devient **appliqué** (et repasse en attente si le bâtiment disparaît), un ajout qui ne tient plus devient **en conflit**, et un retrait dont la cible a disparu s'efface. Une suggestion sans plus aucun changement est supprimée. Les changements **non vérifiés** ne sont jamais touchés. La page se met à jour seule, comme le reste de la zone.
+Chaque fois que le jeu envoie le plan de la zone, le planner relit la suggestion : un ajout construit devient **appliqué** (et repasse en attente si le bâtiment disparaît), un ajout qui ne tient plus devient **en conflit**, et un retrait dont la cible a disparu s'efface. Une suggestion sans plus aucun changement est supprimée, sauf si tu en as supprimé : elle reste alors pour Claude, sans s'afficher. Les changements **non vérifiés** et ceux que tu as supprimés ne sont jamais touchés.
+
+Un bâtiment compte comme construit quand le jeu l'envoie au même endroit, comme bâtiment ou comme tuile : les portes étanches et les grandes dalles de culture arrivent case par case, comme les tuiles. La page se met à jour seule, comme le reste de la zone.
 
 </Accordion>
 

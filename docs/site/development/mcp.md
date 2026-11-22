@@ -61,14 +61,17 @@ La légende ne liste que les caractères présents, avec une ligne par préfab e
 `write_zone_plan` propose des changements pour une zone : une liste d'ajouts, de retraits et de remplacements, chacun avec une note courte qui dit pourquoi. L'écriture **remplace tout le plan** de la zone ; une liste vide l'efface. Le joueur la voit comme une variante de la zone (voir [Suggestions de zone](../product/plans.md)).
 
 - Un ajout nomme l'identifiant exact du bâtiment (`lookup` le trouve) et la case monde de son coin bas gauche. Un retrait ou un remplacement vise `#identifiant` (un bâtiment, tiré de `zone_map`) ou `w(x,y)` (une tuile).
-- `zone_plan` relit le plan tel que le joueur l'a ajusté : état de chaque changement, déplacé ou non, cible et note.
-- `zone_map` avec `plan: true` dessine la zone telle que son plan la laisserait. Sans plan, elle dessine le layout actuel et le dit.
+- `zone_plan` relit le plan tel que le joueur l'a ajusté : état de chaque changement, déplacé ou non, cible et note. Les changements que le joueur a supprimés suivent à part, marqués `deleted by player`, jusqu'au prochain `write_zone_plan`.
+- `zone_map` avec `plan: true` dessine la zone telle que son plan la laisserait, chaque changement avec son état et sa note dans la légende. Sans plan, elle dessine le layout actuel et le dit.
+- Une zone temporaire (chat en jeu) n'accepte pas de plan.
 
 <Accordion title="Validation, suivi et chat">
 
-`PlanPlacement` vérifie chaque changement contrôlé : dans le cadre de la zone, rotation permise, aucun chevauchement avec les bâtiments et tuiles (les autres changements du plan comptent), aucune case solide, un sol ou un plafond si le bâtiment en demande un. Un seul problème refuse toute l'écriture, listé par changement, et rien n'est enregistré. Les câbles, tuyaux, la logique et les autres couches que le jeu n'envoie pas sont enregistrés sans contrôle.
+`PlanPlacement` vérifie chaque changement contrôlé : dans le cadre de la zone, rotation permise, aucun chevauchement avec les bâtiments et tuiles (les autres changements du plan comptent), aucune case solide, un sol ou un plafond si le bâtiment en demande un. Un seul problème refuse toute l'écriture, listé par changement (`change 2: …`, un autre changement du plan cité par sa position), et rien n'est enregistré.
 
-À chaque layout reçu, `ReconcileZonePlan` aligne le plan sur le jeu : ajouts construits, conflits, retraits devenus sans objet (voir [Uplink](./uplink.md)).
+Le mod envoie la couche des tuiles de fondation dans `tiles` (une entrée par case) et celle des bâtiments dans `buildings` : une porte arrive comme bâtiment, une porte étanche ou une grande dalle de culture comme une tuile par case, une mangeoire à poissons dans les deux listes. `ZonePlanLayout` ne traite donc en tuile qu'un 1x1 de règle `Tile` ; tout le reste est un bâtiment sur son emprise réelle. Un ajout est construit quand le layout porte le même bâtiment (ancre et orientation) ou une tuile du même préfabriqué sur son ancre, et retirer un bâtiment libère aussi ses entrées de tuile. Les câbles, tuyaux, la logique et les autres couches que le jeu n'envoie pas sont enregistrés sans contrôle.
+
+À chaque layout reçu, `ReconcileZonePlan` aligne le plan sur le jeu : ajouts construits, conflits, retraits devenus sans objet (voir [Uplink](./uplink.md)). Il ignore les changements supprimés par le joueur, et une erreur de sa part est signalée sans faire échouer l'enregistrement du layout.
 
 Le chat en jeu ne peut pas écrire de plan : `write_zone_plan` figure parmi les outils que le provider claude-code lui refuse (réglages `ai`). Il peut lire `zone_plan`.
 
