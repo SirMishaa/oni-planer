@@ -7,6 +7,16 @@ use App\Models\CodexEntry;
 use App\Models\Element;
 use Illuminate\Support\Facades\File;
 
+// Asset checks read public_path(): point it at a throwaway directory so tests never touch real game assets.
+beforeEach(function (): void {
+    $this->publicDir = sys_get_temp_dir().'/oni-codex-public-'.uniqid();
+    app()->usePublicPath($this->publicDir);
+});
+
+afterEach(function (): void {
+    File::deleteDirectory($this->publicDir);
+});
+
 it('lists codex entries with their natural key, category, parent and title', function (): void {
     CodexEntry::factory()->create([
         'codex_id' => 'Electrolyzer',
@@ -115,16 +125,12 @@ it('resolves an article image from a linked entity that has an extracted asset',
     $entry->buildings()->attach($building->id);
 
     $relative = 'assets/game/buildings/PowerTransformerSmall.webp';
-    @mkdir(public_path('assets/game/buildings'), 0777, true);
-    file_put_contents(public_path($relative), 'webp');
+    File::ensureDirectoryExists(public_path('assets/game/buildings'));
+    File::put(public_path($relative), 'webp');
 
-    try {
-        $this->getJson(route('codex.show', 'PowerTransformerSmall'))
-            ->assertOk()
-            ->assertJsonPath('image', '/'.$relative);
-    } finally {
-        @unlink(public_path($relative));
-    }
+    $this->getJson(route('codex.show', 'PowerTransformerSmall'))
+        ->assertOk()
+        ->assertJsonPath('image', '/'.$relative);
 });
 
 it('returns a null image when no linked entity has an asset', function (): void {
@@ -141,14 +147,10 @@ it('includes a thumbnail on list items whose linked entity has an asset', functi
     $entry->buildings()->attach($building->id);
 
     $relative = 'assets/game/buildings/Generator.webp';
-    @mkdir(public_path('assets/game/buildings'), 0777, true);
-    file_put_contents(public_path($relative), 'webp');
+    File::ensureDirectoryExists(public_path('assets/game/buildings'));
+    File::put(public_path($relative), 'webp');
 
-    try {
-        $this->getJson(route('codex.index'))
-            ->assertOk()
-            ->assertJsonFragment(['codex_id' => 'Generator', 'image' => '/'.$relative]);
-    } finally {
-        @unlink(public_path($relative));
-    }
+    $this->getJson(route('codex.index'))
+        ->assertOk()
+        ->assertJsonFragment(['codex_id' => 'Generator', 'image' => '/'.$relative]);
 });
