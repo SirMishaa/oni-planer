@@ -59,6 +59,7 @@ La page d'une zone ne recharge que les props du flux nommé par le genre de `Zon
 - `fast` : les créatures, la population, les entités, les problèmes, les compteurs et les plantes de la carte (`mapPlants`) ;
 - `slow` : le terrain (`mapTerrain`), les œufs et les compteurs ;
 - `capture` : les captures et la dernière demande de capture ;
+- `plan` : la suggestion de la zone (changée par `ReconcilePlanOnLayout` après un layout, ou par le joueur qui déplace ou supprime un changement) ;
 - `layout` et `list` : toutes les props.
 
 Le contrôleur rend chaque prop comme une closure, si bien qu'un rechargement partiel ne calcule que les props demandées : un état rapide toutes les 5 s ne relit jamais le terrain ni le plan. `useZoneLive` cumule les props de tous les événements reçus pendant son délai de 400 ms et lance un seul rechargement.

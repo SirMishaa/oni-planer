@@ -56,7 +56,7 @@ flowchart TB
 ## Carte du code
 
 - `app/Services/GameImport/` : les readers transforment l'export OniExtract en enregistrements, les importers les persistent. Voir [Import des données du jeu](./game-data-import.md).
-- `app/Listeners/`, `app/Jobs/Uplink/` et `app/Services/Uplink/` : tout ce que le jeu envoie via Reverb, et les commandes que le site lui renvoie. Les listeners comprennent aussi le contrôle de cohérence du surpeuplement, qui compare la règle du planner à celle du jeu à chaque état rapide. Voir [Uplink](./uplink.md).
+- `app/Listeners/`, `app/Jobs/Uplink/` et `app/Services/Uplink/` : tout ce que le jeu envoie via Reverb, et les commandes que le site lui renvoie. Les listeners comprennent aussi le contrôle de cohérence du surpeuplement, qui compare la règle du planner à celle du jeu à chaque état rapide, et `ReconcilePlanOnLayout`, qui aligne la [suggestion de zone](../product/plans.md) sur chaque layout reçu. Voir [Uplink](./uplink.md).
 - `app/Jobs/Chat/`, `app/Actions/Chat/`, `app/Services/Chat/` et `app/Ai/` : le chat en jeu (question, contexte, prompt) et le fournisseur `claude-code` du SDK Laravel AI. Voir [Chat en jeu](./uplink.md#chat-en-jeu).
 - `app/Services/Viability/`, `app/Services/Critters/` : presenters et calculs derrière les pages colonie et créatures, et derrière les critters des zones (surpeuplement, alimentation).
 - `app/Mcp/` et `app/Services/Mcp/` : le serveur MCP local et ses outils. Voir [Serveur MCP](./mcp.md).

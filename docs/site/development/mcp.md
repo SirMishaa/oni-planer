@@ -1,7 +1,7 @@
 ---
 title: Serveur MCP
 description: Le serveur MCP local oni, qui laisse un assistant IA explorer ta colonie (zones, cartes, entités, données du jeu, captures) depuis Claude Code.
-sources: ["routes/ai.php", "app/Mcp/**", "app/Services/Mcp/**", "app/Services/Zones/ZoneCritters.php", "app/Services/Zones/ZoneCritterState.php", "app/Services/Zones/ZoneGeometry.php", "app/Services/Zones/ZoneProblems.php", "app/Services/Zones/CritterProblems.php", "app/Services/Zones/ZonePlants.php", "app/Services/Zones/ZoneFeeding.php", ".mcp.json", "app/Services/Mcp/McpBuildingSettings.php", "app/Services/Zones/RanchProblems.php"]
+sources: ["app/Actions/Zones/WriteZonePlan.php", "app/Actions/Zones/ReconcileZonePlan.php", "app/Services/Zones/Plans/**", "routes/ai.php", "app/Mcp/**", "app/Services/Mcp/**", "app/Services/Zones/ZoneCritters.php", "app/Services/Zones/ZoneCritterState.php", "app/Services/Zones/ZoneGeometry.php", "app/Services/Zones/ZoneProblems.php", "app/Services/Zones/CritterProblems.php", "app/Services/Zones/ZonePlants.php", "app/Services/Zones/ZoneFeeding.php", ".mcp.json", "app/Services/Mcp/McpBuildingSettings.php", "app/Services/Zones/RanchProblems.php"]
 order: 7
 ---
 
@@ -23,7 +23,9 @@ Rien à lancer à la main : Claude Code démarre le serveur avec <Artisan comman
 | `entity` | Tout ce que le jeu envoie sur une plante, un bâtiment (avec son filtre et sa capacité), une créature ou un œuf, par son identifiant d'instance. |
 | `lookup` | Un objet du jeu (élément, bâtiment, créature, plante, aliment, entrée du codex) par identifiant ou par nom, en français ou en anglais. |
 | `zone_captures` | Les images de la zone rendues par le jeu (WebP), pour comparer un avant / après, et l'adresse de la page de la zone. |
-| `request_capture` | Demande une nouvelle capture au jeu, comme le bouton de la page de la zone. Seul outil qui agit. |
+| `zone_plan` | Le plan d'une zone (voir [Suggestions de zone](#suggestions-de-zone)) : une ligne par changement, avec son état et sa note. Lecture seule. |
+| `write_zone_plan` | Écrit la suggestion d'une zone. Agit sur la base, jamais sur le jeu. |
+| `request_capture` | Demande une nouvelle capture au jeu, comme le bouton de la page de la zone. Agit sur le jeu. |
 
 Chaque réponse commence par une ligne d'en-tête : colonie, cycle, âge des données. `STALE` veut dire que le jeu n'envoie plus rien depuis plus d'une minute.
 
@@ -47,11 +49,29 @@ La légende ne liste que les caractères présents, avec une ligne par préfab e
 - `unavailable` veut dire que le jeu n'a pas envoyé la valeur : rien n'est deviné.
 </Accordion>
 <Accordion title="Règles du code">
-- Les outils vivent dans `app/Mcp/Tools`, un par fichier, enregistrés dans `OniServer`. Les outils de lecture portent `#[IsReadOnly]` et n'écrivent rien en base.
+- Les outils vivent dans `app/Mcp/Tools`, un par fichier, enregistrés dans `OniServer`. Les outils de lecture portent `#[IsReadOnly]` et n'écrivent rien en base ; seuls `request_capture` et `write_zone_plan` agissent.
 - Le processus stdio vit longtemps : aucun état de colonie ou de zone n'est gardé entre deux appels, chaque appel relit la base. Les noms traduits des objets du jeu et les régimes des critters, eux, restent en cache : après un `game:import`, relance la session Claude Code.
 - Les règles de problèmes, d'emprise et de croissance sont partagées avec la page des zones (`ZoneProblems`, `CritterProblems`, `ZoneGeometry`, `ZonePlants`, `ZoneFeeding`) : ne pas les recopier dans un outil.
 - Les tests appellent chaque outil avec `OniServer::tool(...)` dans `tests/Feature/Mcp`.
 </Accordion>
 </AccordionGroup>
+
+## Suggestions de zone
+
+`write_zone_plan` propose des changements pour une zone : une liste d'ajouts, de retraits et de remplacements, chacun avec une note courte qui dit pourquoi. L'écriture **remplace tout le plan** de la zone ; une liste vide l'efface. Le joueur la voit comme une variante de la zone (voir [Suggestions de zone](../product/plans.md)).
+
+- Un ajout nomme l'identifiant exact du bâtiment (`lookup` le trouve) et la case monde de son coin bas gauche. Un retrait ou un remplacement vise `#identifiant` (un bâtiment, tiré de `zone_map`) ou `w(x,y)` (une tuile).
+- `zone_plan` relit le plan tel que le joueur l'a ajusté : état de chaque changement, déplacé ou non, cible et note.
+- `zone_map` avec `plan: true` dessine la zone telle que son plan la laisserait. Sans plan, elle dessine le layout actuel et le dit.
+
+<Accordion title="Validation, suivi et chat">
+
+`PlanPlacement` vérifie chaque changement contrôlé : dans le cadre de la zone, rotation permise, aucun chevauchement avec les bâtiments et tuiles (les autres changements du plan comptent), aucune case solide, un sol ou un plafond si le bâtiment en demande un. Un seul problème refuse toute l'écriture, listé par changement, et rien n'est enregistré. Les câbles, tuyaux, la logique et les autres couches que le jeu n'envoie pas sont enregistrés sans contrôle.
+
+À chaque layout reçu, `ReconcileZonePlan` aligne le plan sur le jeu : ajouts construits, conflits, retraits devenus sans objet (voir [Uplink](./uplink.md)).
+
+Le chat en jeu ne peut pas écrire de plan : `write_zone_plan` figure parmi les outils que le provider claude-code lui refuse (réglages `ai`). Il peut lire `zone_plan`.
+
+</Accordion>
 
 Pour la synchro elle-même, voir [Uplink](./uplink.md).
