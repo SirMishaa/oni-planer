@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\Building;
+use App\Models\CritterMorph;
 use App\Models\CritterMorphOutput;
 use App\Models\Element;
 use App\Models\Food;
@@ -85,10 +86,11 @@ final class GameImportAssetsCommand extends Command
 
         [$eggs, $eggsWithoutImage, $emptyEggImages] = $this->importEggs($converter, $export, $assets);
         [$critterImages, $emptyCritterImages] = $this->repairEmptyCritterImages($converter, $export, $assets);
+        [$critterPortraits, $morphsWithoutImage] = $this->importMissingCritterPortraits($converter, $export, $assets);
 
         [$terrains, $solidsWithoutTexture, $solidsWithoutAsset, $missingRenderFiles] = $this->importTerrain($converter, $export, $assets);
 
-        $this->info("Converted {$buildings} building renders, {$connections} connection sprites, {$elements} missing element icons, {$foods} food icons, {$eggs} egg images, {$critterImages} repaired critter images, {$terrains} terrain textures.");
+        $this->info("Converted {$buildings} building renders, {$connections} connection sprites, {$elements} missing element icons, {$foods} food icons, {$eggs} egg images, {$critterImages} repaired critter images, {$critterPortraits} fallback critter portraits, {$terrains} terrain textures.");
 
         if ($foodsWithoutIcon !== []) {
             $this->warn('Missing food icons: '.implode(', ', $foodsWithoutIcon));
@@ -104,6 +106,10 @@ final class GameImportAssetsCommand extends Command
 
         if ($emptyCritterImages !== []) {
             $this->warn('Empty critter images without a source: '.implode(', ', $emptyCritterImages));
+        }
+
+        if ($morphsWithoutImage !== []) {
+            $this->warn('Critter morphs without an image: '.implode(', ', $morphsWithoutImage));
         }
 
         if ($solidsWithoutTexture !== []) {
@@ -197,6 +203,39 @@ final class GameImportAssetsCommand extends Command
         }
 
         return [$repaired, $unrepaired];
+    }
+
+    /**
+     * Fills the portrait of every critter morph the kanim renderer has not drawn with the export's UI image
+     * (`ui_image/{morph}.png`). A rendered portrait is never overwritten: only a missing webp is created.
+     *
+     * @return array{int, list<string>} converted portraits, morphs with neither a portrait nor a UI image
+     */
+    private function importMissingCritterPortraits(AssetConverter $converter, string $export, string $assets): array
+    {
+        $converted = 0;
+        $missing = [];
+
+        foreach (CritterMorph::query()->orderBy('morph_id')->pluck('morph_id') as $morphId) {
+            $morphId = (string) $morphId;
+            $destination = "{$assets}/critters/{$morphId}.webp";
+
+            if (File::exists($destination)) {
+                continue;
+            }
+
+            $source = "{$export}/ui_image/{$morphId}.png";
+            if (! File::isFile($source)) {
+                $missing[] = $morphId;
+
+                continue;
+            }
+
+            $converter->pngToWebp($source, $destination);
+            $converted++;
+        }
+
+        return [$converted, $missing];
     }
 
     /**

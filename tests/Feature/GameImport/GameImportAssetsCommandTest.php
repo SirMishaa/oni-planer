@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\Building;
+use App\Models\CritterMorph;
 use App\Models\CritterMorphOutput;
 use App\Models\Element;
 use App\Models\Food;
@@ -253,4 +254,27 @@ it('fails when an empty critter image has no source in the ui export', function 
     $this->artisan('game:import-assets')
         ->expectsOutputToContain('Empty critter images without a source: Butterfly')
         ->assertFailed();
+});
+
+it('falls back to the ui export for critter morphs without a rendered portrait', function (): void {
+    CritterMorph::factory()->create(['morph_id' => 'PacuBaby']);
+    CritterMorph::factory()->create(['morph_id' => 'Pacu']);
+    File::ensureDirectoryExists($this->assets.'/critters');
+    File::put($this->assets.'/critters/Pacu.webp', str_repeat('x', 500));
+    writePng($this->export.'/ui_image/PacuBaby.png', 64, 64);
+    writePng($this->export.'/ui_image/Pacu.png', 64, 64);
+    touch($this->assets.'/critters/Pacu.webp', time() - 100);
+
+    $this->artisan('game:import-assets', ['--force' => true])->assertSuccessful();
+
+    expect(getimagesize($this->assets.'/critters/PacuBaby.webp')['mime'])->toBe('image/webp')
+        ->and(File::get($this->assets.'/critters/Pacu.webp'))->toBe(str_repeat('x', 500));
+});
+
+it('warns about critter morphs with no image at all', function (): void {
+    CritterMorph::factory()->create(['morph_id' => 'GhostBaby']);
+
+    $this->artisan('game:import-assets')
+        ->expectsOutputToContain('Critter morphs without an image: GhostBaby')
+        ->assertSuccessful();
 });
