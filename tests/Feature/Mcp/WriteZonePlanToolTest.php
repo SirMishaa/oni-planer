@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\ZonePlanChangeState;
 use App\Events\ZoneUpdated;
 use App\Mcp\Servers\OniServer;
 use App\Mcp\Tools\WriteZonePlanTool;
@@ -105,7 +106,7 @@ it('refuses an overlapping add and stores nothing', function (): void {
         ['kind' => 'add', 'prefab' => 'ManualGenerator', 'x' => 117, 'y' => 201, 'note' => 'On the first one'],
     ]])->assertHasErrors([
         'change 2: ManualGenerator at w(114,201): w(114,201) overlaps #7001 FarmStation.',
-        'change 3: ManualGenerator at w(117,201)',
+        'change 3: ManualGenerator at w(117,201): w(117,201) overlaps change 1 ManualGenerator.',
     ]);
 
     expect(ZonePlan::query()->count())->toBe(0)
@@ -125,7 +126,7 @@ it('lists every problem at once: missing targets, unknown prefab, missing cell a
         'change 1: target #999 is not a building of the zone layout',
         'change 2: target w(116,202) is not a tile of the zone layout',
         'change 3: unknown prefab Teleporter',
-        'change 4: an add needs x and y',
+        'change 4: this add needs x and y',
         'change 5: ManualGenerator at w(114,201): w(114,201) overlaps #7001 FarmStation.',
     ]);
 
@@ -155,4 +156,34 @@ it('accepts an unchecked wire without validation', function (): void {
         ->and($change->object_layer)->toBe('Wire');
 
     OniServer::tool(ZonePlanTool::class, ['zone' => 'Sodicane'])->assertOk()->assertSee('Wire @ w(114,201) Neutral · pending · unchecked');
+});
+
+it('names a missing prefab without a grammar slip', function (): void {
+    writePlanZone();
+
+    OniServer::tool(WriteZonePlanTool::class, ['zone' => 'Sodicane', 'changes' => [
+        ['kind' => 'replace', 'x' => 100, 'y' => 200, 'target' => 'w(100,200)', 'note' => 'No prefab'],
+    ]])->assertHasErrors(['change 1: this replace needs a prefab']);
+});
+
+it('accepts an add the game has already built and stores it applied', function (): void {
+    writePlanZone();
+    Building::factory()->create(['building_id' => 'FarmStation', 'width' => 2, 'height' => 2, 'object_layer' => 'Building', 'build_location_rule' => 'OnFloor', 'permitted_rotations' => 'Unrotatable']);
+
+    OniServer::tool(WriteZonePlanTool::class, ['zone' => 'Sodicane', 'changes' => [
+        ['kind' => 'add', 'prefab' => 'FarmStation', 'x' => 114, 'y' => 201, 'note' => 'Keep the station'],
+    ]])->assertOk();
+
+    expect(ZonePlanChange::query()->sole()->state)->toBe(ZonePlanChangeState::Applied);
+});
+
+it('refuses a plan on a transient zone', function (): void {
+    $zone = writePlanZone();
+    $zone->update(['transient' => true]);
+
+    OniServer::tool(WriteZonePlanTool::class, ['zone' => (string) $zone->id, 'changes' => [
+        ['kind' => 'add', 'prefab' => 'ManualGenerator', 'x' => 116, 'y' => 201, 'note' => 'Power'],
+    ]])->assertHasErrors(['temporary']);
+
+    expect(ZonePlan::query()->count())->toBe(0);
 });

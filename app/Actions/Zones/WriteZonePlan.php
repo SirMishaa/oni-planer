@@ -37,6 +37,10 @@ final readonly class WriteZonePlan
      */
     public function handle(Zone $zone, array $changes): ZonePlan|array|null
     {
+        if ($zone->transient) {
+            return [sprintf('Zone #%d is a temporary zone (made for one question in the game): plans are kept for the zones of the colony only.', $zone->id)];
+        }
+
         if ($changes === []) {
             $zone->plan()->delete();
             $this->announce($zone);
@@ -64,10 +68,12 @@ final readonly class WriteZonePlan
 
             $this->reconcile->handle($zone);
 
-            foreach ($plan->changes()->get() as $change) {
+            $changes = $plan->changes()->get();
+            $positions = $changes->pluck('position', 'id')->all();
+            foreach ($changes as $change) {
                 $problem = $this->placement->problem($zone, $plan, $change);
                 if ($problem !== null) {
-                    $errors[$change->position][] = $problem;
+                    $errors[$change->position][] = $this->byPosition($problem, $positions);
                 }
             }
 
@@ -124,7 +130,7 @@ final readonly class WriteZonePlan
             if ($kind !== ZonePlanChangeKind::Remove) {
                 $prefabId = $change['prefab'] ?? null;
                 if ($prefabId === null || $prefabId === '') {
-                    $problems[] = sprintf('an %s needs a prefab', $kind->value);
+                    $problems[] = sprintf('this %s needs a prefab', $kind->value);
                 } elseif (! array_key_exists($prefabId, $layers)) {
                     $problems[] = sprintf('unknown prefab %s (building ids are exact, find them with lookup)', $prefabId);
                 } else {
@@ -134,7 +140,7 @@ final readonly class WriteZonePlan
                 }
 
                 if (! isset($change['x'], $change['y'])) {
-                    $problems[] = sprintf('an %s needs x and y (world cell of the bottom-left corner)', $kind->value);
+                    $problems[] = sprintf('this %s needs x and y (world cell of the bottom-left corner)', $kind->value);
                 } else {
                     $row['anchor_cell'] = ZoneGeometry::cell((int) $change['x'], (int) $change['y'], $gridWidth);
                 }
@@ -190,6 +196,17 @@ final readonly class WriteZonePlan
         }
 
         return sprintf('target "%s" must be "#instanceId" (a building) or "w(x,y)" (a tile cell)', $target);
+    }
+
+    /**
+     * A placement problem with the planned buildings it cites (`#plan:{id}`, ids the rollback
+     * discards) named by their change position instead.
+     *
+     * @param  array<int, int>  $positions  change positions by id
+     */
+    private function byPosition(string $problem, array $positions): string
+    {
+        return (string) preg_replace_callback('/#plan:(\d+)/', fn (array $match): string => isset($positions[(int) $match[1]]) ? 'change '.$positions[(int) $match[1]] : $match[0], $problem);
     }
 
     /**
